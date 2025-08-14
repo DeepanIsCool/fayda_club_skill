@@ -162,10 +162,10 @@ export default function TowerBlockGame() {
         });
       }
 
-      // Award the coins
-      rewards.forEach((reward) => {
-        earnReward(reward.amount, reward.reason);
-      });
+      // Note: Players no longer earn coins at game end, only points based on performance
+      // rewards.forEach((reward) => {
+      //   earnReward(reward.amount, reward.reason);
+      // });
 
       setGameRewards(rewards);
       setShowRewardModal(true);

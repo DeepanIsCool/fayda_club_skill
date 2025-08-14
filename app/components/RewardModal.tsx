@@ -50,32 +50,32 @@ export function RewardModal({
   gameLevel = 0,
   gameStats,
 }: RewardModalProps) {
-  const coinRainRef = useRef<HTMLDivElement>(null);
+  const lightningRainRef = useRef<HTMLDivElement>(null);
   const totalRef = useRef<HTMLDivElement>(null);
 
-  // Coin rain animation
+  // Lightning rain animation for points
   useEffect(() => {
-    if (isOpen && coinRainRef.current) {
-      const container = coinRainRef.current;
+    if (isOpen && lightningRainRef.current) {
+      const container = lightningRainRef.current;
 
-      // Create falling coins
-      for (let i = 0; i < 20; i++) {
-        const coin = document.createElement("div");
-        coin.className =
-          "absolute text-yellow-500 text-2xl pointer-events-none";
-        coin.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-coins"><circle cx="8" cy="8" r="6"/><path d="m18.09 10.37a6 6 0 1 1-10.37 10.37"/></svg>`;
-        coin.style.left = Math.random() * 100 + "%";
-        coin.style.top = "-20px";
-        container.appendChild(coin);
+      // Create falling lightning bolts
+      for (let i = 0; i < 15; i++) {
+        const lightning = document.createElement("div");
+        lightning.className =
+          "absolute text-yellow-400 text-2xl pointer-events-none";
+        lightning.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-zap"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"></polygon></svg>`;
+        lightning.style.left = Math.random() * 100 + "%";
+        lightning.style.top = "-20px";
+        container.appendChild(lightning);
 
-        gsap.to(coin, {
+        gsap.to(lightning, {
           y: window.innerHeight + 100,
-          rotation: 720,
-          duration: 2 + Math.random() * 2,
+          rotation: 360,
+          duration: 1.5 + Math.random() * 1.5,
           ease: "power2.in",
-          delay: i * 0.1,
+          delay: i * 0.15,
           onComplete: () => {
-            container.removeChild(coin);
+            container.removeChild(lightning);
           },
         });
       }
@@ -98,6 +98,14 @@ export function RewardModal({
       );
     }
   }, [isOpen]);
+
+  // Calculate score for each game
+  const getGameScore = () => {
+    if (!gameStats) return 0;
+    const avgAcc = gameStats.averageAccuracy;
+    const avgRT = Math.max(gameStats.averageReactionTime, 0.5);
+    return avgAcc / Math.sqrt(avgRT);
+  };
 
   const getRewardIcon = (type: string) => {
     switch (type) {
@@ -139,9 +147,9 @@ export function RewardModal({
             }}
           />
 
-          {/* Coin Rain Container */}
+          {/* Lightning Rain Container */}
           <div
-            ref={coinRainRef}
+            ref={lightningRainRef}
             className="absolute inset-0 pointer-events-none"
           />
 
@@ -197,7 +205,7 @@ export function RewardModal({
             {/* Content */}
             <div className="p-6 space-y-4">
               {/* Rewards List */}
-              <div className="space-y-3">
+              {/* <div className="space-y-3">
                 <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-center mb-4">
                   🎉 Rewards Earned
                 </h3>
@@ -230,7 +238,7 @@ export function RewardModal({
                     </motion.div>
                   </motion.div>
                 ))}
-              </div>
+              </div> */}
 
               {/* Game Statistics Scorecard */}
               {gameStats && (
@@ -320,20 +328,24 @@ export function RewardModal({
                 </motion.div>
               )}
 
-              {/* Total Earned */}
+              {/* Total Score */}
               <motion.div
                 ref={totalRef}
-                className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border-2 border-green-200 dark:border-green-700"
+                className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-700"
               >
                 <div className="text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    Total Earned This Game
+                    Game Score
                   </p>
                   <div className="flex items-center justify-center gap-2">
-                    <Coins size={24} className="text-yellow-500" />
-                    <span className="text-2xl font-bold text-green-600">
-                      +{getTotalEarned()}
-                    </span>
+                    {gameStats && (
+                      <>
+                        <Zap size={32} className="text-yellow-500" />
+                        <span className="text-3xl font-bold text-blue-600">
+                          {getGameScore().toFixed(2)} pts
+                        </span>
+                      </>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                     Total coins: {totalCoins}
