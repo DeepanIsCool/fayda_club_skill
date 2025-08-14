@@ -36,6 +36,8 @@ export default function TowerBlockGame() {
     endGame,
     continue: gameContinue,
     earnReward,
+    continueCost,
+    canContinue,
   } = useGameCurrency();
   const [showStartModal, setShowStartModal] = useState(true);
   const [showContinueModal, setShowContinueModal] = useState(false);
@@ -46,7 +48,6 @@ export default function TowerBlockGame() {
   const [isPaused, setIsPaused] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [gameInitialized, setGameInitialized] = useState(false);
-  const [continueCount, setContinueCount] = useState(0);
 
   // Game instance ref
   const gameInstanceRef = useRef<any>(null);
@@ -57,8 +58,7 @@ export default function TowerBlockGame() {
       setGameInitialized(true);
       setCurrentLevel(0);
       setGameRewards([]);
-      setContinueCount(0); // Reset continue count for new game
-      
+
       // Play start game sound
       const audioStart = audioStartRef.current;
       if (audioStart) {
@@ -76,9 +76,9 @@ export default function TowerBlockGame() {
     const metrics = gameInstanceRef.current.gameMetrics;
     const blocksPlaced = metrics.blockPlacementTimes.length;
 
-    // Calculate average accuracy as the average precision score
+    // Calculate average accuracy as the average precision score converted to percentage
     const averageAccuracy =
-      blocksPlaced > 0 ? metrics.totalPrecisionScore / blocksPlaced : 0;
+      blocksPlaced > 0 ? metrics.totalPrecisionScore / blocksPlaced / 10 : 0;
 
     // Calculate average reaction time
     const averageReactionTime =
@@ -107,7 +107,6 @@ export default function TowerBlockGame() {
 
   const handleGameOver = useCallback(() => {
     setShowContinueModal(false);
-    setContinueCount(0); // Reset continue count for next game
     endGame();
 
     // Set the game end time in metrics
@@ -170,7 +169,7 @@ export default function TowerBlockGame() {
 
       setGameRewards(rewards);
       setShowRewardModal(true);
-      
+
       // Play victory sound
       const audioVictory = audioVictoryRef.current;
       if (audioVictory) {
@@ -186,12 +185,8 @@ export default function TowerBlockGame() {
   }, [currentLevel, endGame, earnReward, router, calculateGameStats]);
 
   const handleContinueGame = useCallback(() => {
-    // Calculate the current cost based on continue count
-    const currentCost = 2 * Math.pow(2, continueCount);
-
-    if (coins >= currentCost) {
-      // Deduct coins and increment continue count
-      setContinueCount((prev) => prev + 1);
+    // Use the centralized continue system from CurrencyContext
+    if (gameContinue()) {
       setShowContinueModal(false);
 
       // Reset the game state but keep the level
@@ -199,7 +194,7 @@ export default function TowerBlockGame() {
         gameInstanceRef.current.continueFromLastPosition();
       }
     }
-  }, [coins, continueCount]);
+  }, [gameContinue]);
 
   const handlePause = useCallback(() => {
     if (!isPaused) {
@@ -1042,7 +1037,6 @@ export default function TowerBlockGame() {
         onGameOver={handleGameOver}
         currentLevel={currentLevel}
         gameTitle="Tower Block"
-        continueCount={continueCount}
       />
 
       <RewardModal

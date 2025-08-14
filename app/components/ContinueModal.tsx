@@ -13,7 +13,6 @@ interface ContinueModalProps {
   onGameOver: () => void;
   currentLevel: number;
   gameTitle?: string;
-  continueCount?: number; // Track how many times user has continued
 }
 
 export function ContinueModal({
@@ -22,13 +21,13 @@ export function ContinueModal({
   onGameOver,
   currentLevel,
   gameTitle = "Tower Block",
-  continueCount = 0,
 }: ContinueModalProps) {
-  const { coins } = useGameCurrency();
+  const { coins, continueCost, canContinue, continueAttempt } =
+    useGameCurrency();
   const [showGameOver, setShowGameOver] = useState(false);
 
-  // Progressive pricing: 2, 4, 8, 16, 32, 64...
-  const currentCost = 2 * Math.pow(2, continueCount);
+  // Use centralized continue cost system
+  const currentCost = continueCost;
 
   const modalRef = useRef<HTMLDivElement>(null);
   const pulseRef = useRef<HTMLDivElement>(null);
@@ -65,37 +64,10 @@ export function ContinueModal({
   }, [isOpen]);
 
   const handleContinue = () => {
-    if (coins >= currentCost) {
-      // Success animation
-      if (modalRef.current) {
-        gsap.to(modalRef.current, {
-          scale: 1.1,
-          duration: 0.2,
-          ease: "back.out(1.7)",
-          yoyo: true,
-          repeat: 1,
-          onComplete: onContinue,
-        });
-      } else {
-        onContinue();
-      }
+    if (canContinue) {
+      onContinue();
     } else {
-      // Show toast for insufficient balance
-      toast.error("Not enough balance", {
-        duration: 3000,
-        position: "top-center",
-        style: {
-          background: "#ef4444",
-          color: "white",
-          fontWeight: "bold",
-          borderRadius: "12px",
-          padding: "16px 24px",
-        },
-        iconTheme: {
-          primary: "#ffffff",
-          secondary: "#ef4444",
-        },
-      });
+      toast.error("Not enough coins to continue!");
     }
   };
 
@@ -166,16 +138,14 @@ export function ContinueModal({
                       inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg
                       transition-all duration-300 shadow-lg hover:shadow-xl
                       ${
-                        coins >= currentCost
+                        canContinue
                           ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-200 dark:shadow-green-900/30"
                           : "bg-gradient-to-r from-red-500 to-red-600 text-white opacity-60 cursor-not-allowed shadow-red-200 dark:shadow-red-900/30"
                       }
                     `}
-                    whileHover={
-                      coins >= currentCost ? { scale: 1.05, y: -2 } : {}
-                    }
-                    whileTap={coins >= currentCost ? { scale: 0.95 } : {}}
-                    disabled={coins < currentCost}
+                    whileHover={canContinue ? { scale: 1.05, y: -2 } : {}}
+                    whileTap={canContinue ? { scale: 0.95 } : {}}
+                    disabled={!canContinue}
                   >
                     <Heart size={24} className="text-white" />
                     <span>Continue Playing</span>
@@ -196,10 +166,9 @@ export function ContinueModal({
                 </div>
 
                 {/* Continue count info */}
-                {continueCount > 0 && (
+                {continueAttempt > 0 && (
                   <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-                    Continue attempt #{continueCount + 1} • Next cost:{" "}
-                    {2 * Math.pow(2, continueCount + 1)} coins
+                    Continue attempt #{continueAttempt + 1}
                   </div>
                 )}
               </div>
