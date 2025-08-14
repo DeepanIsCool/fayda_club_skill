@@ -14,10 +14,17 @@ import Link from "next/link";
 import { useState } from "react";
 import { HeaderCurrencyDisplay } from "./components/CurrencyDisplay";
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  [key: string]: any; // For additional properties
+}
+
 export default function Dashboard() {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -79,7 +86,7 @@ export default function Dashboard() {
       } else {
         setError(data.message || "Sign in failed");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -120,7 +127,7 @@ export default function Dashboard() {
       } else {
         setError(data.message || "Sign up failed");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -162,7 +169,7 @@ export default function Dashboard() {
       } else {
         setError(data.message || "Update failed");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -184,7 +191,7 @@ export default function Dashboard() {
     setError("");
   };
 
-  const handleGameClick = (e: React.MouseEvent, gamePath: string) => {
+  const handleGameClick = (e: React.MouseEvent) => {
     if (!isAuthenticated) {
       e.preventDefault();
       alert("Please sign in to play games!");

@@ -394,7 +394,7 @@ export default function TowerBlockGame() {
       colorOffset: number;
       color: THREE.Color | number;
       STATES: { ACTIVE: string; STOPPED: string; MISSED: string };
-      state: string;
+      currentState: string;
       MOVE_AMOUNT: number;
       speed: number;
       direction: number;
@@ -459,7 +459,7 @@ export default function TowerBlockGame() {
           this.color = new THREE.Color(finalR, finalG, finalB);
         }
 
-        this.state = this.index > 1 ? this.STATES.ACTIVE : this.STATES.STOPPED;
+        this.currentState = this.index > 1 ? this.STATES.ACTIVE : this.STATES.STOPPED;
         const level = this.index - 1;
         const speedIncreaseFactor = Math.floor(level / 2);
         this.speed = -0.13 - this.index * 0.008 - speedIncreaseFactor * 0.025;
@@ -490,11 +490,11 @@ export default function TowerBlockGame() {
         this.mesh = new THREE.Mesh(geometry, this.material);
         this.mesh.position.set(
           this.position.x,
-          this.position.y + (this.state === this.STATES.ACTIVE ? 0 : 0),
+          this.position.y + (this.currentState === this.STATES.ACTIVE ? 0 : 0),
           this.position.z
         );
 
-        if (this.state === this.STATES.ACTIVE) {
+        if (this.currentState === this.STATES.ACTIVE) {
           this.position[this.workingPlane] =
             Math.random() > 0.5 ? -this.MOVE_AMOUNT : this.MOVE_AMOUNT;
         }
@@ -505,7 +505,7 @@ export default function TowerBlockGame() {
       }
 
       place() {
-        this.state = this.STATES.STOPPED;
+        this.currentState = this.STATES.STOPPED;
 
         // Foundation block should not be placed
         if (
@@ -677,9 +677,9 @@ export default function TowerBlockGame() {
           blocksToReturn.chopped = choppedMesh;
 
           // ✅ CRITICAL FIX: Set the block state to STOPPED when successfully placed
-          this.state = this.STATES.STOPPED;
+          this.currentState = this.STATES.STOPPED;
         } else {
-          this.state = this.STATES.MISSED;
+          this.currentState = this.STATES.MISSED;
         }
 
         this.mesh.position.set(
@@ -692,7 +692,7 @@ export default function TowerBlockGame() {
       }
 
       tick() {
-        if (this.state === this.STATES.ACTIVE) {
+        if (this.currentState === this.STATES.ACTIVE) {
           const value = this.position[this.workingPlane];
           if (value > this.MOVE_AMOUNT || value < -this.MOVE_AMOUNT)
             this.reverseDirection();
@@ -706,7 +706,7 @@ export default function TowerBlockGame() {
     // Game class
     class Game {
       STATES: { [key: string]: string };
-      state: string;
+      currentState: string;
       stage: Stage;
       mainContainer: HTMLDivElement;
       scoreContainer: HTMLDivElement;
@@ -727,7 +727,7 @@ export default function TowerBlockGame() {
           RESETTING: "resetting",
           PAUSED: "paused",
         };
-        this.state = this.STATES.LOADING;
+        this.currentState = this.STATES.LOADING;
         this.stage = new Stage();
         this.mainContainer = gameContainerRef.current!;
         this.scoreContainer = scoreContainerRef.current!;
@@ -770,7 +770,7 @@ export default function TowerBlockGame() {
           this.mainContainer.classList.remove(this.STATES[key]);
         }
         this.mainContainer.classList.add(newState);
-        this.state = newState;
+        this.currentState = newState;
       }
 
       addEventListeners() {
@@ -1010,14 +1010,14 @@ export default function TowerBlockGame() {
         const lastBlock = this.blocks[this.blocks.length - 1];
         console.log(
           "addBlock called - lastBlock state:",
-          lastBlock?.state,
+          lastBlock?.currentState,
           "MISSED:",
           lastBlock?.STATES.MISSED
         );
 
         // Only trigger continue modal if the last block is actually MISSED and ACTIVE
         // This prevents triggering continue for successfully placed blocks
-        if (lastBlock && lastBlock.state === lastBlock.STATES.MISSED) {
+        if (lastBlock && lastBlock.currentState === lastBlock.STATES.MISSED) {
           console.log("Triggering continue modal - block was missed");
           // Instead of ending immediately, trigger continue modal
           return triggerContinueModal();
@@ -1035,7 +1035,7 @@ export default function TowerBlockGame() {
         const newKidOnTheBlock = new Block(lastBlock);
         console.log(
           "Created new block with state:",
-          newKidOnTheBlock.state,
+          newKidOnTheBlock.currentState,
           "index:",
           newKidOnTheBlock.index
         );
@@ -1051,12 +1051,12 @@ export default function TowerBlockGame() {
         const lastBlock = this.blocks[this.blocks.length - 1];
         console.log(
           "Last block state:",
-          lastBlock?.state,
+          lastBlock?.currentState,
           "is MISSED:",
-          lastBlock?.state === lastBlock?.STATES.MISSED
+          lastBlock?.currentState === lastBlock?.STATES.MISSED
         );
 
-        if (lastBlock && lastBlock.state === lastBlock.STATES.MISSED) {
+        if (lastBlock && lastBlock.currentState === lastBlock.STATES.MISSED) {
           console.log("Removing missed block and creating new one");
           // Remove the missed block from the scene
           this.newBlocks.remove(lastBlock.mesh);
@@ -1069,7 +1069,7 @@ export default function TowerBlockGame() {
           if (targetBlock) {
             // Create a new block with the correct target
             const newBlock = new Block(targetBlock);
-            console.log("New block created with state:", newBlock.state);
+            console.log("New block created with state:", newBlock.currentState);
             this.newBlocks.add(newBlock.mesh);
             this.blocks.push(newBlock);
 
@@ -1098,20 +1098,20 @@ export default function TowerBlockGame() {
       }
 
       pauseGame() {
-        console.log("pauseGame called, current state:", this.state);
-        if (this.state === this.STATES.PLAYING) {
+        console.log("pauseGame called, current state:", this.currentState);
+        if (this.currentState === this.STATES.PLAYING) {
           this.updateState(this.STATES.PAUSED);
-          console.log("Game paused, new state:", this.state);
+          console.log("Game paused, new state:", this.currentState);
         } else {
           console.log("Cannot pause - game not in PLAYING state");
         }
       }
 
       resumeGame() {
-        console.log("resumeGame called, current state:", this.state);
-        if (this.state === this.STATES.PAUSED) {
+        console.log("resumeGame called, current state:", this.currentState);
+        if (this.currentState === this.STATES.PAUSED) {
           this.updateState(this.STATES.PLAYING);
-          console.log("Game resumed, new state:", this.state);
+          console.log("Game resumed, new state:", this.currentState);
         } else {
           console.log("Cannot resume - game not in PAUSED state");
         }
@@ -1119,7 +1119,7 @@ export default function TowerBlockGame() {
 
       tick() {
         // Only update block movement and animations when actually playing
-        if (this.state === this.STATES.PLAYING) {
+        if (this.currentState === this.STATES.PLAYING) {
           this.blocks[this.blocks.length - 1]?.tick();
 
           // Add subtle shine animation to all blocks
@@ -1137,8 +1137,8 @@ export default function TowerBlockGame() {
 
         // Continue the game loop for playing or paused states
         if (
-          this.state === this.STATES.PLAYING ||
-          this.state === this.STATES.PAUSED
+          this.currentState === this.STATES.PLAYING ||
+          this.currentState === this.STATES.PAUSED
         ) {
           animationFrameId = requestAnimationFrame(() => this.tick());
         }

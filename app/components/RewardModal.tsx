@@ -27,6 +27,8 @@ interface GameStats {
   totalGameTime?: number;
 }
 
+export type { GameStats };
+
 interface RewardModalProps {
   isOpen: boolean;
   onClose: () => void;
