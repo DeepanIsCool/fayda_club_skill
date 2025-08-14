@@ -114,7 +114,10 @@ export function ContinueModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onGameOver}
+            onClick={(e) => {
+              e.stopPropagation();
+              onGameOver();
+            }}
           />
 
           {/* Modal */}
@@ -123,6 +126,7 @@ export function ContinueModal({
             className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
             initial={{ scale: 0.8, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
+            onClick={(e) => e.stopPropagation()}
             exit={{ scale: 0.8, opacity: 0, y: 20 }}
             transition={{ type: "spring", damping: 20, stiffness: 300 }}
           >
@@ -153,7 +157,11 @@ export function ContinueModal({
               <div className="space-y-4">
                 <div className="text-center">
                   <motion.button
-                    onClick={handleContinue}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleContinue();
+                    }}
                     className={`
                       inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg
                       transition-all duration-300 shadow-lg hover:shadow-xl
@@ -206,7 +214,11 @@ export function ContinueModal({
                     transition={{ duration: 0.3 }}
                   >
                     <motion.button
-                      onClick={onGameOver}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onGameOver();
+                      }}
                       className="
                         w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl
                         bg-gray-500 hover:bg-gray-600 text-white

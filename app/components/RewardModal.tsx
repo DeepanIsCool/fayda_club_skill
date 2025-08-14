@@ -133,7 +133,10 @@ export function RewardModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
           />
 
           {/* Coin Rain Container */}
@@ -154,6 +157,7 @@ export function RewardModal({
               stiffness: 300,
               delay: 0.2,
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 p-6 text-white text-center relative overflow-hidden">
@@ -357,7 +361,11 @@ export function RewardModal({
 
               {/* Close Button */}
               <motion.button
-                onClick={onClose}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onClose();
+                }}
                 className="
                   w-full py-3 px-4 rounded-xl
                   bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700
