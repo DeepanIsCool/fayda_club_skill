@@ -2,13 +2,14 @@
 
 import { motion } from "framer-motion";
 import { Power1, TweenLite } from "gsap";
-import { ArrowLeft, Pause, Play, RotateCcw } from "lucide-react";
+import { Pause } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { ContinueModal } from "../../components/ContinueModal";
 import { CompactCurrencyDisplay } from "../../components/CurrencyDisplay";
 import { GameStartModal } from "../../components/GameStartModal";
+import { PauseModal } from "../../components/PauseModal";
 import { RewardModal } from "../../components/RewardModal";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 
@@ -37,6 +38,7 @@ export default function TowerBlockGame() {
   } = useGameCurrency();
   const [showStartModal, setShowStartModal] = useState(true);
   const [showContinueModal, setShowContinueModal] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [gameRewards, setGameRewards] = useState<GameReward[]>([]);
   const [gameStats, setGameStats] = useState<any>(null);
@@ -172,15 +174,40 @@ export default function TowerBlockGame() {
   }, [gameContinue]);
 
   const handlePause = useCallback(() => {
-    setIsPaused(!isPaused);
-    if (gameInstanceRef.current) {
-      if (isPaused) {
-        gameInstanceRef.current.resumeGame();
-      } else {
+    if (!isPaused) {
+      setIsPaused(true);
+      setShowPauseModal(true);
+      if (gameInstanceRef.current) {
         gameInstanceRef.current.pauseGame();
       }
     }
-  }, [isPaused]);
+  }, []);
+
+  const handleResume = useCallback(() => {
+    setIsPaused(false);
+    setShowPauseModal(false);
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.resumeGame();
+    }
+  }, []);
+
+  const handlePauseRestart = useCallback(() => {
+    setShowPauseModal(false);
+    setIsPaused(false);
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.restartGame();
+    }
+    setCurrentLevel(0);
+  }, []);
+
+  const handleBackToDashboard = useCallback(() => {
+    router.push("/");
+  }, [router]);
+
+  const handlePauseExit = useCallback(() => {
+    setShowPauseModal(false);
+    handleBackToDashboard();
+  }, [handleBackToDashboard]);
 
   const handleRestart = useCallback(() => {
     if (gameInstanceRef.current) {
@@ -189,10 +216,6 @@ export default function TowerBlockGame() {
     setCurrentLevel(0);
     setIsPaused(false);
   }, []);
-
-  const handleBackToDashboard = useCallback(() => {
-    router.push("/");
-  }, [router]);
 
   // Custom function to trigger continue modal instead of ending game
   const triggerContinueModal = useCallback(() => {
@@ -928,46 +951,23 @@ export default function TowerBlockGame() {
           {/* Top UI Bar */}
           <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center">
             <motion.button
-              onClick={handleBackToDashboard}
+              onClick={handlePause}
               className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg hover:bg-white transition-all"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <ArrowLeft size={18} />
-              Back
+              <Pause size={18} />
+              Pause
             </motion.button>
 
             <div className="flex items-center gap-4">
-              <CompactCurrencyDisplay />
               <div className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg">
                 <span className="font-semibold text-gray-800">
                   Level: {currentLevel}
                 </span>
               </div>
+              <CompactCurrencyDisplay />
             </div>
-          </div>
-
-          {/* Game Controls */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-center gap-4">
-            <motion.button
-              onClick={handlePause}
-              className="pointer-events-auto flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {isPaused ? <Play size={18} /> : <Pause size={18} />}
-              {isPaused ? "Resume" : "Pause"}
-            </motion.button>
-
-            <motion.button
-              onClick={handleRestart}
-              className="pointer-events-auto flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-lg transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <RotateCcw size={18} />
-              Restart
-            </motion.button>
           </div>
         </div>
       )}
@@ -976,7 +976,7 @@ export default function TowerBlockGame() {
       <div
         ref={scoreContainerRef}
         className={`absolute top-20 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-gray-800 z-20 ${
-          gameInitialized ? "block" : "hidden"
+          gameInitialized && !isPaused ? "block" : "hidden"
         }`}
       >
         0
@@ -1006,6 +1006,14 @@ export default function TowerBlockGame() {
         onCancel={handleBackToDashboard}
         gameTitle="Tower Block"
         gameDescription="Build the highest tower possible with precision timing!"
+      />
+
+      <PauseModal
+        isOpen={showPauseModal}
+        onContinue={handleResume}
+        onRestart={handlePauseRestart}
+        onExit={handlePauseExit}
+        gameTitle="Tower Block"
       />
 
       <ContinueModal
