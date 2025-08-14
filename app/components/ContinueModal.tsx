@@ -2,8 +2,9 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { AlertCircle, Coins, Heart, RotateCcw, X } from "lucide-react";
-import React, { useEffect, useRef } from "react";
+import { AlertCircle, Coins, Heart, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { toast } from "react-hot-toast";
 import { useGameCurrency } from "../contexts/CurrencyContext";
 
 interface ContinueModalProps {
@@ -12,6 +13,7 @@ interface ContinueModalProps {
   onGameOver: () => void;
   currentLevel: number;
   gameTitle?: string;
+  continueCount?: number; // Track how many times user has continued
 }
 
 export function ContinueModal({
@@ -20,19 +22,30 @@ export function ContinueModal({
   onGameOver,
   currentLevel,
   gameTitle = "Tower Block",
+  continueCount = 0,
 }: ContinueModalProps) {
-  const {
-    coins,
-    canContinue,
-    continueCost,
-    continueAttempt,
-    maxContinues,
-    continue: continuePay,
-  } = useGameCurrency();
+  const { coins } = useGameCurrency();
+  const [showGameOver, setShowGameOver] = useState(false);
+
+  // Progressive pricing: 2, 4, 8, 16, 32, 64...
+  const currentCost = 2 * Math.pow(2, continueCount);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const pulseRef = useRef<HTMLDivElement>(null);
-  const coinRef = useRef<HTMLDivElement>(null);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setShowGameOver(false);
+
+      // After 3 seconds, show the Game Over button
+      const timer = setTimeout(() => {
+        setShowGameOver(true);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Pulse animation for urgency
   useEffect(() => {
@@ -51,21 +64,8 @@ export function ContinueModal({
     };
   }, [isOpen]);
 
-  // Coin shake animation when insufficient funds
-  useEffect(() => {
-    if (isOpen && !canContinue && coinRef.current) {
-      gsap.to(coinRef.current, {
-        x: "-=10",
-        duration: 0.1,
-        ease: "power2.inOut",
-        repeat: 4,
-        yoyo: true,
-      });
-    }
-  }, [isOpen, canContinue]);
-
   const handleContinue = () => {
-    if (canContinue && continuePay()) {
+    if (coins >= currentCost) {
       // Success animation
       if (modalRef.current) {
         gsap.to(modalRef.current, {
@@ -79,22 +79,24 @@ export function ContinueModal({
       } else {
         onContinue();
       }
-    }
-  };
-
-  const getEncouragementText = () => {
-    if (continueAttempt === 0) {
-      return "Don't give up! You were doing great!";
-    } else if (continueAttempt === 1) {
-      return "You're so close to your best score!";
     } else {
-      return "This could be your breakthrough moment!";
+      // Show toast for insufficient balance
+      toast.error("Not enough balance", {
+        duration: 3000,
+        position: "top-center",
+        style: {
+          background: "#ef4444",
+          color: "white",
+          fontWeight: "bold",
+          borderRadius: "12px",
+          padding: "16px 24px",
+        },
+        iconTheme: {
+          primary: "#ffffff",
+          secondary: "#ef4444",
+        },
+      });
     }
-  };
-
-  const getCostMultiplierText = () => {
-    const multipliers = ["2x", "3x", "5x"];
-    return multipliers[continueAttempt] || "5x";
   };
 
   return (
@@ -143,68 +145,37 @@ export function ContinueModal({
               {/* Encouragement */}
               <div className="text-center">
                 <p className="text-gray-600 dark:text-gray-300 mb-4">
-                  {getEncouragementText()}
+                  Don't give up! Continue your progress:
                 </p>
               </div>
 
-              {/* Continue Option */}
+              {/* Single Continue Button */}
               <div className="space-y-4">
-                <div
-                  ref={coinRef}
-                  className={`
-                    p-4 rounded-xl border-2 transition-all duration-300
-                    ${
-                      canContinue
-                        ? "border-green-300 bg-green-50 dark:bg-green-900/20"
-                        : "border-red-300 bg-red-50 dark:bg-red-900/20"
+                <div className="text-center">
+                  <motion.button
+                    onClick={handleContinue}
+                    className={`
+                      inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg
+                      transition-all duration-300 shadow-lg hover:shadow-xl
+                      ${
+                        coins >= currentCost
+                          ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-200 dark:shadow-green-900/30"
+                          : "bg-gradient-to-r from-red-500 to-red-600 text-white opacity-60 cursor-not-allowed shadow-red-200 dark:shadow-red-900/30"
+                      }
+                    `}
+                    whileHover={
+                      coins >= currentCost ? { scale: 1.05, y: -2 } : {}
                     }
-                  `}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Heart
-                        size={20}
-                        className={
-                          canContinue ? "text-green-600" : "text-red-600"
-                        }
-                      />
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        Continue Playing
-                      </span>
+                    whileTap={coins >= currentCost ? { scale: 0.95 } : {}}
+                    disabled={coins < currentCost}
+                  >
+                    <Heart size={24} className="text-white" />
+                    <span>Continue Playing</span>
+                    <div className="flex items-center gap-1 bg-white/20 rounded-full px-3 py-1">
+                      <Coins size={18} className="text-yellow-200" />
+                      <span className="font-bold">{currentCost}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Coins size={16} className="text-yellow-500" />
-                      <span
-                        className={`font-bold ${
-                          canContinue ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {continueCost}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Cost multiplier: {getCostMultiplierText()}
-                    </span>
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Attempt {continueAttempt + 1}/{maxContinues}
-                    </span>
-                  </div>
-
-                  {!canContinue && (
-                    <motion.div
-                      className="mt-3 p-2 bg-red-100 dark:bg-red-900/30 rounded-lg"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                    >
-                      <p className="text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
-                        <AlertCircle size={16} />
-                        Insufficient coins! You have {coins} coins.
-                      </p>
-                    </motion.div>
-                  )}
+                  </motion.button>
                 </div>
 
                 {/* Current coins display */}
@@ -215,60 +186,41 @@ export function ContinueModal({
                     <span className="font-bold text-yellow-600">{coins}</span>
                   </span>
                 </div>
+
+                {/* Continue count info */}
+                {continueCount > 0 && (
+                  <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                    Continue attempt #{continueCount + 1} • Next cost:{" "}
+                    {2 * Math.pow(2, continueCount + 1)} coins
+                  </div>
+                )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <motion.button
-                  onClick={handleContinue}
-                  disabled={!canContinue}
-                  className={`
-                    flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl
-                    font-semibold transition-all duration-200
-                    ${
-                      canContinue
-                        ? "bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl"
-                        : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                    }
-                  `}
-                  whileHover={canContinue ? { scale: 1.02 } : {}}
-                  whileTap={canContinue ? { scale: 0.98 } : {}}
-                >
-                  <RotateCcw size={18} />
-                  Continue
-                </motion.button>
-
-                <motion.button
-                  onClick={onGameOver}
-                  className="
-                    flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl
-                    bg-gray-500 hover:bg-gray-600 text-white
-                    font-semibold transition-all duration-200 shadow-lg hover:shadow-xl
-                  "
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <X size={18} />
-                  End Game
-                </motion.button>
-              </div>
-
-              {/* Progress indicator */}
-              <div className="flex justify-center gap-2">
-                {Array.from({ length: maxContinues }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`
-                      w-2 h-2 rounded-full transition-all duration-300
-                      ${
-                        i <= continueAttempt
-                          ? "bg-orange-500"
-                          : "bg-gray-300 dark:bg-gray-600"
-                      }
-                    `}
-                  />
-                ))}
-              </div>
+              {/* Game Over Button (appears after 3 seconds) */}
+              <AnimatePresence>
+                {showGameOver && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <motion.button
+                      onClick={onGameOver}
+                      className="
+                        w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl
+                        bg-gray-500 hover:bg-gray-600 text-white
+                        font-semibold transition-all duration-200 shadow-lg hover:shadow-xl
+                      "
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <X size={18} />
+                      Game Over / Exit Game
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         </motion.div>

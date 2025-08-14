@@ -180,7 +180,7 @@ export function GameStartModal({
               </div>
 
               {/* Game Rules */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+              {/* <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
                 <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   💡 Game Rules
                 </h4>
@@ -190,7 +190,7 @@ export function GameStartModal({
                   <li>• Higher levels = better rewards</li>
                   <li>• Perfect blocks = bonus points</li>
                 </ul>
-              </div>
+              </div> */}
 
               {/* Action Buttons */}
               <div className="flex gap-3">

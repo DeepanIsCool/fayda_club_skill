@@ -45,6 +45,7 @@ export default function TowerBlockGame() {
   const [isPaused, setIsPaused] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [gameInitialized, setGameInitialized] = useState(false);
+  const [continueCount, setContinueCount] = useState(0);
 
   // Game instance ref
   const gameInstanceRef = useRef<any>(null);
@@ -55,6 +56,7 @@ export default function TowerBlockGame() {
       setGameInitialized(true);
       setCurrentLevel(0);
       setGameRewards([]);
+      setContinueCount(0); // Reset continue count for new game
     }
   }, [startGame]);
 
@@ -95,6 +97,7 @@ export default function TowerBlockGame() {
 
   const handleGameOver = useCallback(() => {
     setShowContinueModal(false);
+    setContinueCount(0); // Reset continue count for next game
     endGame();
 
     // Set the game end time in metrics
@@ -164,14 +167,20 @@ export default function TowerBlockGame() {
   }, [currentLevel, endGame, earnReward, router, calculateGameStats]);
 
   const handleContinueGame = useCallback(() => {
-    if (gameContinue()) {
+    // Calculate the current cost based on continue count
+    const currentCost = 2 * Math.pow(2, continueCount);
+
+    if (coins >= currentCost) {
+      // Deduct coins and increment continue count
+      setContinueCount((prev) => prev + 1);
       setShowContinueModal(false);
+
       // Reset the game state but keep the level
       if (gameInstanceRef.current) {
         gameInstanceRef.current.continueFromLastPosition();
       }
     }
-  }, [gameContinue]);
+  }, [coins, continueCount]);
 
   const handlePause = useCallback(() => {
     if (!isPaused) {
@@ -1022,6 +1031,7 @@ export default function TowerBlockGame() {
         onGameOver={handleGameOver}
         currentLevel={currentLevel}
         gameTitle="Tower Block"
+        continueCount={continueCount}
       />
 
       <RewardModal
