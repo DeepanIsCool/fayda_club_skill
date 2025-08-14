@@ -61,16 +61,21 @@ export default function TowerBlockGame() {
 
     const metrics = gameInstanceRef.current.gameMetrics;
     const blocksPlaced = metrics.blockPlacementTimes.length;
-    
+
     // Calculate average accuracy as the average precision score
-    const averageAccuracy = blocksPlaced > 0 
-      ? (metrics.totalPrecisionScore / blocksPlaced) 
-      : 0;
+    const averageAccuracy =
+      blocksPlaced > 0 ? metrics.totalPrecisionScore / blocksPlaced : 0;
 
     // Calculate average reaction time
-    const averageReactionTime = blocksPlaced > 0
-      ? (metrics.blockPlacementTimes.reduce((sum: number, time: number) => sum + time, 0) / blocksPlaced) / 1000
-      : 0;
+    const averageReactionTime =
+      blocksPlaced > 0
+        ? metrics.blockPlacementTimes.reduce(
+            (sum: number, time: number) => sum + time,
+            0
+          ) /
+          blocksPlaced /
+          1000
+        : 0;
 
     return {
       finalLevel: currentLevel,
@@ -79,9 +84,10 @@ export default function TowerBlockGame() {
       perfectPlacements: metrics.perfectPlacements,
       averageReactionTime: averageReactionTime,
       maxConsecutiveStreak: metrics.maxConsecutiveStreak,
-      totalGameTime: metrics.gameEndTime > 0 
-        ? (metrics.gameEndTime - metrics.gameStartTime) / 1000 
-        : 0
+      totalGameTime:
+        metrics.gameEndTime > 0
+          ? (metrics.gameEndTime - metrics.gameStartTime) / 1000
+          : 0,
     };
   }, [currentLevel]);
 

@@ -2,18 +2,18 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { 
-  Coins, 
-  Gift, 
-  Star, 
-  Trophy, 
-  Zap, 
-  Target, 
-  Clock, 
-  TrendingUp, 
+import {
   Award,
   BarChart3,
-  Crosshair 
+  Clock,
+  Coins,
+  Crosshair,
+  Gift,
+  Star,
+  Target,
+  TrendingUp,
+  Trophy,
+  Zap,
 } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 
@@ -239,7 +239,7 @@ export function RewardModal({
                   <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-center mb-4">
                     📊 Game Statistics
                   </h3>
-                  
+
                   <div className="grid grid-cols-2 gap-3">
                     {/* Final Level */}
                     <motion.div
@@ -250,9 +250,13 @@ export function RewardModal({
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <Trophy size={16} className="text-blue-600" />
-                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Final Level</span>
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                          Final Level
+                        </span>
                       </div>
-                      <p className="text-lg font-bold text-blue-800 dark:text-blue-200">{gameStats.finalLevel}</p>
+                      <p className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                        {gameStats.finalLevel}
+                      </p>
                     </motion.div>
 
                     {/* Precision Score */}
@@ -264,9 +268,13 @@ export function RewardModal({
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <Target size={16} className="text-purple-600" />
-                        <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Precision</span>
+                        <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                          Precision
+                        </span>
                       </div>
-                      <p className="text-lg font-bold text-purple-800 dark:text-purple-200">{gameStats.totalPrecisionScore.toFixed(1)}%</p>
+                      <p className="text-lg font-bold text-purple-800 dark:text-purple-200">
+                        {gameStats.totalPrecisionScore.toFixed(1)}%
+                      </p>
                     </motion.div>
 
                     {/* Average Accuracy */}
@@ -278,9 +286,13 @@ export function RewardModal({
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <Crosshair size={16} className="text-green-600" />
-                        <span className="text-xs font-medium text-green-700 dark:text-green-300">Avg Accuracy</span>
+                        <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                          Avg Accuracy
+                        </span>
                       </div>
-                      <p className="text-lg font-bold text-green-800 dark:text-green-200">{gameStats.averageAccuracy.toFixed(1)}%</p>
+                      <p className="text-lg font-bold text-green-800 dark:text-green-200">
+                        {gameStats.averageAccuracy.toFixed(1)}%
+                      </p>
                     </motion.div>
 
                     {/* Perfect Placements */}
@@ -292,9 +304,13 @@ export function RewardModal({
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <Star size={16} className="text-yellow-600" />
-                        <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">Perfect Hits</span>
+                        <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
+                          Perfect Hits
+                        </span>
                       </div>
-                      <p className="text-lg font-bold text-yellow-800 dark:text-yellow-200">{gameStats.perfectPlacements}</p>
+                      <p className="text-lg font-bold text-yellow-800 dark:text-yellow-200">
+                        {gameStats.perfectPlacements}
+                      </p>
                     </motion.div>
                   </div>
 
@@ -307,7 +323,9 @@ export function RewardModal({
                   >
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <Zap size={16} className="text-indigo-600" />
-                      <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">Average Reaction Time</span>
+                      <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                        Average Reaction Time
+                      </span>
                     </div>
                     <p className="text-lg font-bold text-indigo-800 dark:text-indigo-200 text-center">
                       {gameStats.averageReactionTime.toFixed(2)}s
