@@ -26,7 +26,8 @@ export default function TowerBlockGame() {
   const instructionsRef = useRef<HTMLDivElement>(null);
   const startButtonRef = useRef<HTMLDivElement>(null);
   const audioStartRef = useRef<HTMLAudioElement>(null);
-  const audioStackRef = useRef<HTMLAudioElement>(null);
+  const audioPlacementRef = useRef<HTMLAudioElement>(null);
+  const audioVictoryRef = useRef<HTMLAudioElement>(null);
 
   // Currency and modal states
   const {
@@ -57,6 +58,15 @@ export default function TowerBlockGame() {
       setCurrentLevel(0);
       setGameRewards([]);
       setContinueCount(0); // Reset continue count for new game
+      
+      // Play start game sound
+      const audioStart = audioStartRef.current;
+      if (audioStart) {
+        audioStart.currentTime = 0;
+        audioStart.play().catch(() => {
+          // Audio play failed, likely due to user interaction requirements
+        });
+      }
     }
   }, [startGame]);
 
@@ -160,6 +170,15 @@ export default function TowerBlockGame() {
 
       setGameRewards(rewards);
       setShowRewardModal(true);
+      
+      // Play victory sound
+      const audioVictory = audioVictoryRef.current;
+      if (audioVictory) {
+        audioVictory.currentTime = 0;
+        audioVictory.play().catch(() => {
+          // Audio play failed
+        });
+      }
     } else {
       // No rewards, just go back
       router.push("/");
@@ -787,10 +806,10 @@ export default function TowerBlockGame() {
 
         const placementTime = Date.now();
         const reactionTime = placementTime - this.gameMetrics.lastBlockTime;
-        const audioStack = audioStackRef.current;
-        if (audioStack) {
-          audioStack.currentTime = 0;
-          audioStack.play();
+        const audioPlacement = audioPlacementRef.current;
+        if (audioPlacement) {
+          audioPlacement.currentTime = 0;
+          audioPlacement.play();
         }
 
         const newBlocks = currentBlock.place();
@@ -925,15 +944,6 @@ export default function TowerBlockGame() {
     // Start the game loop
     animationFrameId = requestAnimationFrame(() => game.tick());
 
-    // Audio setup
-    const audioStart = audioStartRef.current;
-    if (audioStart) {
-      audioStart.currentTime = 0;
-      audioStart.play().catch(() => {
-        // Audio play failed, likely due to user interaction requirements
-      });
-    }
-
     return () => {
       // Cleanup
       if (animationFrameId) {
@@ -1005,8 +1015,9 @@ export default function TowerBlockGame() {
       <div ref={startButtonRef} className="hidden" />
 
       {/* Audio Elements */}
-      <audio ref={audioStartRef} src="/90s-game-ui-2-185095.mp3" />
-      <audio ref={audioStackRef} src="/90s-game-ui-6-185099.mp3" />
+      <audio ref={audioStartRef} src="/90s-game-ui-6-185099.mp3" />
+      <audio ref={audioPlacementRef} src="/90s-game-ui-2-185095.mp3" />
+      <audio ref={audioVictoryRef} src="/victory_sound.wav" />
 
       {/* Modals */}
       <GameStartModal
