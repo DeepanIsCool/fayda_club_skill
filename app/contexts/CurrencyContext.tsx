@@ -66,7 +66,7 @@ const initialCurrencyState: CurrencyState = {
 const initialGameSession: GameSession = {
   isActive: false,
   baseEntryCost: 1,
-  continueCosts: [2, 2, 3, 3, 4], // More reasonable progression: 2, 2, 3, 3, 4 coins
+  continueCosts: [2, 4, 8, 16], // Exponential progression: 2, 4, 8, 16 coins
   currentContinueIndex: 0,
   gameId: "",
 };
@@ -247,7 +247,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 
   const getContinueCost = (): number => {
     const cost =
-      gameSession.continueCosts[gameSession.currentContinueIndex] || 4; // Default to 4 if beyond array
+      gameSession.continueCosts[gameSession.currentContinueIndex] || 32; // Default to 32 (next in sequence) if beyond array
     return cost; // Direct cost, not multiplied by base cost
   };
 

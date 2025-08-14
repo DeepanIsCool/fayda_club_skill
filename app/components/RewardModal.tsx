@@ -127,7 +127,7 @@ export function RewardModal({
 
           {/* Modal */}
           <motion.div
-            className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+            className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-2 sm:mx-4 overflow-hidden"
             initial={{ scale: 0.5, opacity: 0, y: 50 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.5, opacity: 0, y: 50 }}
@@ -140,7 +140,7 @@ export function RewardModal({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 p-6 text-white text-center relative overflow-hidden">
+            <div className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 p-4 sm:p-6 text-white text-center relative overflow-hidden">
               {/* Animated background pattern */}
               <motion.div
                 className="absolute inset-0 opacity-20"
@@ -157,7 +157,7 @@ export function RewardModal({
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                <div className="flex justify-center mb-3">
+                <div className="flex justify-center mb-2 sm:mb-3">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{
@@ -166,16 +166,23 @@ export function RewardModal({
                       ease: "linear",
                     }}
                   >
-                    <Coins size={48} className="drop-shadow-lg" />
+                    <Coins
+                      size={40}
+                      className="sm:w-12 sm:h-12 drop-shadow-lg"
+                    />
                   </motion.div>
                 </div>
-                <h2 className="text-2xl font-bold mb-2">Congratulations!</h2>
-                <p className="text-yellow-100">Level {gameLevel} Complete</p>
+                <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2 drop-shadow-lg text-shadow-glow">
+                  Congratulations!
+                </h2>
+                <p className="text-yellow-100 text-base sm:text-lg drop-shadow-md text-shadow-glow">
+                  Level {gameLevel} Complete
+                </p>
               </motion.div>
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
               {/* {rewards.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-center font-semibold text-gray-800 dark:text-gray-200">
@@ -245,43 +252,49 @@ export function RewardModal({
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.8 }}
                 >
-                  <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-center mb-4">
+                  <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-center mb-3 sm:mb-4 text-base sm:text-lg drop-shadow-sm">
                     📊 Game Statistics
                   </h3>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {/* Level */}
                     <motion.div
-                      className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
+                      className="p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
                       initial={{ scale: 0.9, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: 0.9 }}
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Trophy size={16} className="text-blue-600" />
-                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                        <Trophy
+                          size={14}
+                          className="sm:w-4 sm:h-4 text-blue-600"
+                        />
+                        <span className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-300 drop-shadow-sm">
                           Level
                         </span>
                       </div>
-                      <p className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                      <p className="text-lg sm:text-xl font-bold text-blue-800 dark:text-blue-200 drop-shadow-sm">
                         {gameStats.finalLevel}
                       </p>
                     </motion.div>
 
                     {/* Average Accuracy */}
                     <motion.div
-                      className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700"
+                      className="p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700"
                       initial={{ scale: 0.9, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: 1.0 }}
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Crosshair size={16} className="text-green-600" />
-                        <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                      <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                        <Crosshair
+                          size={14}
+                          className="sm:w-4 sm:h-4 text-green-600"
+                        />
+                        <span className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-300 drop-shadow-sm">
                           Average Accuracy
                         </span>
                       </div>
-                      <p className="text-lg font-bold text-green-800 dark:text-green-200">
+                      <p className="text-lg sm:text-xl font-bold text-green-800 dark:text-green-200 drop-shadow-sm">
                         {gameStats.averageAccuracy.toFixed(1)}%
                       </p>
                     </motion.div>
@@ -307,18 +320,21 @@ export function RewardModal({
 
                   {/* Avg Reaction Time - Full Width */}
                   <motion.div
-                    className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700"
+                    className="p-2 sm:p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700"
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 1.2 }}
                   >
-                    <div className="flex items-center justify-center gap-2 mb-1">
-                      <Zap size={16} className="text-indigo-600" />
-                      <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                    <div className="flex items-center justify-center gap-1 sm:gap-2 mb-1">
+                      <Zap
+                        size={14}
+                        className="sm:w-4 sm:h-4 text-indigo-600"
+                      />
+                      <span className="text-xs sm:text-sm font-medium text-indigo-700 dark:text-indigo-300 drop-shadow-sm">
                         Avg Reaction Time
                       </span>
                     </div>
-                    <p className="text-lg font-bold text-indigo-800 dark:text-indigo-200 text-center">
+                    <p className="text-lg sm:text-xl font-bold text-indigo-800 dark:text-indigo-200 text-center drop-shadow-sm">
                       {gameStats.averageReactionTime.toFixed(2)}s
                     </p>
                   </motion.div>
@@ -328,23 +344,26 @@ export function RewardModal({
               {/* Total Score */}
               <motion.div
                 ref={totalRef}
-                className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-700"
+                className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-700"
               >
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 mb-2 drop-shadow-sm">
                     Game Score
                   </p>
                   <div className="flex items-center justify-center gap-2">
                     {gameStats && (
                       <>
-                        <Zap size={32} className="text-yellow-500" />
-                        <span className="text-3xl font-bold text-blue-600">
+                        <Zap
+                          size={28}
+                          className="sm:w-8 sm:h-8 text-yellow-500 drop-shadow-md"
+                        />
+                        <span className="text-2xl sm:text-3xl font-bold text-blue-600 drop-shadow-md">
                           {getGameScore().toFixed(2)} pts
                         </span>
                       </>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 mt-2 drop-shadow-sm">
                     Total coins: {totalCoins}
                   </p>
                 </div>
@@ -358,10 +377,10 @@ export function RewardModal({
                   onClose();
                 }}
                 className="
-                  w-full py-3 px-4 rounded-xl
+                  w-full py-3 sm:py-4 px-4 rounded-xl
                   bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700
                   text-white font-semibold shadow-lg hover:shadow-xl
-                  transition-all duration-200
+                  transition-all duration-200 text-base sm:text-lg drop-shadow-md
                 "
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
