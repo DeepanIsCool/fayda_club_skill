@@ -1,6 +1,15 @@
 "use client";
 
-import { Coins, User, X, LogIn, UserPlus, Edit2, Save, XCircle } from "lucide-react";
+import {
+  Coins,
+  Edit2,
+  LogIn,
+  Save,
+  User,
+  UserPlus,
+  X,
+  XCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { HeaderCurrencyDisplay } from "./components/CurrencyDisplay";
@@ -18,16 +27,16 @@ export default function Dashboard() {
 
   // Form states
   const [signInForm, setSignInForm] = useState({ email: "", password: "" });
-  const [signUpForm, setSignUpForm] = useState({ 
-    name: "", 
-    email: "", 
-    password: "", 
-    phone: "" 
+  const [signUpForm, setSignUpForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
   });
   const [editProfileForm, setEditProfileForm] = useState({
     name: "",
     email: "",
-    phone: ""
+    phone: "",
   });
 
   const games = [
@@ -95,7 +104,13 @@ export default function Dashboard() {
 
       if (response.ok) {
         setIsAuthenticated(true);
-        setUser(data.user || { name: signUpForm.name, email: signUpForm.email, phone: signUpForm.phone });
+        setUser(
+          data.user || {
+            name: signUpForm.name,
+            email: signUpForm.email,
+            phone: signUpForm.phone,
+          }
+        );
         setShowSignUpModal(false);
         setSignUpForm({ name: "", email: "", password: "", phone: "" });
         // Store token if provided
@@ -133,7 +148,7 @@ export default function Dashboard() {
         },
         body: JSON.stringify({
           id: user.id,
-          ...editProfileForm
+          ...editProfileForm,
         }),
       });
 
@@ -158,7 +173,7 @@ export default function Dashboard() {
     setEditProfileForm({
       name: user?.name || "",
       email: user?.email || "",
-      phone: user?.phone || ""
+      phone: user?.phone || "",
     });
     setIsEditingProfile(true);
     setError("");
@@ -186,7 +201,7 @@ export default function Dashboard() {
             <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Fayda Club
             </h1>
-            
+
             {/* Conditional Header Display */}
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
@@ -231,7 +246,7 @@ export default function Dashboard() {
         <div className="w-full max-w-2xl">
           {games.map((game) => (
             <Link key={game.name} href={game.path} passHref className="block">
-              <div 
+              <div
                 className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 mb-6 cursor-pointer border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
                 onClick={(e) => handleGameClick(e, game.path)}
               >
@@ -298,7 +313,9 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Sign In</h2>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                Sign In
+              </h2>
               <button
                 onClick={() => setShowSignInModal(false)}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -308,7 +325,7 @@ export default function Dashboard() {
                 <X size={24} />
               </button>
             </div>
-            
+
             {error && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
                 {error}
@@ -324,12 +341,14 @@ export default function Dashboard() {
                   type="email"
                   required
                   value={signInForm.email}
-                  onChange={(e) => setSignInForm({...signInForm, email: e.target.value})}
+                  onChange={(e) =>
+                    setSignInForm({ ...signInForm, email: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="Enter your email"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Password
@@ -338,7 +357,9 @@ export default function Dashboard() {
                   type="password"
                   required
                   value={signInForm.password}
-                  onChange={(e) => setSignInForm({...signInForm, password: e.target.value})}
+                  onChange={(e) =>
+                    setSignInForm({ ...signInForm, password: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="Enter your password"
                 />
@@ -374,7 +395,9 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Sign Up</h2>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                Sign Up
+              </h2>
               <button
                 onClick={() => setShowSignUpModal(false)}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -384,7 +407,7 @@ export default function Dashboard() {
                 <X size={24} />
               </button>
             </div>
-            
+
             {error && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
                 {error}
@@ -400,7 +423,9 @@ export default function Dashboard() {
                   type="text"
                   required
                   value={signUpForm.name}
-                  onChange={(e) => setSignUpForm({...signUpForm, name: e.target.value})}
+                  onChange={(e) =>
+                    setSignUpForm({ ...signUpForm, name: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="Enter your full name"
                 />
@@ -414,12 +439,14 @@ export default function Dashboard() {
                   type="email"
                   required
                   value={signUpForm.email}
-                  onChange={(e) => setSignUpForm({...signUpForm, email: e.target.value})}
+                  onChange={(e) =>
+                    setSignUpForm({ ...signUpForm, email: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="Enter your email"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Password
@@ -428,7 +455,9 @@ export default function Dashboard() {
                   type="password"
                   required
                   value={signUpForm.password}
-                  onChange={(e) => setSignUpForm({...signUpForm, password: e.target.value})}
+                  onChange={(e) =>
+                    setSignUpForm({ ...signUpForm, password: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="Enter your password"
                 />
@@ -442,7 +471,9 @@ export default function Dashboard() {
                   type="tel"
                   required
                   value={signUpForm.phone}
-                  onChange={(e) => setSignUpForm({...signUpForm, phone: e.target.value})}
+                  onChange={(e) =>
+                    setSignUpForm({ ...signUpForm, phone: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="Enter your phone number"
                 />
@@ -505,7 +536,7 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-            
+
             {error && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
                 {error}
@@ -523,7 +554,12 @@ export default function Dashboard() {
                     type="text"
                     required
                     value={editProfileForm.name}
-                    onChange={(e) => setEditProfileForm({...editProfileForm, name: e.target.value})}
+                    onChange={(e) =>
+                      setEditProfileForm({
+                        ...editProfileForm,
+                        name: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     placeholder="Enter your full name"
                   />
@@ -537,7 +573,12 @@ export default function Dashboard() {
                     type="email"
                     required
                     value={editProfileForm.email}
-                    onChange={(e) => setEditProfileForm({...editProfileForm, email: e.target.value})}
+                    onChange={(e) =>
+                      setEditProfileForm({
+                        ...editProfileForm,
+                        email: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     placeholder="Enter your email"
                   />
@@ -551,7 +592,12 @@ export default function Dashboard() {
                     type="tel"
                     required
                     value={editProfileForm.phone}
-                    onChange={(e) => setEditProfileForm({...editProfileForm, phone: e.target.value})}
+                    onChange={(e) =>
+                      setEditProfileForm({
+                        ...editProfileForm,
+                        phone: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     placeholder="Enter your phone number"
                   />
@@ -581,7 +627,9 @@ export default function Dashboard() {
               <div className="space-y-4">
                 <div className="flex items-center justify-center mb-6">
                   <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                    {user?.name ? user.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
+                    {user?.name
+                      ? user.name.charAt(0).toUpperCase()
+                      : user?.email?.charAt(0).toUpperCase() || "U"}
                   </div>
                 </div>
 
@@ -590,7 +638,9 @@ export default function Dashboard() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Name
                     </label>
-                    <p className="text-gray-800 dark:text-white font-medium">{user.name}</p>
+                    <p className="text-gray-800 dark:text-white font-medium">
+                      {user.name}
+                    </p>
                   </div>
                 )}
 
@@ -598,7 +648,9 @@ export default function Dashboard() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Email
                   </label>
-                  <p className="text-gray-800 dark:text-white font-medium">{user?.email}</p>
+                  <p className="text-gray-800 dark:text-white font-medium">
+                    {user?.email}
+                  </p>
                 </div>
 
                 {user?.phone && (
@@ -606,7 +658,9 @@ export default function Dashboard() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Phone
                     </label>
-                    <p className="text-gray-800 dark:text-white font-medium">{user.phone}</p>
+                    <p className="text-gray-800 dark:text-white font-medium">
+                      {user.phone}
+                    </p>
                   </div>
                 )}
 
