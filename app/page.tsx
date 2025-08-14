@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins, User, X, LogIn, UserPlus } from "lucide-react";
+import { Coins, User, X, LogIn, UserPlus, Edit2, Save, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { HeaderCurrencyDisplay } from "./components/CurrencyDisplay";
@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,6 +23,11 @@ export default function Dashboard() {
     email: "", 
     password: "", 
     phone: "" 
+  });
+  const [editProfileForm, setEditProfileForm] = useState({
+    name: "",
+    email: "",
+    phone: ""
   });
 
   const games = [
@@ -54,12 +60,12 @@ export default function Dashboard() {
 
       if (response.ok) {
         setIsAuthenticated(true);
-        setUser(data.user || { email: signInForm.email });
+        setUser(data.user);
         setShowSignInModal(false);
         setSignInForm({ email: "", password: "" });
-        // Store token if provided
-        if (data.token) {
-          localStorage.setItem("authToken", data.token);
+        // Store token from user object
+        if (data.user?.token) {
+          localStorage.setItem("authToken", data.user.token);
         }
       } else {
         setError(data.message || "Sign in failed");
@@ -111,6 +117,56 @@ export default function Dashboard() {
     setUser(null);
     localStorage.removeItem("authToken");
     setShowProfileModal(false);
+    setIsEditingProfile(false);
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/auth/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: user.id,
+          ...editProfileForm
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Update user state with new data
+        setUser({ ...user, ...editProfileForm });
+        setIsEditingProfile(false);
+        setError("");
+      } else {
+        setError(data.message || "Update failed");
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEditing = () => {
+    setEditProfileForm({
+      name: user?.name || "",
+      email: user?.email || "",
+      phone: user?.phone || ""
+    });
+    setIsEditingProfile(true);
+    setError("");
+  };
+
+  const cancelEditing = () => {
+    setIsEditingProfile(false);
+    setError("");
   };
 
   const handleGameClick = (e: React.MouseEvent, gamePath: string) => {
@@ -422,56 +478,146 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Profile</h2>
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                title="Close Modal"
-                aria-label="Close Profile Modal"
-              >
-                <X size={24} />
-              </button>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                {isEditingProfile ? "Edit Profile" : "Profile"}
+              </h2>
+              <div className="flex items-center gap-2">
+                {!isEditingProfile && (
+                  <button
+                    onClick={startEditing}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                    title="Edit Profile"
+                    aria-label="Edit Profile"
+                  >
+                    <Edit2 size={20} />
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowProfileModal(false);
+                    setIsEditingProfile(false);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  title="Close Modal"
+                  aria-label="Close Profile Modal"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             
-            <div className="space-y-4">
-              <div className="flex items-center justify-center mb-6">
-                <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
-                </div>
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
+                {error}
               </div>
+            )}
 
-              {user?.name && (
+            {isEditingProfile ? (
+              /* Edit Form */
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Name
                   </label>
-                  <p className="text-gray-800 dark:text-white font-medium">{user.name}</p>
+                  <input
+                    type="text"
+                    required
+                    value={editProfileForm.name}
+                    onChange={(e) => setEditProfileForm({...editProfileForm, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter your full name"
+                  />
                 </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
-                </label>
-                <p className="text-gray-800 dark:text-white font-medium">{user?.email}</p>
-              </div>
-
-              {user?.phone && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={editProfileForm.email}
+                    onChange={(e) => setEditProfileForm({...editProfileForm, email: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter your email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Phone
                   </label>
-                  <p className="text-gray-800 dark:text-white font-medium">{user.phone}</p>
+                  <input
+                    type="tel"
+                    required
+                    value={editProfileForm.phone}
+                    onChange={(e) => setEditProfileForm({...editProfileForm, phone: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter your phone number"
+                  />
                 </div>
-              )}
 
-              <button
-                onClick={handleLogout}
-                className="w-full py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 font-semibold mt-6"
-              >
-                Logout
-              </button>
-            </div>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 font-semibold disabled:opacity-50"
+                  >
+                    <Save size={16} />
+                    {loading ? "Updating..." : "Save Changes"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEditing}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-200 font-semibold"
+                  >
+                    <XCircle size={16} />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* View Profile */
+              <div className="space-y-4">
+                <div className="flex items-center justify-center mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
+                  </div>
+                </div>
+
+                {user?.name && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Name
+                    </label>
+                    <p className="text-gray-800 dark:text-white font-medium">{user.name}</p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email
+                  </label>
+                  <p className="text-gray-800 dark:text-white font-medium">{user?.email}</p>
+                </div>
+
+                {user?.phone && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Phone
+                    </label>
+                    <p className="text-gray-800 dark:text-white font-medium">{user.phone}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 font-semibold mt-6"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
