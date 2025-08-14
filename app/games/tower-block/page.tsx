@@ -32,27 +32,24 @@ export default function TowerBlockGame() {
   // Currency and modal states
   const {
     coins,
-    points,
     startGame,
     endGame,
     continue: gameContinue,
     earnReward,
     earnPoints,
-    continueCost,
-    canContinue,
   } = useGameCurrency();
   const [showStartModal, setShowStartModal] = useState(true);
   const [showContinueModal, setShowContinueModal] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [gameRewards, setGameRewards] = useState<GameReward[]>([]);
-  const [gameStats, setGameStats] = useState<any>(null);
+  const [gameStats, setGameStats] = useState<GameStats | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [gameInitialized, setGameInitialized] = useState(false);
 
   // Game instance ref
-  const gameInstanceRef = useRef<any>(null);
+  const gameInstanceRef = useRef<Game | null>(null);
 
   const handleStartGame = useCallback(() => {
     if (startGame("tower-block")) {
@@ -214,7 +211,6 @@ export default function TowerBlockGame() {
     endGame,
     earnReward,
     earnPoints,
-    router,
     calculateGameStats,
   ]);
 
@@ -247,7 +243,7 @@ export default function TowerBlockGame() {
         console.log("Game state after pause:", gameInstanceRef.current.state);
       }
     }
-  }, []);
+  }, [isPaused]);
 
   const handleResume = useCallback(() => {
     console.log("Resuming game");
@@ -278,14 +274,6 @@ export default function TowerBlockGame() {
     setShowPauseModal(false);
     handleBackToDashboard();
   }, [handleBackToDashboard]);
-
-  const handleRestart = useCallback(() => {
-    if (gameInstanceRef.current) {
-      gameInstanceRef.current.restartGame();
-    }
-    setCurrentLevel(0);
-    setIsPaused(false);
-  }, []);
 
   // Custom function to trigger continue modal instead of ending game
   const triggerContinueModal = useCallback(() => {
@@ -559,7 +547,7 @@ export default function TowerBlockGame() {
           overlap > -minOverlapThreshold ? minOverlapThreshold : overlap
         );
 
-        const blocksToReturn: any = {
+        const blocksToReturn: PlacedBlockResult = {
           plane: this.workingPlane,
           direction: this.direction,
         };
@@ -716,7 +704,7 @@ export default function TowerBlockGame() {
       placedBlocks: THREE.Group;
       choppedBlocks: THREE.Group;
       newBlocks: THREE.Group;
-      gameMetrics: any;
+      gameMetrics: GameMetrics;
 
       constructor() {
         this.STATES = {
@@ -970,7 +958,7 @@ export default function TowerBlockGame() {
         // Handle chopped piece animation
         if (newBlocks.chopped) {
           this.choppedBlocks.add(newBlocks.chopped);
-          const positionParams: any = {
+          const positionParams: AnimationPosition = {
             y: "-=30",
             ease: Power1.easeIn,
             onComplete: () => this.choppedBlocks.remove(newBlocks.chopped),
