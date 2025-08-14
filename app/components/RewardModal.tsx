@@ -63,7 +63,7 @@ export function RewardModal({
         const coin = document.createElement("div");
         coin.className =
           "absolute text-yellow-500 text-2xl pointer-events-none";
-        coin.innerHTML = "🪙";
+        coin.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-coins"><circle cx="8" cy="8" r="6"/><path d="m18.09 10.37a6 6 0 1 1-10.37 10.37"/></svg>`;
         coin.style.left = Math.random() * 100 + "%";
         coin.style.top = "-20px";
         container.appendChild(coin);

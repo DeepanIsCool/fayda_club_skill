@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Coins } from "lucide-react";
 import { LargeCurrencyDisplay } from "./components/CurrencyDisplay";
 
 export default function Dashboard() {
@@ -44,7 +45,7 @@ export default function Dashboard() {
                 </div>
                 <div className="text-right">
                   <div className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 text-sm font-medium">
-                    🪙 {game.cost} coin
+                    <Coins size={16} /> {game.cost}
                   </div>
                 </div>
               </div>
