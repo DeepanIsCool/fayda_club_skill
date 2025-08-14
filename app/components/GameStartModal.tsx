@@ -27,8 +27,9 @@ export function GameStartModal({
 
   // Coin bounce animation
   useEffect(() => {
-    if (isOpen && coinIconRef.current) {
-      gsap.to(coinIconRef.current, {
+    const coinEl = coinIconRef.current;
+    if (isOpen && coinEl) {
+      gsap.to(coinEl, {
         y: -10,
         duration: 0.6,
         ease: "power2.inOut",
@@ -38,14 +39,15 @@ export function GameStartModal({
     }
 
     return () => {
-      gsap.killTweensOf(coinIconRef.current);
+      if (coinEl) gsap.killTweensOf(coinEl);
     };
   }, [isOpen]);
 
   // Button pulse when ready
   useEffect(() => {
-    if (isOpen && canStartGame && startButtonRef.current) {
-      gsap.to(startButtonRef.current, {
+    const btn = startButtonRef.current;
+    if (isOpen && canStartGame && btn) {
+      gsap.to(btn, {
         scale: 1.05,
         duration: 1,
         ease: "power2.inOut",
@@ -55,7 +57,7 @@ export function GameStartModal({
     }
 
     return () => {
-      gsap.killTweensOf(startButtonRef.current);
+      if (btn) gsap.killTweensOf(btn);
     };
   }, [isOpen, canStartGame]);
 

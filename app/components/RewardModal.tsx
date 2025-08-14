@@ -2,19 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import {
-  Award,
-  BarChart3,
-  Clock,
-  Coins,
-  Crosshair,
-  Gift,
-  Star,
-  Target,
-  TrendingUp,
-  Trophy,
-  Zap,
-} from "lucide-react";
+import { Coins, Crosshair, Trophy, Zap } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 
 interface Reward {
@@ -107,24 +95,8 @@ export function RewardModal({
     return avgAcc / Math.sqrt(avgRT);
   };
 
-  const getRewardIcon = (type: string) => {
-    switch (type) {
-      case "level":
-        return <Trophy className="text-yellow-500" size={20} />;
-      case "perfect":
-        return <Star className="text-blue-500" size={20} />;
-      case "streak":
-        return <Zap className="text-orange-500" size={20} />;
-      case "bonus":
-        return <Gift className="text-purple-500" size={20} />;
-      default:
-        return <Coins className="text-green-500" size={20} />;
-    }
-  };
-
-  const getTotalEarned = () => {
-    return rewards.reduce((sum, reward) => sum + reward.amount, 0);
-  };
+  // Note: reward icon helpers removed as reward list is currently commented out.
+  // const totalEarned = rewards.reduce((sum, r) => sum + r.amount, 0);
 
   return (
     <AnimatePresence>
@@ -204,6 +176,31 @@ export function RewardModal({
 
             {/* Content */}
             <div className="p-6 space-y-4">
+              {/* {rewards.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-center font-semibold text-gray-800 dark:text-gray-200">
+                    Rewards Earned
+                  </h3>
+                  <ul className="max-h-40 overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
+                    {rewards.map((r, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center justify-between px-3 py-2 text-sm"
+                      >
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {r.reason}
+                        </span>
+                        <span className="flex items-center gap-1 font-semibold text-green-600 dark:text-green-400">
+                          <Coins size={14} /> {r.amount}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                    Total Earned: {totalEarned} coins
+                  </p>
+                </div>
+              )} */}
               {/* Rewards List */}
               {/* <div className="space-y-3">
                 <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-center mb-4">

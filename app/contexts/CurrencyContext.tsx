@@ -31,7 +31,6 @@ interface CurrencyContextType {
   gameSession: GameSession;
   actions: {
     spendCoins: (amount: number, reason: string) => boolean;
-    earnCoins: (amount: number, reason: string) => void;
     earnPoints: (amount: number, reason: string) => void;
     startGameSession: (gameId: string) => boolean;
     endGameSession: () => void;
@@ -216,12 +215,12 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     return false;
   };
 
-  const earnCoins = (amount: number, reason: string): void => {
-    dispatchCurrency({ type: "EARN_COINS", payload: { amount, reason } });
+  // const earnCoins = (amount: number, reason: string): void => {
+  //   dispatchCurrency({ type: "EARN_COINS", payload: { amount, reason } });
 
-    // Log transaction for analytics
-    console.log(`💰 Earned ${amount} coins: ${reason}`);
-  };
+  //   // Log transaction for analytics
+  //   console.log(`💰 Earned ${amount} coins: ${reason}`);
+  // };
 
   const earnPoints = (amount: number, reason: string): void => {
     dispatchCurrency({ type: "EARN_POINTS", payload: { amount, reason } });
@@ -269,7 +268,6 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     gameSession,
     actions: {
       spendCoins,
-      earnCoins,
       earnPoints,
       startGameSession,
       endGameSession,
@@ -318,7 +316,6 @@ export function useGameCurrency() {
       }
       return false;
     },
-    earnReward: actions.earnCoins,
     earnPoints: actions.earnPoints,
   };
 }

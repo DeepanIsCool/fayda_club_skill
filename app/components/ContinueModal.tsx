@@ -48,8 +48,9 @@ export function ContinueModal({
 
   // Pulse animation for urgency
   useEffect(() => {
-    if (isOpen && pulseRef.current) {
-      gsap.to(pulseRef.current, {
+    const el = pulseRef.current; // capture ref for cleanup safety
+    if (isOpen && el) {
+      gsap.to(el, {
         scale: 1.05,
         duration: 0.8,
         ease: "power2.inOut",
@@ -59,7 +60,7 @@ export function ContinueModal({
     }
 
     return () => {
-      gsap.killTweensOf(pulseRef.current);
+      if (el) gsap.killTweensOf(el);
     };
   }, [isOpen]);
 
@@ -121,7 +122,7 @@ export function ContinueModal({
               {/* Encouragement */}
               <div className="text-center">
                 <p className="text-gray-600 dark:text-gray-300 mb-4">
-                  Don't give up! Continue your progress:
+                  Don&apos;t give up! Continue your progress:
                 </p>
               </div>
 
@@ -171,8 +172,8 @@ export function ContinueModal({
                     <span>💪 First continue attempt - Keep going!</span>
                   ) : (
                     <span>
-                      🔥 Continue attempt #{continueAttempt + 1} - You've got
-                      this!
+                      🔥 Continue attempt #{continueAttempt + 1} - You&apos;ve
+                      got this!
                     </span>
                   )}
                 </div>
