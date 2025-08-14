@@ -166,11 +166,16 @@ export function ContinueModal({
                 </div>
 
                 {/* Continue count info */}
-                {continueAttempt > 0 && (
-                  <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-                    Continue attempt #{continueAttempt + 1}
-                  </div>
-                )}
+                <div className="text-center text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                  {continueAttempt === 0 ? (
+                    <span>💪 First continue attempt - Keep going!</span>
+                  ) : (
+                    <span>
+                      🔥 Continue attempt #{continueAttempt + 1} - You've got
+                      this!
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Game Over Button (appears after 3 seconds) */}

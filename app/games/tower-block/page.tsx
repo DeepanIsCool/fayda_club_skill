@@ -107,7 +107,7 @@ export default function TowerBlockGame() {
 
   const handleGameOver = useCallback(() => {
     setShowContinueModal(false);
-    endGame();
+    endGame(); // This resets continue attempts automatically
 
     // Set the game end time in metrics
     if (gameInstanceRef.current?.gameMetrics) {
@@ -122,8 +122,8 @@ export default function TowerBlockGame() {
     if (currentLevel > 0) {
       const rewards: GameReward[] = [];
 
-      // Base level reward
-      const levelReward = Math.max(1, Math.floor(currentLevel / 2));
+      // Base level reward (more generous)
+      const levelReward = Math.max(2, Math.floor(currentLevel * 0.75)); // Increased from currentLevel / 2
       rewards.push({
         amount: levelReward,
         reason: `Reached Level ${currentLevel}`,
@@ -133,7 +133,7 @@ export default function TowerBlockGame() {
       // Perfect placement bonus
       if (gameInstanceRef.current?.gameMetrics?.perfectPlacements > 0) {
         const perfectBonus =
-          gameInstanceRef.current.gameMetrics.perfectPlacements * 2;
+          gameInstanceRef.current.gameMetrics.perfectPlacements * 3; // Increased from * 2
         rewards.push({
           amount: perfectBonus,
           reason: `${gameInstanceRef.current.gameMetrics.perfectPlacements} Perfect Blocks`,
@@ -142,9 +142,10 @@ export default function TowerBlockGame() {
       }
 
       // Streak bonus
-      if (gameInstanceRef.current?.gameMetrics?.maxConsecutiveStreak >= 5) {
+      if (gameInstanceRef.current?.gameMetrics?.maxConsecutiveStreak >= 3) {
+        // Reduced from 5
         const streakBonus = Math.floor(
-          gameInstanceRef.current.gameMetrics.maxConsecutiveStreak / 5
+          gameInstanceRef.current.gameMetrics.maxConsecutiveStreak / 3 // Reduced divisor
         );
         rewards.push({
           amount: streakBonus,
@@ -154,18 +155,19 @@ export default function TowerBlockGame() {
       }
 
       // High level achievement
-      if (currentLevel >= 20) {
+      if (currentLevel >= 15) {
+        // Reduced from 20
         rewards.push({
-          amount: 10,
+          amount: 15, // Increased from 10
           reason: "Tower Master Achievement",
           type: "achievement",
         });
       }
 
-      // Note: Players no longer earn coins at game end, only points based on performance
-      // rewards.forEach((reward) => {
-      //   earnReward(reward.amount, reward.reason);
-      // });
+      // Award coins for performance
+      rewards.forEach((reward) => {
+        earnReward(reward.amount, reward.reason);
+      });
 
       setGameRewards(rewards);
       setShowRewardModal(true);
@@ -179,8 +181,17 @@ export default function TowerBlockGame() {
         });
       }
     } else {
-      // No rewards, just go back
-      router.push("/");
+      // Even for level 0, give a small consolation reward
+      const consolationReward = 1;
+      earnReward(consolationReward, "Participation reward");
+      setGameRewards([
+        {
+          amount: consolationReward,
+          reason: "Thanks for playing!",
+          type: "bonus",
+        },
+      ]);
+      setShowRewardModal(true);
     }
   }, [currentLevel, endGame, earnReward, router, calculateGameStats]);
 
@@ -191,26 +202,37 @@ export default function TowerBlockGame() {
 
       // Reset the game state but keep the level
       if (gameInstanceRef.current) {
+        console.log(
+          `Continuing game at level ${currentLevel}, continue attempt #${
+            gameInstanceRef.current.gameSession?.currentContinueIndex || 0
+          }`
+        );
         gameInstanceRef.current.continueFromLastPosition();
       }
+    } else {
+      console.error("Failed to continue game - insufficient coins");
     }
-  }, [gameContinue]);
+  }, [gameContinue, currentLevel]);
 
   const handlePause = useCallback(() => {
     if (!isPaused) {
+      console.log("Pausing game");
       setIsPaused(true);
       setShowPauseModal(true);
       if (gameInstanceRef.current) {
         gameInstanceRef.current.pauseGame();
+        console.log("Game state after pause:", gameInstanceRef.current.state);
       }
     }
   }, []);
 
   const handleResume = useCallback(() => {
+    console.log("Resuming game");
     setIsPaused(false);
     setShowPauseModal(false);
     if (gameInstanceRef.current) {
       gameInstanceRef.current.resumeGame();
+      console.log("Game state after resume:", gameInstanceRef.current.state);
     }
   }, []);
 
@@ -221,6 +243,8 @@ export default function TowerBlockGame() {
       gameInstanceRef.current.restartGame();
     }
     setCurrentLevel(0);
+    // Note: We don't reset continue attempts for restart from pause
+    // as the player already paid for the game session
   }, []);
 
   const handleBackToDashboard = useCallback(() => {
@@ -504,6 +528,14 @@ export default function TowerBlockGame() {
             this.position[this.workingPlane] -
               this.targetBlock.position[this.workingPlane]
           );
+
+        // Add minimum overlap threshold to be more forgiving
+        const minOverlapThreshold = 0.1; // Allow very small overlaps to count as valid
+        const adjustedOverlap = Math.max(
+          overlap,
+          overlap > -minOverlapThreshold ? minOverlapThreshold : overlap
+        );
+
         const blocksToReturn: any = {
           plane: this.workingPlane,
           direction: this.direction,
@@ -511,19 +543,29 @@ export default function TowerBlockGame() {
 
         const maxPossibleOverlap =
           this.targetBlock.dimension[this.workingDimension];
-        const overlapPercentage = Math.max(0, overlap / maxPossibleOverlap);
+        const overlapPercentage = Math.max(
+          0,
+          adjustedOverlap / maxPossibleOverlap
+        );
         blocksToReturn.overlapPercentage = overlapPercentage;
         blocksToReturn.precisionScore = Math.round(overlapPercentage * 1000);
+
+        // Debug logging for troubleshooting (minimal for production)
+        if (overlapPercentage <= 0) {
+          console.log(
+            `⚠️  Block placement failed - overlap: ${overlap}, adjusted: ${adjustedOverlap}`
+          );
+        }
 
         const originalArea = this.dimension.width * this.dimension.depth;
         let placedArea = 0;
         let areaLost = 0;
 
-        if (overlap > 0) {
+        if (adjustedOverlap > 0) {
           placedArea =
             this.workingDimension === "width"
-              ? overlap * this.dimension.depth
-              : this.dimension.width * overlap;
+              ? adjustedOverlap * this.dimension.depth
+              : this.dimension.width * adjustedOverlap;
           areaLost = originalArea - placedArea;
         } else {
           areaLost = originalArea;
@@ -535,7 +577,7 @@ export default function TowerBlockGame() {
         blocksToReturn.areaEfficiency =
           originalArea > 0 ? placedArea / originalArea : 0;
 
-        if (this.dimension[this.workingDimension] - overlap < 0.3) {
+        if (this.dimension[this.workingDimension] - adjustedOverlap < 0.3) {
           blocksToReturn.bonus = true;
           blocksToReturn.isPerfect = true;
           blocksToReturn.precisionScore = 1000;
@@ -545,14 +587,14 @@ export default function TowerBlockGame() {
           this.dimension.depth = this.targetBlock.dimension.depth;
         }
 
-        if (overlap > 0) {
+        if (adjustedOverlap > 0) {
           const choppedDimensions = {
             width: this.dimension.width,
             height: this.dimension.height,
             depth: this.dimension.depth,
           };
-          choppedDimensions[this.workingDimension] -= overlap;
-          this.dimension[this.workingDimension] = overlap;
+          choppedDimensions[this.workingDimension] -= adjustedOverlap;
+          this.dimension[this.workingDimension] = adjustedOverlap;
 
           const placedGeometry = new THREE.BoxGeometry(
             this.dimension.width,
@@ -595,7 +637,7 @@ export default function TowerBlockGame() {
             this.position[this.workingPlane] =
               this.targetBlock.position[this.workingPlane];
           } else {
-            choppedPosition[this.workingPlane] += overlap;
+            choppedPosition[this.workingPlane] += adjustedOverlap;
           }
 
           placedMesh.position.set(
@@ -610,6 +652,9 @@ export default function TowerBlockGame() {
           );
           blocksToReturn.placed = placedMesh;
           blocksToReturn.chopped = choppedMesh;
+
+          // ✅ CRITICAL FIX: Set the block state to STOPPED when successfully placed
+          this.state = this.STATES.STOPPED;
         } else {
           this.state = this.STATES.MISSED;
         }
@@ -657,6 +702,7 @@ export default function TowerBlockGame() {
           READY: "ready",
           ENDED: "ended",
           RESETTING: "resetting",
+          PAUSED: "paused",
         };
         this.state = this.STATES.LOADING;
         this.stage = new Stage();
@@ -844,9 +890,19 @@ export default function TowerBlockGame() {
         }
 
         const newBlocks = currentBlock.place();
+        console.log(
+          "📍 Block placed - overlap:",
+          newBlocks.overlapPercentage,
+          "state:",
+          currentBlock.state
+        );
         this.newBlocks.remove(currentBlock.mesh);
 
         if (newBlocks.overlapPercentage > 0) {
+          console.log(
+            "Successful block placement with overlap:",
+            newBlocks.overlapPercentage
+          );
           this.gameMetrics.totalPrecisionScore += newBlocks.precisionScore;
           this.gameMetrics.totalOverlapPercentage +=
             newBlocks.overlapPercentage;
@@ -877,9 +933,18 @@ export default function TowerBlockGame() {
           this.gameMetrics.totalAreaLost += newBlocks.originalArea;
           this.gameMetrics.areaLossHistory.push(newBlocks.originalArea);
         }
-
+        console.log(
+          "Block placed - overlap percentage:",
+          newBlocks.overlapPercentage,
+          "block state after place:",
+          currentBlock.state
+        );
         this.gameMetrics.lastBlockTime = placementTime;
+
+        // Handle successful placement
         if (newBlocks.placed) this.placedBlocks.add(newBlocks.placed);
+
+        // Handle chopped piece animation
         if (newBlocks.chopped) {
           this.choppedBlocks.add(newBlocks.chopped);
           const positionParams: any = {
@@ -913,21 +978,44 @@ export default function TowerBlockGame() {
           TweenLite.to(newBlocks.chopped.position, 1, positionParams);
           TweenLite.to(newBlocks.chopped.rotation, 1, rotationParams);
         }
+
+        // Always call addBlock - it will handle both success and failure cases
         this.addBlock();
       }
 
       addBlock() {
         const lastBlock = this.blocks[this.blocks.length - 1];
+        console.log(
+          "addBlock called - lastBlock state:",
+          lastBlock?.state,
+          "MISSED:",
+          lastBlock?.STATES.MISSED
+        );
+
+        // Only trigger continue modal if the last block is actually MISSED and ACTIVE
+        // This prevents triggering continue for successfully placed blocks
         if (lastBlock && lastBlock.state === lastBlock.STATES.MISSED) {
+          console.log("Triggering continue modal - block was missed");
           // Instead of ending immediately, trigger continue modal
           return triggerContinueModal();
         }
+
+        console.log(
+          "Adding new block - current blocks count:",
+          this.blocks.length
+        );
 
         const level = this.blocks.length - 1;
         setCurrentLevel(level);
         this.scoreContainer.innerHTML = String(level);
 
         const newKidOnTheBlock = new Block(lastBlock);
+        console.log(
+          "Created new block with state:",
+          newKidOnTheBlock.state,
+          "index:",
+          newKidOnTheBlock.index
+        );
         this.newBlocks.add(newKidOnTheBlock.mesh);
         this.blocks.push(newKidOnTheBlock);
         this.stage.setCamera(this.blocks.length * 2);
@@ -935,44 +1023,100 @@ export default function TowerBlockGame() {
       }
 
       continueFromLastPosition() {
+        console.log("continueFromLastPosition called");
         // Remove the last (missed) block and add a new one at the same position
         const lastBlock = this.blocks[this.blocks.length - 1];
+        console.log(
+          "Last block state:",
+          lastBlock?.state,
+          "is MISSED:",
+          lastBlock?.state === lastBlock?.STATES.MISSED
+        );
+
         if (lastBlock && lastBlock.state === lastBlock.STATES.MISSED) {
+          console.log("Removing missed block and creating new one");
+          // Remove the missed block from the scene
           this.newBlocks.remove(lastBlock.mesh);
           this.blocks.pop();
 
-          // Add a new block
-          this.addBlock();
+          // Ensure we have a valid target block (the last successful block)
+          const targetBlock = this.blocks[this.blocks.length - 1];
+          console.log("Target block for new block:", targetBlock?.state);
+
+          if (targetBlock) {
+            // Create a new block with the correct target
+            const newBlock = new Block(targetBlock);
+            console.log("New block created with state:", newBlock.state);
+            this.newBlocks.add(newBlock.mesh);
+            this.blocks.push(newBlock);
+
+            // Update the level display
+            const level = this.blocks.length - 1;
+            setCurrentLevel(level);
+            this.scoreContainer.innerHTML = String(level);
+
+            // Ensure camera is positioned correctly
+            this.stage.setCamera(this.blocks.length * 2);
+
+            // Hide instructions if we have enough blocks
+            if (this.blocks.length >= 5)
+              this.instructions.classList.add("hide");
+
+            console.log(
+              "Continue complete - new block ready, total blocks:",
+              this.blocks.length
+            );
+          } else {
+            console.error("No target block found for continue");
+          }
+        } else {
+          console.log("No missed block found to replace");
         }
       }
 
       pauseGame() {
+        console.log("pauseGame called, current state:", this.state);
         if (this.state === this.STATES.PLAYING) {
-          this.updateState("paused");
+          this.updateState(this.STATES.PAUSED);
+          console.log("Game paused, new state:", this.state);
+        } else {
+          console.log("Cannot pause - game not in PLAYING state");
         }
       }
 
       resumeGame() {
-        if (this.state === "paused") {
+        console.log("resumeGame called, current state:", this.state);
+        if (this.state === this.STATES.PAUSED) {
           this.updateState(this.STATES.PLAYING);
+          console.log("Game resumed, new state:", this.state);
+        } else {
+          console.log("Cannot resume - game not in PAUSED state");
         }
       }
 
       tick() {
-        this.blocks[this.blocks.length - 1]?.tick();
+        // Only update block movement and animations when actually playing
+        if (this.state === this.STATES.PLAYING) {
+          this.blocks[this.blocks.length - 1]?.tick();
 
-        // Add subtle shine animation to all blocks
-        this.blocks.forEach((block, index) => {
-          if (block.material && block.material.specular) {
-            const time = Date.now() * 0.001;
-            const intensity = 0.8 + 0.2 * Math.sin(time * 2 + index * 0.5);
-            block.material.specular.setScalar(intensity);
-          }
-        });
+          // Add subtle shine animation to all blocks
+          this.blocks.forEach((block, index) => {
+            if (block.material && block.material.specular) {
+              const time = Date.now() * 0.001;
+              const intensity = 0.8 + 0.2 * Math.sin(time * 2 + index * 0.5);
+              block.material.specular.setScalar(intensity);
+            }
+          });
+        }
 
+        // Always render the scene (so we can see the paused game)
         this.stage.render();
 
-        if (!isPaused && this.state === this.STATES.PLAYING) {
+        // Continue the game loop for playing or paused states
+        if (
+          this.state === this.STATES.PLAYING ||
+          this.state === this.STATES.PAUSED
+        ) {
           animationFrameId = requestAnimationFrame(() => this.tick());
         }
       }

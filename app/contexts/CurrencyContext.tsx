@@ -61,7 +61,7 @@ const initialCurrencyState: CurrencyState = {
 const initialGameSession: GameSession = {
   isActive: false,
   baseEntryCost: 1,
-  continueCosts: [2, 3, 5], // Multipliers for continues
+  continueCosts: [2, 2, 3, 3, 4], // More reasonable progression: 2, 2, 3, 3, 4 coins
   currentContinueIndex: 0,
   gameId: "",
 };
@@ -215,6 +215,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 
     if (currency.coins >= entryCost) {
       dispatchGameSession({ type: "START_GAME_SESSION", payload: gameId });
+      dispatchGameSession({ type: "RESET_CONTINUE_ATTEMPTS" }); // Reset continue attempts for new game
       return spendCoins(entryCost, `Started ${gameId} game`);
     }
 
@@ -226,9 +227,9 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   };
 
   const getContinueCost = (): number => {
-    const multiplier =
-      gameSession.continueCosts[gameSession.currentContinueIndex] || 5;
-    return gameSession.baseEntryCost * multiplier;
+    const cost =
+      gameSession.continueCosts[gameSession.currentContinueIndex] || 4; // Default to 4 if beyond array
+    return cost; // Direct cost, not multiplied by base cost
   };
 
   const incrementContinueAttempt = (): void => {
