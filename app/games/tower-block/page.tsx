@@ -1,10 +1,25 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Power1, TweenLite } from "gsap";
-import { useEffect, useRef } from "react";
+import { ArrowLeft, Pause, Play, RotateCcw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { ContinueModal } from "../../components/ContinueModal";
+import { CompactCurrencyDisplay } from "../../components/CurrencyDisplay";
+import { GameStartModal } from "../../components/GameStartModal";
+import { RewardModal } from "../../components/RewardModal";
+import { useGameCurrency } from "../../contexts/CurrencyContext";
+
+interface GameReward {
+  amount: number;
+  reason: string;
+  type: "level" | "perfect" | "streak" | "bonus" | "achievement";
+}
 
 export default function TowerBlockGame() {
+  const router = useRouter();
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const scoreContainerRef = useRef<HTMLDivElement>(null);
   const instructionsRef = useRef<HTMLDivElement>(null);
@@ -12,8 +27,139 @@ export default function TowerBlockGame() {
   const audioStartRef = useRef<HTMLAudioElement>(null);
   const audioStackRef = useRef<HTMLAudioElement>(null);
 
+  // Currency and modal states
+  const {
+    coins,
+    startGame,
+    endGame,
+    continue: gameContinue,
+    earnReward,
+  } = useGameCurrency();
+  const [showStartModal, setShowStartModal] = useState(true);
+  const [showContinueModal, setShowContinueModal] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [gameRewards, setGameRewards] = useState<GameReward[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentLevel, setCurrentLevel] = useState(0);
+  const [gameInitialized, setGameInitialized] = useState(false);
+
+  // Game instance ref
+  const gameInstanceRef = useRef<any>(null);
+
+  const handleStartGame = useCallback(() => {
+    if (startGame("tower-block")) {
+      setShowStartModal(false);
+      setGameInitialized(true);
+      setCurrentLevel(0);
+      setGameRewards([]);
+    }
+  }, [startGame]);
+
+  const handleGameOver = useCallback(() => {
+    setShowContinueModal(false);
+    endGame();
+
+    // Calculate and show rewards
+    if (currentLevel > 0) {
+      const rewards: GameReward[] = [];
+
+      // Base level reward
+      const levelReward = Math.max(1, Math.floor(currentLevel / 2));
+      rewards.push({
+        amount: levelReward,
+        reason: `Reached Level ${currentLevel}`,
+        type: "level",
+      });
+
+      // Perfect placement bonus
+      if (gameInstanceRef.current?.gameMetrics?.perfectPlacements > 0) {
+        const perfectBonus =
+          gameInstanceRef.current.gameMetrics.perfectPlacements * 2;
+        rewards.push({
+          amount: perfectBonus,
+          reason: `${gameInstanceRef.current.gameMetrics.perfectPlacements} Perfect Blocks`,
+          type: "perfect",
+        });
+      }
+
+      // Streak bonus
+      if (gameInstanceRef.current?.gameMetrics?.maxConsecutiveStreak >= 5) {
+        const streakBonus = Math.floor(
+          gameInstanceRef.current.gameMetrics.maxConsecutiveStreak / 5
+        );
+        rewards.push({
+          amount: streakBonus,
+          reason: `${gameInstanceRef.current.gameMetrics.maxConsecutiveStreak} Block Streak`,
+          type: "streak",
+        });
+      }
+
+      // High level achievement
+      if (currentLevel >= 20) {
+        rewards.push({
+          amount: 10,
+          reason: "Tower Master Achievement",
+          type: "achievement",
+        });
+      }
+
+      // Award the coins
+      rewards.forEach((reward) => {
+        earnReward(reward.amount, reward.reason);
+      });
+
+      setGameRewards(rewards);
+      setShowRewardModal(true);
+    } else {
+      // No rewards, just go back
+      router.push("/");
+    }
+  }, [currentLevel, endGame, earnReward, router]);
+
+  const handleContinueGame = useCallback(() => {
+    if (gameContinue()) {
+      setShowContinueModal(false);
+      // Reset the game state but keep the level
+      if (gameInstanceRef.current) {
+        gameInstanceRef.current.continueFromLastPosition();
+      }
+    }
+  }, [gameContinue]);
+
+  const handlePause = useCallback(() => {
+    setIsPaused(!isPaused);
+    if (gameInstanceRef.current) {
+      if (isPaused) {
+        gameInstanceRef.current.resumeGame();
+      } else {
+        gameInstanceRef.current.pauseGame();
+      }
+    }
+  }, [isPaused]);
+
+  const handleRestart = useCallback(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.restartGame();
+    }
+    setCurrentLevel(0);
+    setIsPaused(false);
+  }, []);
+
+  const handleBackToDashboard = useCallback(() => {
+    router.push("/");
+  }, [router]);
+
+  // Custom function to trigger continue modal instead of ending game
+  const triggerContinueModal = useCallback(() => {
+    setShowContinueModal(true);
+  }, []);
+
   useEffect(() => {
-    // Stage class from app.js
+    if (!gameInitialized || !gameContainerRef.current) return;
+
+    let animationFrameId: number;
+
+    // Stage class
     class Stage {
       renderer: THREE.WebGLRenderer;
       scene: THREE.Scene;
@@ -89,7 +235,7 @@ export default function TowerBlockGame() {
       };
     }
 
-    // Block class from app.js
+    // Block class
     class Block {
       targetBlock: Block | null;
       index: number;
@@ -186,11 +332,50 @@ export default function TowerBlockGame() {
 
       place() {
         this.state = this.STATES.STOPPED;
+
+        // Foundation block should not be placed
+        if (
+          !this.targetBlock ||
+          this.targetBlock === null ||
+          this.targetBlock === undefined
+        ) {
+          return {
+            overlapPercentage: 1,
+            precisionScore: 1000,
+            originalArea: this.dimension.width * this.dimension.depth,
+            placedArea: this.dimension.width * this.dimension.depth,
+            areaLost: 0,
+            areaEfficiency: 1,
+            isPerfect: true,
+            plane: this.workingPlane,
+            direction: this.direction,
+          };
+        }
+
+        // Extra safety check
+        if (!this.targetBlock.dimension) {
+          console.error(
+            "Target block has no dimension property",
+            this.targetBlock
+          );
+          return {
+            overlapPercentage: 0,
+            precisionScore: 0,
+            originalArea: this.dimension.width * this.dimension.depth,
+            placedArea: 0,
+            areaLost: this.dimension.width * this.dimension.depth,
+            areaEfficiency: 0,
+            isPerfect: false,
+            plane: this.workingPlane,
+            direction: this.direction,
+          };
+        }
+
         const overlap =
-          this.targetBlock!.dimension[this.workingDimension] -
+          this.targetBlock.dimension[this.workingDimension] -
           Math.abs(
             this.position[this.workingPlane] -
-              this.targetBlock!.position[this.workingPlane]
+              this.targetBlock.position[this.workingPlane]
           );
         const blocksToReturn: any = {
           plane: this.workingPlane,
@@ -198,7 +383,7 @@ export default function TowerBlockGame() {
         };
 
         const maxPossibleOverlap =
-          this.targetBlock!.dimension[this.workingDimension];
+          this.targetBlock.dimension[this.workingDimension];
         const overlapPercentage = Math.max(0, overlap / maxPossibleOverlap);
         blocksToReturn.overlapPercentage = overlapPercentage;
         blocksToReturn.precisionScore = Math.round(overlapPercentage * 1000);
@@ -227,10 +412,10 @@ export default function TowerBlockGame() {
           blocksToReturn.bonus = true;
           blocksToReturn.isPerfect = true;
           blocksToReturn.precisionScore = 1000;
-          this.position.x = this.targetBlock!.position.x;
-          this.position.z = this.targetBlock!.position.z;
-          this.dimension.width = this.targetBlock!.dimension.width;
-          this.dimension.depth = this.targetBlock!.dimension.depth;
+          this.position.x = this.targetBlock.position.x;
+          this.position.z = this.targetBlock.position.z;
+          this.dimension.width = this.targetBlock.dimension.width;
+          this.dimension.depth = this.targetBlock.dimension.depth;
         }
 
         if (overlap > 0) {
@@ -278,10 +463,10 @@ export default function TowerBlockGame() {
 
           if (
             this.position[this.workingPlane] <
-            this.targetBlock!.position[this.workingPlane]
+            this.targetBlock.position[this.workingPlane]
           ) {
             this.position[this.workingPlane] =
-              this.targetBlock!.position[this.workingPlane];
+              this.targetBlock.position[this.workingPlane];
           } else {
             choppedPosition[this.workingPlane] += overlap;
           }
@@ -297,21 +482,25 @@ export default function TowerBlockGame() {
             choppedPosition.z
           );
           blocksToReturn.placed = placedMesh;
-
-          if (!blocksToReturn.bonus) blocksToReturn.chopped = choppedMesh;
+          blocksToReturn.chopped = choppedMesh;
         } else {
           this.state = this.STATES.MISSED;
         }
-        this.dimension[this.workingDimension] = overlap;
+
+        this.mesh.position.set(
+          this.position.x,
+          this.position.y,
+          this.position.z
+        );
+
         return blocksToReturn;
       }
 
       tick() {
         if (this.state === this.STATES.ACTIVE) {
           const value = this.position[this.workingPlane];
-          if (value > this.MOVE_AMOUNT || value < -this.MOVE_AMOUNT) {
+          if (value > this.MOVE_AMOUNT || value < -this.MOVE_AMOUNT)
             this.reverseDirection();
-          }
           this.position[this.workingPlane] += this.direction;
           this.mesh.position[this.workingPlane] =
             this.position[this.workingPlane];
@@ -319,20 +508,20 @@ export default function TowerBlockGame() {
       }
     }
 
-    // Game class from app.js
+    // Game class
     class Game {
       STATES: { [key: string]: string };
-      blocks: Block[];
       state: string;
-      gameMetrics: any;
       stage: Stage;
       mainContainer: HTMLDivElement;
       scoreContainer: HTMLDivElement;
       startButton: HTMLDivElement;
       instructions: HTMLDivElement;
-      newBlocks: THREE.Group;
+      blocks: Block[];
       placedBlocks: THREE.Group;
       choppedBlocks: THREE.Group;
+      newBlocks: THREE.Group;
+      gameMetrics: any;
 
       constructor() {
         this.STATES = {
@@ -342,59 +531,42 @@ export default function TowerBlockGame() {
           ENDED: "ended",
           RESETTING: "resetting",
         };
-        this.blocks = [];
         this.state = this.STATES.LOADING;
-        this.gameMetrics = {
-          totalPrecisionScore: 0,
-          perfectPlacements: 0,
-          gameStartTime: 0,
-          gameEndTime: 0,
-          blockPlacementTimes: [],
-          totalOverlapPercentage: 0,
-          consecutiveSuccessStreak: 0,
-          maxConsecutiveStreak: 0,
-          averageReactionTime: 0,
-          lastBlockTime: 0,
-          totalTowerArea: 0,
-          initialBlockArea: 100,
-          areaLossHistory: [],
-          blockAreas: [],
-          totalAreaLost: 0,
-          minBlockArea: Infinity,
-          maxBlockArea: 0,
-        };
-
-        this.mainContainer = document.getElementById(
-          "container"
-        ) as HTMLDivElement;
-        this.scoreContainer = document.getElementById(
-          "score"
-        ) as HTMLDivElement;
-        this.startButton = document.getElementById(
-          "start-button"
-        ) as HTMLDivElement;
-        this.instructions = document.getElementById(
-          "instructions"
-        ) as HTMLDivElement;
-
         this.stage = new Stage();
-        this.scoreContainer.innerHTML = "0";
-        this.newBlocks = new THREE.Group();
+        this.mainContainer = gameContainerRef.current!;
+        this.scoreContainer = scoreContainerRef.current!;
+        this.startButton = startButtonRef.current!;
+        this.instructions = instructionsRef.current!;
+        this.blocks = [];
         this.placedBlocks = new THREE.Group();
         this.choppedBlocks = new THREE.Group();
-        this.stage.add(this.newBlocks);
+        this.newBlocks = new THREE.Group();
         this.stage.add(this.placedBlocks);
         this.stage.add(this.choppedBlocks);
+        this.stage.add(this.newBlocks);
 
-        this.addBlock();
-        this.tick();
+        this.gameMetrics = {
+          gameStartTime: Date.now(),
+          gameEndTime: 0,
+          totalPrecisionScore: 0,
+          totalOverlapPercentage: 0,
+          blockPlacementTimes: [],
+          consecutiveSuccessStreak: 0,
+          maxConsecutiveStreak: 0,
+          perfectPlacements: 0,
+          totalTowerArea: 0,
+          blockAreas: [],
+          totalAreaLost: 0,
+          areaLossHistory: [],
+          minBlockArea: Infinity,
+          maxBlockArea: 0,
+          initialBlockArea: 100,
+          lastBlockTime: Date.now(),
+          averageReactionTime: 0,
+        };
+
+        this.addEventListeners();
         this.updateState(this.STATES.READY);
-        document.addEventListener("keydown", (e) => {
-          if (e.keyCode === 32) this.onAction();
-        });
-        document.addEventListener("click", () => {
-          this.onAction();
-        });
       }
 
       updateState(newState: string) {
@@ -403,6 +575,23 @@ export default function TowerBlockGame() {
         }
         this.mainContainer.classList.add(newState);
         this.state = newState;
+      }
+
+      addEventListeners() {
+        window.addEventListener("keydown", (e) => {
+          if (e.keyCode === 32) {
+            e.preventDefault();
+            this.onAction();
+          }
+        });
+
+        window.addEventListener("click", () => {
+          this.onAction();
+        });
+
+        window.addEventListener("touchstart", () => {
+          this.onAction();
+        });
       }
 
       onAction() {
@@ -423,33 +612,32 @@ export default function TowerBlockGame() {
         if (this.state !== this.STATES.PLAYING) {
           this.scoreContainer.innerHTML = "0";
           this.updateState(this.STATES.PLAYING);
-          const audioStart = audioStartRef.current;
-          if (audioStart) {
-            audioStart.currentTime = 0;
-            audioStart.play();
+
+          // Create the foundation block if no blocks exist
+          if (this.blocks.length === 0) {
+            const foundationBlock = new Block(null);
+            this.blocks.push(foundationBlock);
+            this.placedBlocks.add(foundationBlock.mesh);
           }
 
+          this.addBlock();
           this.gameMetrics = {
-            totalPrecisionScore: 0,
-            perfectPlacements: 0,
+            ...this.gameMetrics,
             gameStartTime: Date.now(),
-            gameEndTime: 0,
-            blockPlacementTimes: [],
+            totalPrecisionScore: 0,
             totalOverlapPercentage: 0,
+            blockPlacementTimes: [],
             consecutiveSuccessStreak: 0,
             maxConsecutiveStreak: 0,
-            averageReactionTime: 0,
-            lastBlockTime: Date.now(),
+            perfectPlacements: 0,
             totalTowerArea: 0,
-            initialBlockArea: 100,
-            areaLossHistory: [],
-            blockAreas: [100],
+            blockAreas: [],
             totalAreaLost: 0,
-            minBlockArea: 100,
-            maxBlockArea: 100,
+            areaLossHistory: [],
+            minBlockArea: Infinity,
+            maxBlockArea: 0,
+            lastBlockTime: Date.now(),
           };
-
-          this.addBlock();
         }
       }
 
@@ -497,6 +685,29 @@ export default function TowerBlockGame() {
 
       placeBlock() {
         const currentBlock = this.blocks[this.blocks.length - 1];
+
+        // Don't place foundation block or invalid blocks
+        if (
+          !currentBlock ||
+          !currentBlock.targetBlock ||
+          currentBlock.targetBlock === null
+        ) {
+          console.warn(
+            "Attempted to place foundation block or invalid block",
+            currentBlock
+          );
+          return;
+        }
+
+        // Additional safety check for dimension property
+        if (!currentBlock.targetBlock.dimension) {
+          console.error(
+            "Target block missing dimension property",
+            currentBlock.targetBlock
+          );
+          return;
+        }
+
         const placementTime = Date.now();
         const reactionTime = placementTime - this.gameMetrics.lastBlockTime;
         const audioStack = audioStackRef.current;
@@ -581,9 +792,14 @@ export default function TowerBlockGame() {
       addBlock() {
         const lastBlock = this.blocks[this.blocks.length - 1];
         if (lastBlock && lastBlock.state === lastBlock.STATES.MISSED) {
-          return this.endGame();
+          // Instead of ending immediately, trigger continue modal
+          return triggerContinueModal();
         }
-        this.scoreContainer.innerHTML = String(this.blocks.length - 1);
+
+        const level = this.blocks.length - 1;
+        setCurrentLevel(level);
+        this.scoreContainer.innerHTML = String(level);
+
         const newKidOnTheBlock = new Block(lastBlock);
         this.newBlocks.add(newKidOnTheBlock.mesh);
         this.blocks.push(newKidOnTheBlock);
@@ -591,560 +807,180 @@ export default function TowerBlockGame() {
         if (this.blocks.length >= 5) this.instructions.classList.add("hide");
       }
 
-      endGame() {
-        this.gameMetrics.gameEndTime = Date.now();
-        const totalGameTime =
-          this.gameMetrics.gameEndTime - this.gameMetrics.gameStartTime;
-        const successfulPlacements =
-          this.gameMetrics.blockPlacementTimes.length;
-        this.gameMetrics.averageReactionTime =
-          successfulPlacements > 0
-            ? this.gameMetrics.blockPlacementTimes.reduce(
-                (a: number, b: number) => a + b,
-                0
-              ) / successfulPlacements
-            : 0;
-        const totalPossibleArea =
-          this.gameMetrics.initialBlockArea * (this.blocks.length - 1);
-        const areaRetentionRate =
-          totalPossibleArea > 0
-            ? this.gameMetrics.totalTowerArea / totalPossibleArea
-            : 0;
-        const averageAreaLoss =
-          this.gameMetrics.areaLossHistory.length > 0
-            ? this.gameMetrics.totalAreaLost /
-              this.gameMetrics.areaLossHistory.length
-            : 0;
-        const areaConsistency = this.calculateAreaConsistency();
-        const finalBlockArea =
-          this.gameMetrics.blockAreas.length > 1
-            ? this.gameMetrics.blockAreas[
-                this.gameMetrics.blockAreas.length - 1
-              ]
-            : 0;
+      continueFromLastPosition() {
+        // Remove the last (missed) block and add a new one at the same position
+        const lastBlock = this.blocks[this.blocks.length - 1];
+        if (lastBlock && lastBlock.state === lastBlock.STATES.MISSED) {
+          this.newBlocks.remove(lastBlock.mesh);
+          this.blocks.pop();
 
-        const finalScore = {
-          level: this.blocks.length - 2,
-          totalPrecisionScore: this.gameMetrics.totalPrecisionScore,
-          averagePrecision:
-            successfulPlacements > 0
-              ? (
-                  (this.gameMetrics.totalOverlapPercentage /
-                    successfulPlacements) *
-                  100
-                ).toFixed(2)
-              : 0,
-          perfectPlacements: this.gameMetrics.perfectPlacements,
-          totalGameTime: totalGameTime,
-          averageReactionTime: Math.round(this.gameMetrics.averageReactionTime),
-          maxConsecutiveStreak: this.gameMetrics.maxConsecutiveStreak,
-          efficiency:
-            successfulPlacements > 0
-              ? (
-                  (successfulPlacements / (this.blocks.length - 1)) *
-                  100
-                ).toFixed(1)
-              : 0,
-          totalTowerArea: Math.round(this.gameMetrics.totalTowerArea),
-          areaRetentionRate: (areaRetentionRate * 100).toFixed(1),
-          totalAreaLost: Math.round(this.gameMetrics.totalAreaLost),
-          averageAreaLoss: Math.round(averageAreaLoss),
-          minBlockArea: Math.round(this.gameMetrics.minBlockArea),
-          finalBlockArea: Math.round(finalBlockArea),
-          areaConsistency: areaConsistency.toFixed(2),
-          areaEfficiencyScore: Math.round(areaRetentionRate * 1000),
-        };
-
-        localStorage.setItem(
-          "towerBlockCompetitionScore",
-          JSON.stringify(finalScore)
-        );
-
-        const metricsContainer = document.getElementById("competition-metrics");
-        if (metricsContainer) {
-          const badges = [];
-          if (finalScore.level >= 20) badges.push("🏆 Master Builder");
-          if (finalScore.perfectPlacements >= 5)
-            badges.push("🎯 Perfect Precision");
-          if (parseFloat(finalScore.areaRetentionRate) >= 80)
-            badges.push("💎 Area Expert");
-          if (finalScore.maxConsecutiveStreak >= 10)
-            badges.push("🔥 Streak Master");
-          if (finalScore.averageReactionTime <= 800)
-            badges.push("⚡ Lightning Fast");
-
-          const badgeDisplay =
-            badges.length > 0
-              ? `<div class="section-header">Achievements</div>` +
-                badges
-                  .map((badge) => `<div class="badge">${badge}</div>`)
-                  .join("")
-              : "";
-
-          metricsContainer.innerHTML =
-            badgeDisplay +
-            `<div class="section-header">📊 Score Card</div>` +
-            `<div class="highlight-metric"><div class="metric-row"><span>🏗️ Final Level</span><span>${finalScore.level}</span></div></div>` +
-            `<div class="metric-row"><span>🎯 Precision Score</span><span>${finalScore.totalPrecisionScore}</span></div>` +
-            `<div class="metric-row"><span>📈 Average Accuracy</span><span>${finalScore.averagePrecision}%</span></div>` +
-            `<div class="metric-row"><span>💯 Perfect Placements</span><span>${finalScore.perfectPlacements}</span></div>` +
-            `<div class="metric-row"><span>⚡ Average Reaction Time</span><span>${finalScore.averageReactionTime}ms</span></div>`;
+          // Add a new block
+          this.addBlock();
         }
-
-        this.updateState(this.STATES.ENDED);
       }
 
-      calculateAreaConsistency() {
-        const areas = this.gameMetrics.blockAreas;
-        if (areas.length < 2) return 0;
-        const mean =
-          areas.reduce((sum: number, area: number) => sum + area, 0) /
-          areas.length;
-        const squaredDiffs = areas.map((area: number) =>
-          Math.pow(area - mean, 2)
-        );
-        const variance =
-          squaredDiffs.reduce((sum: number, diff: number) => sum + diff, 0) /
-          areas.length;
-        const standardDeviation = Math.sqrt(variance);
-        const coefficientOfVariation = mean > 0 ? standardDeviation / mean : 1;
-        return Math.max(0, 1 - coefficientOfVariation) * 100;
+      pauseGame() {
+        if (this.state === this.STATES.PLAYING) {
+          this.updateState("paused");
+        }
       }
 
-      tick = () => {
-        if (this.blocks.length > 0) {
-          this.blocks[this.blocks.length - 1].tick();
-          this.stage.render();
+      resumeGame() {
+        if (this.state === "paused") {
+          this.updateState(this.STATES.PLAYING);
         }
-        requestAnimationFrame(this.tick);
-      };
+      }
+
+      tick() {
+        this.blocks[this.blocks.length - 1]?.tick();
+        this.stage.render();
+
+        if (!isPaused && this.state === this.STATES.PLAYING) {
+          animationFrameId = requestAnimationFrame(() => this.tick());
+        }
+      }
     }
 
-    new Game();
-  }, []);
+    // Initialize and start the game
+    const game = new Game();
+    gameInstanceRef.current = game;
+
+    // Start the game loop
+    animationFrameId = requestAnimationFrame(() => game.tick());
+
+    // Audio setup
+    const audioStart = audioStartRef.current;
+    if (audioStart) {
+      audioStart.currentTime = 0;
+      audioStart.play().catch(() => {
+        // Audio play failed, likely due to user interaction requirements
+      });
+    }
+
+    return () => {
+      // Cleanup
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      window.removeEventListener("resize", game.stage.onResize);
+      if (game.stage.container && game.stage.renderer.domElement) {
+        game.stage.container.removeChild(game.stage.renderer.domElement);
+      }
+    };
+  }, [gameInitialized, isPaused, triggerContinueModal]);
 
   return (
-    <>
-      <div id="container" className="loading">
-        <div id="game" ref={gameContainerRef}></div>
-        <div id="score" ref={scoreContainerRef}>
-          0
-        </div>
-        <div id="instructions" ref={instructionsRef}>
-          Click (or press the spacebar) to place the block
-        </div>
-        <div className="game-over">
-          <h2>Game Over</h2>
-          <p>You did great, you're the best.</p>
-          <p>Click or spacebar to start again</p>
-          <div id="competition-metrics"></div>
-        </div>
-        <div className="game-ready">
-          <div id="start-button" ref={startButtonRef}>
-            Start
+    <div className="relative w-full h-screen overflow-hidden bg-gray-100">
+      {/* Game Container */}
+      <div
+        ref={gameContainerRef}
+        className={`absolute inset-0 ${gameInitialized ? "block" : "hidden"}`}
+      />
+
+      {/* Game UI Overlay */}
+      {gameInitialized && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          {/* Top UI Bar */}
+          <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center">
+            <motion.button
+              onClick={handleBackToDashboard}
+              className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg hover:bg-white transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <ArrowLeft size={18} />
+              Back
+            </motion.button>
+
+            <div className="flex items-center gap-4">
+              <CompactCurrencyDisplay />
+              <div className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg">
+                <span className="font-semibold text-gray-800">
+                  Level: {currentLevel}
+                </span>
+              </div>
+            </div>
           </div>
-          <div></div>
+
+          {/* Game Controls */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-center gap-4">
+            <motion.button
+              onClick={handlePause}
+              className="pointer-events-auto flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {isPaused ? <Play size={18} /> : <Pause size={18} />}
+              {isPaused ? "Resume" : "Pause"}
+            </motion.button>
+
+            <motion.button
+              onClick={handleRestart}
+              className="pointer-events-auto flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-lg transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <RotateCcw size={18} />
+              Restart
+            </motion.button>
+          </div>
         </div>
+      )}
+
+      {/* Score Display */}
+      <div
+        ref={scoreContainerRef}
+        className={`absolute top-20 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-gray-800 z-20 ${
+          gameInitialized ? "block" : "hidden"
+        }`}
+      >
+        0
       </div>
-      <audio
-        id="audio-start"
-        src="/90s-game-ui-2-185095.mp3"
-        preload="auto"
-        ref={audioStartRef}
-      ></audio>
-      <audio
-        id="audio-stack"
-        src="/90s-game-ui-6-185099.mp3"
-        preload="auto"
-        ref={audioStackRef}
-      ></audio>
-      <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css?family=Comfortaa");
-        html,
-        body {
-          margin: 0;
-          overflow: hidden;
-          height: 100%;
-          width: 100%;
-          position: relative;
-          font-family: "Comfortaa", cursive;
-        }
-        #container {
-          width: 100%;
-          height: 100%;
-        }
-        #container #score {
-          position: absolute;
-          top: 20px;
-          width: 100%;
-          text-align: center;
-          font-size: 10vh;
-          transition: transform 0.5s ease;
-          color: #334;
-          transform: translatey(-200px) scale(1);
-        }
-        #container #game {
-          position: absolute;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          left: 0;
-        }
-        #container .game-over {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 85%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-        #container .game-over > h2,
-        #container .game-over > p {
-          transition: opacity 0.5s ease, transform 0.5s ease;
-          opacity: 0;
-          transform: translatey(-50px);
-          color: #334;
-        }
-        #container .game-over h2 {
-          margin: 0;
-          padding: 0;
-          font-size: 40px;
-        }
-        #container .game-ready {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: space-around;
-        }
-        #container .game-ready #start-button {
-          transition: opacity 0.5s ease, transform 0.5s ease;
-          opacity: 0;
-          transform: translatey(-50px);
-          border: 3px solid #334;
-          padding: 10px 20px;
-          background-color: transparent;
-          color: #334;
-          font-size: 30px;
-        }
-        #container #instructions {
-          position: absolute;
-          width: 100%;
-          top: 16vh;
-          left: 0;
-          text-align: center;
-          transition: opacity 0.5s ease, transform 0.5s ease;
-          opacity: 0;
-        }
-        #container #instructions.hide {
-          opacity: 0 !important;
-        }
-        #container.playing #score,
-        #container.resetting #score {
-          transform: translatey(0px) scale(1);
-        }
-        #container.playing #instructions {
-          opacity: 1;
-        }
-        #container.ready .game-ready #start-button {
-          opacity: 1;
-          transform: translatey(0);
-        }
-        #container.ended #score {
-          transform: translatey(6vh) scale(1.5);
-        }
-        #container.ended .game-over > h2,
-        #container.ended .game-over > p {
-          opacity: 1;
-          transform: translatey(0);
-        }
-        #container.ended .game-over > p {
-          transition-delay: 0.3s;
-        }
 
-        #container.ended #competition-metrics {
-          opacity: 1;
-          transform: translateY(0);
-          transition-delay: 0.5s;
-        }
+      {/* Instructions */}
+      <div
+        ref={instructionsRef}
+        className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 text-center text-gray-600 z-20 ${
+          gameInitialized ? "block" : "hidden"
+        }`}
+      >
+        <p>Click to drop the block</p>
+      </div>
 
-        #competition-metrics {
-          margin-top: 25px;
-          font-size: 13px;
-          text-align: left;
-          max-width: 450px;
-          width: 90vw;
-          line-height: 1.4;
-          max-height: 60vh;
-          overflow-y: auto;
-          overflow-x: hidden;
-          background: rgba(255, 255, 255, 0.95);
-          -webkit-backdrop-filter: blur(10px);
-          backdrop-filter: blur(10px);
-          border-radius: 12px;
-          padding: 25px;
-          border: 1px solid rgba(255, 255, 255, 0.8);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      {/* Hidden start button for compatibility */}
+      <div ref={startButtonRef} className="hidden" />
 
-          opacity: 0;
-          transform: translateY(30px);
-          transition: opacity 0.6s ease, transform 0.6s ease;
-          position: relative;
-          z-index: 100;
+      {/* Audio Elements */}
+      <audio ref={audioStartRef} src="/90s-game-ui-2-185095.mp3" />
+      <audio ref={audioStackRef} src="/90s-game-ui-6-185099.mp3" />
 
-          scroll-behavior: smooth;
-        }
+      {/* Modals */}
+      <GameStartModal
+        isOpen={showStartModal}
+        onStart={handleStartGame}
+        onCancel={handleBackToDashboard}
+        gameTitle="Tower Block"
+        gameDescription="Build the highest tower possible with precision timing!"
+      />
 
-        #competition-metrics .section-header {
-          font-weight: 700;
-          font-size: 15px;
-          color: #223;
-          margin: 18px 0 10px 0;
-          padding-bottom: 6px;
-          border-bottom: 2px solid rgba(51, 51, 68, 0.4);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
+      <ContinueModal
+        isOpen={showContinueModal}
+        onContinue={handleContinueGame}
+        onGameOver={handleGameOver}
+        currentLevel={currentLevel}
+        gameTitle="Tower Block"
+      />
 
-        #competition-metrics .section-header:first-child {
-          margin-top: 0;
-        }
-
-        #competition-metrics .metric-row {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 8px;
-          padding: 8px 12px;
-          border-radius: 6px;
-          transition: background-color 0.2s ease;
-          background: rgba(255, 255, 255, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-
-        #competition-metrics .metric-row:hover {
-          background: rgba(255, 255, 255, 0.5);
-        }
-
-        #competition-metrics .metric-row span:first-child {
-          color: #445;
-          font-weight: 600;
-          font-size: 13px;
-        }
-
-        #competition-metrics .metric-row span:last-child {
-          color: #223;
-          font-weight: 700;
-          font-size: 14px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        #competition-metrics .highlight-metric .metric-row {
-          background: linear-gradient(
-            135deg,
-            rgba(102, 126, 234, 0.1) 0%,
-            rgba(118, 75, 162, 0.1) 100%
-          );
-          border: 1px solid rgba(102, 126, 234, 0.3);
-        }
-
-        #competition-metrics .highlight-metric .metric-row span:last-child {
-          font-size: 16px;
-          font-weight: 800;
-        }
-
-        /* Scrollbar styling for metrics container */
-        #competition-metrics::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-
-        #competition-metrics::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 4px;
-          margin: 5px;
-        }
-
-        #competition-metrics::-webkit-scrollbar-thumb {
-          background: rgba(102, 126, 234, 0.8);
-          border-radius: 4px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        #competition-metrics::-webkit-scrollbar-thumb:hover {
-          background: rgba(102, 126, 234, 1);
-        }
-
-        #competition-metrics::-webkit-scrollbar-corner {
-          background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* Mobile responsiveness for metrics */
-        @media (max-width: 768px) {
-          #competition-metrics {
-            max-width: 95vw;
-            width: 95vw;
-            margin: 15px auto;
-            font-size: 12px;
-            padding: 20px;
-            max-height: 70vh;
-          }
-
-          #competition-metrics .metric-row span:first-child {
-            font-size: 12px;
-          }
-
-          #competition-metrics .metric-row span:last-child {
-            font-size: 13px;
-          }
-
-          #competition-metrics .section-header {
-            font-size: 14px;
-          }
-
-          #competition-metrics .highlight-metric .metric-row span:last-child {
-            font-size: 15px;
-          }
-        }
-
-        /* Animation for metrics appearing - only when container is visible */
-        #container.ended #competition-metrics .metric-row {
-          animation: slideInMetric 0.2s ease-out forwards;
-          opacity: 0;
-          transform: translateX(-10px);
-        }
-
-        #container.ended #competition-metrics .section-header {
-          animation: slideInHeader 0.3s ease-out forwards;
-          opacity: 0;
-          transform: translateY(-5px);
-        }
-
-        /* Stagger animation timing - only after container appears */
-        #container.ended #competition-metrics .metric-row:nth-of-type(1) {
-          animation-delay: 0.8s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(2) {
-          animation-delay: 0.85s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(3) {
-          animation-delay: 0.9s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(4) {
-          animation-delay: 0.95s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(5) {
-          animation-delay: 1s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(6) {
-          animation-delay: 1.05s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(7) {
-          animation-delay: 1.1s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(8) {
-          animation-delay: 1.15s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(9) {
-          animation-delay: 1.2s;
-        }
-        #container.ended #competition-metrics .metric-row:nth-of-type(10) {
-          animation-delay: 1.25s;
-        }
-
-        #container.ended #competition-metrics .section-header:nth-of-type(1) {
-          animation-delay: 0.7s;
-        }
-        #container.ended #competition-metrics .section-header:nth-of-type(2) {
-          animation-delay: 1s;
-        }
-        #container.ended #competition-metrics .section-header:nth-of-type(3) {
-          animation-delay: 1.3s;
-        }
-
-        @keyframes slideInMetric {
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        @keyframes slideInHeader {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        /* Badge styling */
-        #competition-metrics .badge {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          padding: 8px 14px;
-          margin: 6px 0;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 600;
-          text-align: center;
-          box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-          opacity: 0;
-          transform: scale(0);
-          position: relative;
-          z-index: 1;
-        }
-
-        #container.ended #competition-metrics .badge {
-          animation: badgePop 0.2s ease-out forwards;
-        }
-
-        #container.ended #competition-metrics .badge:nth-child(2) {
-          animation-delay: 0.6s;
-        }
-        #container.ended #competition-metrics .badge:nth-child(3) {
-          animation-delay: 0.65s;
-        }
-        #container.ended #competition-metrics .badge:nth-child(4) {
-          animation-delay: 0.7s;
-        }
-        #container.ended #competition-metrics .badge:nth-child(5) {
-          animation-delay: 0.75s;
-        }
-        #container.ended #competition-metrics .badge:nth-child(6) {
-          animation-delay: 0.8s;
-        }
-
-        @keyframes badgePop {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.1);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-
-        footer {
-          position: absolute;
-          bottom: 10px;
-          width: 100%;
-          text-align: center;
-          color: #334;
-          font-size: 12px;
-        }
-      `}</style>
-    </>
+      <RewardModal
+        isOpen={showRewardModal}
+        onClose={() => {
+          setShowRewardModal(false);
+          handleBackToDashboard();
+        }}
+        rewards={gameRewards}
+        totalCoins={coins}
+        gameLevel={currentLevel}
+      />
+    </div>
   );
 }
