@@ -2,7 +2,19 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { Coins, Gift, Star, Trophy, Zap } from "lucide-react";
+import { 
+  Coins, 
+  Gift, 
+  Star, 
+  Trophy, 
+  Zap, 
+  Target, 
+  Clock, 
+  TrendingUp, 
+  Award,
+  BarChart3,
+  Crosshair 
+} from "lucide-react";
 import React, { useEffect, useRef } from "react";
 
 interface Reward {
@@ -11,12 +23,23 @@ interface Reward {
   type: "level" | "perfect" | "streak" | "bonus" | "achievement";
 }
 
+interface GameStats {
+  finalLevel: number;
+  totalPrecisionScore: number;
+  averageAccuracy: number;
+  perfectPlacements: number;
+  averageReactionTime: number;
+  maxConsecutiveStreak?: number;
+  totalGameTime?: number;
+}
+
 interface RewardModalProps {
   isOpen: boolean;
   onClose: () => void;
   rewards: Reward[];
   totalCoins: number;
   gameLevel?: number;
+  gameStats?: GameStats;
 }
 
 export function RewardModal({
@@ -25,6 +48,7 @@ export function RewardModal({
   rewards,
   totalCoins,
   gameLevel = 0,
+  gameStats,
 }: RewardModalProps) {
   const coinRainRef = useRef<HTMLDivElement>(null);
   const totalRef = useRef<HTMLDivElement>(null);
@@ -203,6 +227,94 @@ export function RewardModal({
                   </motion.div>
                 ))}
               </div>
+
+              {/* Game Statistics Scorecard */}
+              {gameStats && (
+                <motion.div
+                  className="space-y-3"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.8 }}
+                >
+                  <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-center mb-4">
+                    📊 Game Statistics
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Final Level */}
+                    <motion.div
+                      className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.9 }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Trophy size={16} className="text-blue-600" />
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Final Level</span>
+                      </div>
+                      <p className="text-lg font-bold text-blue-800 dark:text-blue-200">{gameStats.finalLevel}</p>
+                    </motion.div>
+
+                    {/* Precision Score */}
+                    <motion.div
+                      className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700"
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 1.0 }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Target size={16} className="text-purple-600" />
+                        <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Precision</span>
+                      </div>
+                      <p className="text-lg font-bold text-purple-800 dark:text-purple-200">{gameStats.totalPrecisionScore.toFixed(1)}%</p>
+                    </motion.div>
+
+                    {/* Average Accuracy */}
+                    <motion.div
+                      className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700"
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 1.1 }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Crosshair size={16} className="text-green-600" />
+                        <span className="text-xs font-medium text-green-700 dark:text-green-300">Avg Accuracy</span>
+                      </div>
+                      <p className="text-lg font-bold text-green-800 dark:text-green-200">{gameStats.averageAccuracy.toFixed(1)}%</p>
+                    </motion.div>
+
+                    {/* Perfect Placements */}
+                    <motion.div
+                      className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700"
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 1.2 }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Star size={16} className="text-yellow-600" />
+                        <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">Perfect Hits</span>
+                      </div>
+                      <p className="text-lg font-bold text-yellow-800 dark:text-yellow-200">{gameStats.perfectPlacements}</p>
+                    </motion.div>
+                  </div>
+
+                  {/* Average Reaction Time - Full Width */}
+                  <motion.div
+                    className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700"
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 1.3 }}
+                  >
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <Zap size={16} className="text-indigo-600" />
+                      <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">Average Reaction Time</span>
+                    </div>
+                    <p className="text-lg font-bold text-indigo-800 dark:text-indigo-200 text-center">
+                      {gameStats.averageReactionTime.toFixed(2)}s
+                    </p>
+                  </motion.div>
+                </motion.div>
+              )}
 
               {/* Total Earned */}
               <motion.div

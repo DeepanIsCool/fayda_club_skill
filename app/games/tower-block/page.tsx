@@ -39,6 +39,7 @@ export default function TowerBlockGame() {
   const [showContinueModal, setShowContinueModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [gameRewards, setGameRewards] = useState<GameReward[]>([]);
+  const [gameStats, setGameStats] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [gameInitialized, setGameInitialized] = useState(false);
@@ -55,9 +56,47 @@ export default function TowerBlockGame() {
     }
   }, [startGame]);
 
+  const calculateGameStats = useCallback(() => {
+    if (!gameInstanceRef.current?.gameMetrics) return null;
+
+    const metrics = gameInstanceRef.current.gameMetrics;
+    const blocksPlaced = metrics.blockPlacementTimes.length;
+    
+    // Calculate average accuracy as the average precision score
+    const averageAccuracy = blocksPlaced > 0 
+      ? (metrics.totalPrecisionScore / blocksPlaced) 
+      : 0;
+
+    // Calculate average reaction time
+    const averageReactionTime = blocksPlaced > 0
+      ? (metrics.blockPlacementTimes.reduce((sum: number, time: number) => sum + time, 0) / blocksPlaced) / 1000
+      : 0;
+
+    return {
+      finalLevel: currentLevel,
+      totalPrecisionScore: metrics.totalPrecisionScore,
+      averageAccuracy: averageAccuracy,
+      perfectPlacements: metrics.perfectPlacements,
+      averageReactionTime: averageReactionTime,
+      maxConsecutiveStreak: metrics.maxConsecutiveStreak,
+      totalGameTime: metrics.gameEndTime > 0 
+        ? (metrics.gameEndTime - metrics.gameStartTime) / 1000 
+        : 0
+    };
+  }, [currentLevel]);
+
   const handleGameOver = useCallback(() => {
     setShowContinueModal(false);
     endGame();
+
+    // Set the game end time in metrics
+    if (gameInstanceRef.current?.gameMetrics) {
+      gameInstanceRef.current.gameMetrics.gameEndTime = Date.now();
+    }
+
+    // Calculate final game statistics
+    const finalStats = calculateGameStats();
+    setGameStats(finalStats);
 
     // Calculate and show rewards
     if (currentLevel > 0) {
@@ -114,7 +153,7 @@ export default function TowerBlockGame() {
       // No rewards, just go back
       router.push("/");
     }
-  }, [currentLevel, endGame, earnReward, router]);
+  }, [currentLevel, endGame, earnReward, router, calculateGameStats]);
 
   const handleContinueGame = useCallback(() => {
     if (gameContinue()) {
@@ -980,6 +1019,7 @@ export default function TowerBlockGame() {
         rewards={gameRewards}
         totalCoins={coins}
         gameLevel={currentLevel}
+        gameStats={gameStats}
       />
     </div>
   );
