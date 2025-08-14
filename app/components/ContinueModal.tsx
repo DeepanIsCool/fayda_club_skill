@@ -40,7 +40,7 @@ export function ContinueModal({
       // After 3 seconds, show the Game Over button
       const timer = setTimeout(() => {
         setShowGameOver(true);
-      }, 3000);
+      }, 1000);
 
       return () => clearTimeout(timer);
     }

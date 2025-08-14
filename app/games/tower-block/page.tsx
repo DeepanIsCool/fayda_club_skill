@@ -256,6 +256,7 @@ export default function TowerBlockGame() {
       scene: THREE.Scene;
       camera: THREE.OrthographicCamera;
       light: THREE.DirectionalLight;
+      secondLight: THREE.DirectionalLight;
       softLight: THREE.AmbientLight;
       container: HTMLDivElement;
 
@@ -264,9 +265,14 @@ export default function TowerBlockGame() {
         this.renderer = new THREE.WebGLRenderer({
           antialias: true,
           alpha: false,
+          powerPreference: "high-performance",
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setClearColor(0xd0cbc7, 1);
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.2;
         this.container.appendChild(this.renderer.domElement);
         this.scene = new THREE.Scene();
         const aspect = window.innerWidth / window.innerHeight;
@@ -283,9 +289,13 @@ export default function TowerBlockGame() {
         this.camera.position.y = 2;
         this.camera.position.z = 2;
         this.camera.lookAt(new THREE.Vector3(0, 0, 0));
-        this.light = new THREE.DirectionalLight(0xffffff, 0.5);
-        this.light.position.set(0, 499, 0);
+        this.light = new THREE.DirectionalLight(0xffffff, 1.2);
+        this.light.position.set(10, 50, 10);
+        this.light.castShadow = true;
         this.scene.add(this.light);
+        this.secondLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        this.secondLight.position.set(-10, 30, -10);
+        this.scene.add(this.secondLight);
         this.softLight = new THREE.AmbientLight(0xffffff, 0.4);
         this.scene.add(this.softLight);
         window.addEventListener("resize", this.onResize);
@@ -341,7 +351,7 @@ export default function TowerBlockGame() {
       MOVE_AMOUNT: number;
       speed: number;
       direction: number;
-      material: THREE.MeshToonMaterial;
+      material: THREE.MeshPhongMaterial;
       mesh: THREE.Mesh;
 
       constructor(block: Block | null) {
@@ -375,13 +385,31 @@ export default function TowerBlockGame() {
           : Math.round(Math.random() * 100);
 
         if (!this.targetBlock) {
-          this.color = 0x333344;
+          // Base block with a bright, vibrant color
+          this.color = new THREE.Color(0.2, 0.8, 1.0); // Bright cyan
         } else {
           const offset = this.index + this.colorOffset;
-          const r = Math.sin(0.3 * offset) * 55 + 200;
-          const g = Math.sin(0.3 * offset + 2) * 55 + 200;
-          const b = Math.sin(0.3 * offset + 4) * 55 + 200;
-          this.color = new THREE.Color(r / 255, g / 255, b / 255);
+          // Enhanced color generation for brighter, more vibrant colors
+          const r = Math.sin(0.4 * offset) * 0.4 + 0.6; // Range: 0.2 - 1.0
+          const g = Math.sin(0.4 * offset + 2.1) * 0.4 + 0.6;
+          const b = Math.sin(0.4 * offset + 4.2) * 0.4 + 0.6;
+
+          // Ensure minimum brightness and saturation
+          const minBrightness = 0.3;
+          const brightness = (r + g + b) / 3;
+
+          let finalR = r;
+          let finalG = g;
+          let finalB = b;
+
+          if (brightness < minBrightness) {
+            const boost = minBrightness / brightness;
+            finalR = Math.min(1.0, r * boost);
+            finalG = Math.min(1.0, g * boost);
+            finalB = Math.min(1.0, b * boost);
+          }
+
+          this.color = new THREE.Color(finalR, finalG, finalB);
         }
 
         this.state = this.index > 1 ? this.STATES.ACTIVE : this.STATES.STOPPED;
@@ -403,7 +431,15 @@ export default function TowerBlockGame() {
             this.dimension.depth / 2
           )
         );
-        this.material = new THREE.MeshToonMaterial({ color: this.color });
+        this.material = new THREE.MeshPhongMaterial({
+          color: this.color,
+          shininess: 150,
+          specular: new THREE.Color(1.0, 1.0, 1.0),
+          reflectivity: 0.8,
+          transparent: false,
+          opacity: 1.0,
+          emissive: new THREE.Color(this.color).multiplyScalar(0.05),
+        });
         this.mesh = new THREE.Mesh(geometry, this.material);
         this.mesh.position.set(
           this.position.x,
@@ -924,6 +960,16 @@ export default function TowerBlockGame() {
 
       tick() {
         this.blocks[this.blocks.length - 1]?.tick();
+
+        // Add subtle shine animation to all blocks
+        this.blocks.forEach((block, index) => {
+          if (block.material && block.material.specular) {
+            const time = Date.now() * 0.001;
+            const intensity = 0.8 + 0.2 * Math.sin(time * 2 + index * 0.5);
+            block.material.specular.setScalar(intensity);
+          }
+        });
+
         this.stage.render();
 
         if (!isPaused && this.state === this.STATES.PLAYING) {
