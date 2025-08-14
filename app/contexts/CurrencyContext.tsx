@@ -11,8 +11,10 @@ import React, {
 // Types
 interface CurrencyState {
   coins: number;
+  points: number;
   totalEarned: number;
   totalSpent: number;
+  totalPointsEarned: number;
   isLoading: boolean;
 }
 
@@ -30,6 +32,7 @@ interface CurrencyContextType {
   actions: {
     spendCoins: (amount: number, reason: string) => boolean;
     earnCoins: (amount: number, reason: string) => void;
+    earnPoints: (amount: number, reason: string) => void;
     startGameSession: (gameId: string) => boolean;
     endGameSession: () => void;
     getContinueCost: () => number;
@@ -43,6 +46,7 @@ interface CurrencyContextType {
 type CurrencyAction =
   | { type: "SPEND_COINS"; payload: { amount: number; reason: string } }
   | { type: "EARN_COINS"; payload: { amount: number; reason: string } }
+  | { type: "EARN_POINTS"; payload: { amount: number; reason: string } }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "LOAD_STATE"; payload: CurrencyState }
   | { type: "START_GAME_SESSION"; payload: string }
@@ -53,8 +57,10 @@ type CurrencyAction =
 // Initial States
 const initialCurrencyState: CurrencyState = {
   coins: 100, // Starting coins for new users
+  points: 0, // Starting points for new users
   totalEarned: 100,
   totalSpent: 0,
+  totalPointsEarned: 0,
   isLoading: false,
 };
 
@@ -87,6 +93,13 @@ function currencyReducer(
         ...state,
         coins: state.coins + action.payload.amount,
         totalEarned: state.totalEarned + action.payload.amount,
+      };
+
+    case "EARN_POINTS":
+      return {
+        ...state,
+        points: state.points + action.payload.amount,
+        totalPointsEarned: state.totalPointsEarned + action.payload.amount,
       };
 
     case "SET_LOADING":
@@ -210,6 +223,13 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     console.log(`💰 Earned ${amount} coins: ${reason}`);
   };
 
+  const earnPoints = (amount: number, reason: string): void => {
+    dispatchCurrency({ type: "EARN_POINTS", payload: { amount, reason } });
+
+    // Log transaction for analytics
+    console.log(`⭐ Earned ${amount} points: ${reason}`);
+  };
+
   const startGameSession = (gameId: string): boolean => {
     const entryCost = gameSession.baseEntryCost;
 
@@ -250,6 +270,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     actions: {
       spendCoins,
       earnCoins,
+      earnPoints,
       startGameSession,
       endGameSession,
       getContinueCost,
@@ -281,6 +302,7 @@ export function useGameCurrency() {
 
   return {
     coins: currency.coins,
+    points: currency.points,
     canStartGame: actions.hasEnoughCoins(gameSession.baseEntryCost),
     canContinue: actions.hasEnoughCoins(actions.getContinueCost()),
     continueCost: actions.getContinueCost(),
@@ -297,5 +319,6 @@ export function useGameCurrency() {
       return false;
     },
     earnReward: actions.earnCoins,
+    earnPoints: actions.earnPoints,
   };
 }

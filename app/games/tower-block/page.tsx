@@ -32,10 +32,12 @@ export default function TowerBlockGame() {
   // Currency and modal states
   const {
     coins,
+    points,
     startGame,
     endGame,
     continue: gameContinue,
     earnReward,
+    earnPoints,
     continueCost,
     canContinue,
   } = useGameCurrency();
@@ -169,6 +171,20 @@ export default function TowerBlockGame() {
         earnReward(reward.amount, reward.reason);
       });
 
+      // Award points based on level reached
+      const pointsEarned = currentLevel * 10; // 10 points per level
+      if (pointsEarned > 0) {
+        earnPoints(pointsEarned, `Reached level ${currentLevel}`);
+      }
+
+      // Bonus points for achievements
+      if (finalStats && finalStats.perfectPlacements >= 5) {
+        earnPoints(50, "Perfect block streak bonus");
+      }
+      if (currentLevel >= 15) {
+        earnPoints(100, "Tower Master achievement");
+      }
+
       setGameRewards(rewards);
       setShowRewardModal(true);
 
@@ -193,7 +209,14 @@ export default function TowerBlockGame() {
       ]);
       setShowRewardModal(true);
     }
-  }, [currentLevel, endGame, earnReward, router, calculateGameStats]);
+  }, [
+    currentLevel,
+    endGame,
+    earnReward,
+    earnPoints,
+    router,
+    calculateGameStats,
+  ]);
 
   const handleContinueGame = useCallback(() => {
     // Use the centralized continue system from CurrencyContext

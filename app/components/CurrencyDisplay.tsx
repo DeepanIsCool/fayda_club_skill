@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { Coins, Minus, Plus } from "lucide-react";
+import { Coins, Minus, Plus, Star } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useCurrency } from "../contexts/CurrencyContext";
 
@@ -204,6 +204,62 @@ export function LargeCurrencyDisplay({
   className?: string;
 }) {
   return (
-    <CurrencyDisplay className={className} showTransactions={true} size="lg" />
+    <div className="hidden sm:block">
+      <CurrencyDisplay
+        className={className}
+        showTransactions={true}
+        size="lg"
+      />
+    </div>
+  );
+}
+
+// Mobile-optimized version
+export function MobileCurrencyDisplay({
+  className = "",
+}: {
+  className?: string;
+}) {
+  return (
+    <div className="block sm:hidden">
+      <CurrencyDisplay
+        className={className}
+        showTransactions={true}
+        size="md"
+      />
+    </div>
+  );
+}
+
+// Combined Currency and Points Display for Header
+export function HeaderCurrencyDisplay() {
+  const { currency } = useCurrency();
+
+  return (
+    <div className="flex items-center gap-3">
+      {/* Large screens */}
+      <div className="hidden sm:flex items-center gap-4">
+        <div className="flex items-center gap-1 px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 font-semibold">
+          <Coins size={18} />
+          <span>{currency.coins}</span>
+        </div>
+        <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 font-semibold">
+          <Star size={18} />
+          <span>{currency.points}</span>
+        </div>
+      </div>
+
+      {/* Mobile screens */}
+      <div className="flex sm:hidden items-center gap-2">
+        <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 text-sm font-semibold">
+          <Coins size={14} />
+          <span>{currency.coins}</span>
+        </div>
+        <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 text-sm font-semibold">
+          <Star size={14} />
+          <span>{currency.points}</span>
+        </div>
+      </div>
+    </div>
   );
 }
