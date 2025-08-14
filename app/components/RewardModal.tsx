@@ -3,15 +3,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
 import {
-  Award,
-  BarChart3,
-  Clock,
   Coins,
   Crosshair,
-  Gift,
   Star,
-  Target,
-  TrendingUp,
   Trophy,
   Zap,
 } from "lucide-react";
@@ -105,25 +99,6 @@ export function RewardModal({
     const avgAcc = gameStats.averageAccuracy;
     const avgRT = Math.max(gameStats.averageReactionTime, 0.5);
     return avgAcc / Math.sqrt(avgRT);
-  };
-
-  const getRewardIcon = (type: string) => {
-    switch (type) {
-      case "level":
-        return <Trophy className="text-yellow-500" size={20} />;
-      case "perfect":
-        return <Star className="text-blue-500" size={20} />;
-      case "streak":
-        return <Zap className="text-orange-500" size={20} />;
-      case "bonus":
-        return <Gift className="text-purple-500" size={20} />;
-      default:
-        return <Coins className="text-green-500" size={20} />;
-    }
-  };
-
-  const getTotalEarned = () => {
-    return rewards.reduce((sum, reward) => sum + reward.amount, 0);
   };
 
   return (
