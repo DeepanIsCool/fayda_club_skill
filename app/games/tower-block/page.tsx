@@ -770,6 +770,7 @@ export default function TowerBlockGame() {
       choppedBlocks: THREE.Group;
       newBlocks: THREE.Group;
       gameMetrics: GameMetrics;
+      actionLocked: boolean; // <<< FIX 1/4: Add a new property for the lock
 
       constructor() {
         this.STATES = {
@@ -793,6 +794,7 @@ export default function TowerBlockGame() {
         this.stage.add(this.placedBlocks);
         this.stage.add(this.choppedBlocks);
         this.stage.add(this.newBlocks);
+        this.actionLocked = false; // <<< FIX 2/4: Initialize the lock
 
         this.gameMetrics = {
           gameStartTime: Date.now(),
@@ -844,6 +846,10 @@ export default function TowerBlockGame() {
       }
 
       onAction() {
+        // <<< FIX 3/4: Check and set the lock
+        if (this.actionLocked) return;
+        this.actionLocked = true;
+
         switch (this.internalState) {
           case this.STATES.READY:
             this.startGame();
@@ -855,6 +861,11 @@ export default function TowerBlockGame() {
             this.restartGame();
             break;
         }
+
+        // <<< FIX 4/4: Release the lock after a short delay
+        setTimeout(() => {
+          this.actionLocked = false;
+        }, 200);
       }
 
       startGame() {
