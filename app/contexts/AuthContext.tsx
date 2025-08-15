@@ -64,7 +64,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (parsedAuth.user && parsedAuth.user.token && parsedAuth.user.id) {
             setUser(parsedAuth.user);
             setIsAuthenticated(true);
-            
+
             // Optionally refresh user data from server
             try {
               await refreshUserDataInternal(parsedAuth.user);
@@ -118,7 +118,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(updatedUser);
         }
       } else {
-        console.warn("Failed to refresh user data:", response.status, response.statusText);
+        console.warn(
+          "Failed to refresh user data:",
+          response.status,
+          response.statusText
+        );
       }
     } catch (error) {
       console.error("Failed to refresh user data:", error);
@@ -143,7 +147,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (response.ok && data.success && data.user) {
         setUser(data.user);
         setIsAuthenticated(true);
-        
+
         // Refresh user data to get wallet and score if user has ID
         if (data.user.id) {
           try {
@@ -153,7 +157,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.warn("Failed to refresh user data after signin:", error);
           }
         }
-        
+
         return true;
       } else {
         setError(data.message || "Sign in failed");
@@ -191,7 +195,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (response.ok && responseData.success && responseData.user) {
         setUser(responseData.user);
         setIsAuthenticated(true);
-        
+
         // Refresh user data to get wallet and score if user has ID
         if (responseData.user.id) {
           try {
@@ -201,7 +205,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.warn("Failed to refresh user data after signup:", error);
           }
         }
-        
+
         return true;
       } else {
         setError(responseData.message || "Sign up failed");
@@ -264,7 +268,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const refreshUserData = async (): Promise<void> => {
     if (!user) return;
-    
+
     try {
       await refreshUserDataInternal(user);
     } catch (error) {
@@ -290,9 +294,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 
