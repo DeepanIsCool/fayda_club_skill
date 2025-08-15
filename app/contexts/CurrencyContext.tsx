@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useReducer,
 } from "react";
+import { useAuth } from "./AuthContext";
 
 // Types
 interface CurrencyState {
@@ -31,6 +32,7 @@ interface CurrencyContextType {
   gameSession: GameSession;
   actions: {
     spendCoins: (amount: number, reason: string) => boolean;
+    earnCoins: (amount: number, reason: string) => void;
     earnPoints: (amount: number, reason: string) => void;
     startGameSession: (gameId: string) => boolean;
     endGameSession: () => void;
@@ -167,6 +169,7 @@ interface CurrencyProviderProps {
 }
 
 export function CurrencyProvider({ children }: CurrencyProviderProps) {
+  const { user, isAuthenticated } = useAuth();
   const [currency, dispatchCurrency] = useReducer(
     currencyReducer,
     initialCurrencyState
@@ -176,12 +179,30 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     initialGameSession
   );
 
-  // Load saved state on mount
+  // Sync currency with user wallet and score when user changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      dispatchCurrency({
+        type: "LOAD_STATE",
+        payload: {
+          coins: user.wallet || currency.coins,
+          points: user.score || currency.points,
+          totalEarned: currency.totalEarned,
+          totalSpent: currency.totalSpent,
+          totalPointsEarned: currency.totalPointsEarned,
+          isLoading: false,
+        },
+      });
+    }
+  }, [user, isAuthenticated]);
+
+  // Load saved state on mount (fallback for when user data is not available)
   useEffect(() => {
     const loadSavedState = () => {
       try {
         const savedState = localStorage.getItem("faydaClubCurrency");
-        if (savedState) {
+        if (savedState && !isAuthenticated) {
+          // Only load from localStorage if not authenticated
           const parsed = JSON.parse(savedState);
           dispatchCurrency({ type: "LOAD_STATE", payload: parsed });
         }
@@ -191,18 +212,40 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     };
 
     loadSavedState();
-  }, []);
+  }, [isAuthenticated]);
 
-  // Save state whenever currency changes
+  // Save state whenever currency changes (but don't override server data)
   useEffect(() => {
-    try {
-      localStorage.setItem("faydaClubCurrency", JSON.stringify(currency));
-    } catch (error) {
-      console.error("Failed to save currency state:", error);
+    if (!isAuthenticated) {
+      try {
+        localStorage.setItem("faydaClubCurrency", JSON.stringify(currency));
+      } catch (error) {
+        console.error("Failed to save currency state:", error);
+      }
     }
-  }, [currency]);
+  }, [currency, isAuthenticated]);
 
   // Actions
+  const syncToServer = async (newCoins: number, newPoints: number) => {
+    if (!isAuthenticated || !user) return;
+
+    try {
+      await fetch("/api/auth/sync-currency", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: user.id,
+          wallet: newCoins,
+          score: newPoints,
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to sync currency to server:", error);
+    }
+  };
+
   const spendCoins = (amount: number, reason: string): boolean => {
     if (currency.coins >= amount) {
       dispatchCurrency({ type: "SPEND_COINS", payload: { amount, reason } });
@@ -210,23 +253,38 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
       // Log transaction for analytics
       console.log(`💰 Spent ${amount} coins: ${reason}`);
 
+      // Sync to server if authenticated
+      if (isAuthenticated && user) {
+        syncToServer(currency.coins - amount, currency.points);
+      }
+
       return true;
     }
     return false;
   };
 
-  // const earnCoins = (amount: number, reason: string): void => {
-  //   dispatchCurrency({ type: "EARN_COINS", payload: { amount, reason } });
+  const earnCoins = (amount: number, reason: string): void => {
+    dispatchCurrency({ type: "EARN_COINS", payload: { amount, reason } });
 
-  //   // Log transaction for analytics
-  //   console.log(`💰 Earned ${amount} coins: ${reason}`);
-  // };
+    // Log transaction for analytics
+    console.log(`💰 Earned ${amount} coins: ${reason}`);
+
+    // Sync to server if authenticated
+    if (isAuthenticated && user) {
+      syncToServer(currency.coins + amount, currency.points);
+    }
+  };
 
   const earnPoints = (amount: number, reason: string): void => {
     dispatchCurrency({ type: "EARN_POINTS", payload: { amount, reason } });
 
     // Log transaction for analytics
     console.log(`⭐ Earned ${amount} points: ${reason}`);
+
+    // Sync to server if authenticated
+    if (isAuthenticated && user) {
+      syncToServer(currency.coins, currency.points + amount);
+    }
   };
 
   const startGameSession = (gameId: string): boolean => {
@@ -268,6 +326,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     gameSession,
     actions: {
       spendCoins,
+      earnCoins,
       earnPoints,
       startGameSession,
       endGameSession,
@@ -316,6 +375,7 @@ export function useGameCurrency() {
       }
       return false;
     },
+    earnReward: actions.earnCoins,
     earnPoints: actions.earnPoints,
   };
 }

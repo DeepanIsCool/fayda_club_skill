@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { HeaderCurrencyDisplay } from "./components/CurrencyDisplay";
+import { useAuth } from "./contexts/AuthContext";
 
 interface UserProfile {
   id?: string;
@@ -23,15 +24,25 @@ interface UserProfile {
 }
 
 export default function Dashboard() {
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<UserProfile | null>(null);
+  // Use Auth Context instead of local state
+  const {
+    isAuthenticated,
+    user,
+    loading: authLoading,
+    error: authError,
+    signIn,
+    signUp,
+    signOut,
+    updateProfile,
+    clearError,
+  } = useAuth();
+
+  // Modal and form states
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   // Form states
   const [signInForm, setSignInForm] = useState({ email: "", password: "" });
@@ -62,93 +73,33 @@ export default function Dashboard() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    clearError();
 
-    try {
-      const response = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(signInForm),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const userPayload = {
-          id: data.user?.id,
-          email: data.user?.email,
-          phone: data.user?.phone,
-          name: data.user?.name,
-          token: data.user?.token,
-        } as UserProfile;
-        setIsAuthenticated(true);
-        setUser(userPayload);
-        setShowSignInModal(false);
-        setSignInForm({ email: "", password: "" });
-        // Persist full user object & token
-        if (userPayload.token) {
-          localStorage.setItem("authToken", userPayload.token);
-        }
-        localStorage.setItem("authUser", JSON.stringify(userPayload));
-      } else {
-        setError(data.message || "Sign in failed");
-      }
-    } catch (_e) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+    const success = await signIn(signInForm.email, signInForm.password);
+    if (success) {
+      setShowSignInModal(false);
+      setSignInForm({ email: "", password: "" });
     }
+
+    setLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    clearError();
 
-    try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(signUpForm),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const userPayload = (data.user || {
-          name: signUpForm.name,
-          email: signUpForm.email,
-          phone: signUpForm.phone,
-        }) as UserProfile;
-        // Attach token if returned at root or inside user object
-        userPayload.token = data.token || data.user?.token || userPayload.token;
-        setIsAuthenticated(true);
-        setUser(userPayload);
-        setShowSignUpModal(false);
-        setSignUpForm({ name: "", email: "", password: "", phone: "" });
-        if (userPayload.token) {
-          localStorage.setItem("authToken", userPayload.token);
-        }
-        localStorage.setItem("authUser", JSON.stringify(userPayload));
-      } else {
-        setError(data.message || "Sign up failed");
-      }
-    } catch (_e) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+    const success = await signUp(signUpForm);
+    if (success) {
+      setShowSignUpModal(false);
+      setSignUpForm({ name: "", email: "", password: "", phone: "" });
     }
+
+    setLoading(false);
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
+    signOut();
     setShowProfileModal(false);
     setIsEditingProfile(false);
   };
@@ -156,54 +107,15 @@ export default function Dashboard() {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    clearError();
 
-    try {
-      const response = await fetch("/api/auth/update", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: user?.id,
-          ...editProfileForm,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Update user state with new data & persist
-        const updatedUser = { ...user, ...editProfileForm } as UserProfile;
-        setUser(updatedUser);
-        localStorage.setItem("authUser", JSON.stringify(updatedUser));
-        setIsEditingProfile(false);
-        setError("");
-      } else {
-        setError(data.message || "Update failed");
-      }
-    } catch (_e) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+    const success = await updateProfile(editProfileForm);
+    if (success) {
+      setIsEditingProfile(false);
     }
+
+    setLoading(false);
   };
-
-  // Rehydrate auth state on mount (prevents logout after navigating to game)
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("authUser");
-      if (stored) {
-        const parsed: UserProfile = JSON.parse(stored);
-        if (parsed?.token) {
-          setUser(parsed);
-          setIsAuthenticated(true);
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to rehydrate auth state", e);
-    }
-  }, []);
 
   const startEditing = () => {
     setEditProfileForm({
@@ -212,12 +124,12 @@ export default function Dashboard() {
       phone: user?.phone || "",
     });
     setIsEditingProfile(true);
-    setError("");
+    clearError();
   };
 
   const cancelEditing = () => {
     setIsEditingProfile(false);
-    setError("");
+    clearError();
   };
 
   const handleGameClick = (e: React.MouseEvent, _gamePath: string) => {
@@ -362,9 +274,9 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {error && (
+            {authError && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
-                {error}
+                {authError}
               </div>
             )}
 
@@ -444,9 +356,9 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {error && (
+            {authError && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
-                {error}
+                {authError}
               </div>
             )}
 
@@ -573,9 +485,9 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {error && (
+            {authError && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
-                {error}
+                {authError}
               </div>
             )}
 

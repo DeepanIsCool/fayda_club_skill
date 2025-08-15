@@ -11,6 +11,7 @@ import { CompactCurrencyDisplay } from "../../components/CurrencyDisplay";
 import { GameStartModal } from "../../components/GameStartModal";
 import { PauseModal } from "../../components/PauseModal";
 import { RewardModal } from "../../components/RewardModal";
+import { useAuth } from "../../contexts/AuthContext";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 
 interface GameReward {
@@ -21,6 +22,7 @@ interface GameReward {
 
 export default function TowerBlockGame() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const scoreContainerRef = useRef<HTMLDivElement>(null);
   const instructionsRef = useRef<HTMLDivElement>(null);
@@ -56,6 +58,13 @@ export default function TowerBlockGame() {
   const [isPaused, setIsPaused] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [gameInitialized, setGameInitialized] = useState(false);
+
+  // Redirect to dashboard if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/");
+    }
+  }, [isAuthenticated, router]);
 
   // Game instance ref
 
