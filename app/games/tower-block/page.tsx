@@ -215,18 +215,23 @@ export default function TowerBlockGame() {
           return;
         }
 
+        // Calculate the new game score using the formula
+        const avgAcc = finalStats.averageAccuracy || 0;
+        const avgRT = Math.max(finalStats.averageReactionTime || 0.5, 0.5);
+        const calculatedGameScore = avgAcc / Math.sqrt(avgRT);
+
         const sessionData = {
           gameId: gameConfig.id,
           userId: user.id,
           level: finalStats.finalLevel,
-          score: finalStats.totalPrecisionScore,
+          score: calculatedGameScore,
           duration:
             (gameInstanceRef.current.gameMetrics.gameEndTime || Date.now()) -
             (gameInstanceRef.current.gameMetrics.gameStartTime || Date.now()),
           sessionData: {
             // Game completion metrics
             finalLevel: finalStats.finalLevel,
-            totalScore: finalStats.totalPrecisionScore,
+            totalScore: calculatedGameScore,
             averageAccuracy: finalStats.averageAccuracy,
 
             // Performance metrics
@@ -315,8 +320,10 @@ export default function TowerBlockGame() {
 
     // Calculate and show final results
     if (currentLevel > 0) {
-      // Show a simple completion message with score
-      const finalScore = finalStats?.totalPrecisionScore || 0;
+      // Calculate game score using the new formula
+      const avgAcc = finalStats?.averageAccuracy || 0;
+      const avgRT = Math.max(finalStats?.averageReactionTime || 0.5, 0.5);
+      const finalScore = Math.round(avgAcc / Math.sqrt(avgRT));
 
       setGameRewards([
         {

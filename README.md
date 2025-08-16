@@ -129,6 +129,18 @@ blockAreas.push(placedArea); // Array of all placed block areas
 totalGameTime = (gameEndTime - gameStartTime) / 1000; // in seconds
 ```
 
+### 🏆 Final Game Score
+
+#### **Game Score Formula**
+
+```typescript
+gameScore = averageAccuracy / Math.sqrt(averageReactionTime);
+```
+
+- **averageAccuracy**: Average precision percentage across all blocks placed
+- **averageReactionTime**: Average time taken to place each block (minimum 0.5 seconds)
+- This formula rewards both accuracy and speed, with faster reaction times providing a multiplicative bonus
+
 ### 💰 Reward Formulas
 
 #### **Level Reward**

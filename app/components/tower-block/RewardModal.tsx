@@ -87,14 +87,6 @@ export function RewardModal({
     }
   }, [isOpen]);
 
-  // Calculate score for each game
-  const getGameScore = () => {
-    if (!gameStats) return 0;
-    const avgAcc = gameStats.averageAccuracy;
-    const avgRT = Math.max(gameStats.averageReactionTime, 0.5);
-    return avgAcc / Math.sqrt(avgRT);
-  };
-
   // Note: reward icon helpers removed as reward list is currently commented out.
   // const totalEarned = rewards.reduce((sum, r) => sum + r.amount, 0);
 
@@ -358,7 +350,10 @@ export function RewardModal({
                           className="sm:w-8 sm:h-8 text-yellow-500 drop-shadow-md"
                         />
                         <span className="text-2xl sm:text-3xl font-bold text-blue-600 drop-shadow-md">
-                          {getGameScore().toFixed(2)} pts
+                          {rewards
+                            .find((r) => r.type === "score")
+                            ?.amount?.toFixed(2) || "0.00"}{" "}
+                          pts
                         </span>
                       </>
                     )}
