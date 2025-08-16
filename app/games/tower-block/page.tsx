@@ -6,23 +6,24 @@ import { Pause } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { ContinueModal } from "../../components/ContinueModal";
-import { CompactCurrencyDisplay } from "../../components/CurrencyDisplay";
-import { GameStartModal } from "../../components/GameStartModal";
-import { PauseModal } from "../../components/PauseModal";
-import { RewardModal } from "../../components/RewardModal";
+import { ContinueModal } from "../../components/tower-block/ContinueModal";
+import { CompactCurrencyDisplay } from "../../components/tower-block/CurrencyDisplay";
+import { GameStartModal } from "../../components/tower-block/GameStartModal";
+import { PauseModal } from "../../components/tower-block/PauseModal";
+import { RewardModal } from "../../components/tower-block/RewardModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
+import { gameConfigService } from "../../lib/gameConfig";
 
 interface GameReward {
   amount: number;
   reason: string;
-  type: "level" | "perfect" | "streak" | "bonus" | "achievement";
+  type: "level" | "perfect" | "streak" | "bonus" | "achievement" | "score";
 }
 
 export default function TowerBlockGame() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const scoreContainerRef = useRef<HTMLDivElement>(null);
   const instructionsRef = useRef<HTMLDivElement>(null);
@@ -38,6 +39,8 @@ export default function TowerBlockGame() {
     startGame,
     endGame,
     continue: gameContinue,
+    continueCost,
+    continueAttempt,
     earnPoints,
   } = useGameCurrency();
   const [showStartModal, setShowStartModal] = useState(true);
@@ -58,6 +61,14 @@ export default function TowerBlockGame() {
   const [isPaused, setIsPaused] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [gameInitialized, setGameInitialized] = useState(false);
+
+  // Track financial metrics during the game session
+  const [sessionFinancials, setSessionFinancials] = useState({
+    entryFee: 0,
+    coinsSpentOnContinues: 0,
+    totalCoinsSpent: 0,
+    continueAttempts: 0,
+  });
 
   // Redirect to dashboard if not authenticated
   useEffect(() => {
@@ -94,6 +105,8 @@ export default function TowerBlockGame() {
     pauseGame: () => void;
     resumeGame: () => void;
     restartGame: () => void;
+    onAction: () => void;
+    manualStart: () => void;
     stage: {
       onResize: () => void;
       container: HTMLDivElement;
@@ -106,24 +119,52 @@ export default function TowerBlockGame() {
 
   const gameInstanceRef = useRef<GameInstance | null>(null);
 
-  const handleStartGame = useCallback(() => {
-    if (startGame("tower-block")) {
-      setShowStartModal(false);
-      setGameInitialized(true);
-      setCurrentLevel(0);
-      setGameRewards([]);
+  const handleStartGame = useCallback(async () => {
+    try {
+      const success = await startGame("tower-block");
+      if (success) {
+        // Get the entry fee from game config
+        await gameConfigService.loadGames();
+        const gameConfig = gameConfigService.getGameBySlug("tower-block");
+        const entryFee = gameConfig?.entryfee || 2;
 
-      // Play start game sound
-      const audioStart = audioStartRef.current;
-      if (audioStart) {
-        audioStart.currentTime = 0;
-        audioStart.play().catch(() => {
-          // Audio play failed, likely due to user interaction requirements
+        setShowStartModal(false);
+        setGameInitialized(true);
+        setCurrentLevel(0);
+        setGameRewards([]);
+
+        // Initialize session financial tracking
+        setSessionFinancials({
+          entryFee: entryFee,
+          coinsSpentOnContinues: 0,
+          totalCoinsSpent: entryFee,
+          continueAttempts: 0,
         });
+
+        // Play start game sound
+        const audioStart = audioStartRef.current;
+        if (audioStart) {
+          audioStart.currentTime = 0;
+          audioStart.play().catch(() => {
+            // Audio play failed, likely due to user interaction requirements
+          });
+        }
+
+        // Manually start the game (this will set gameStarted = true and start the game)
+        setTimeout(() => {
+          if (gameInstanceRef.current && gameInstanceRef.current.manualStart) {
+            gameInstanceRef.current.manualStart();
+          }
+        }, 100);
+
+        console.log("✅ Tower Block game started successfully");
+      } else {
+        console.error("❌ Failed to start Tower Block game");
       }
+    } catch (error) {
+      console.error("❌ Error starting Tower Block game:", error);
     }
   }, [startGame]);
-
   const calculateGameStats = useCallback(() => {
     if (!gameInstanceRef.current?.gameMetrics) return null;
 
@@ -159,6 +200,106 @@ export default function TowerBlockGame() {
     };
   }, [currentLevel]);
 
+  // Submit game session data to API
+  const submitGameSession = useCallback(
+    async (finalStats: TowerGameStats | null) => {
+      if (!user || !gameInstanceRef.current || !finalStats) return;
+
+      try {
+        // Get game configuration for ID
+        await gameConfigService.loadGames();
+        const gameConfig = gameConfigService.getGameBySlug("tower-block");
+
+        if (!gameConfig) {
+          console.error("Could not find Tower Block game configuration");
+          return;
+        }
+
+        const sessionData = {
+          gameId: gameConfig.id,
+          userId: user.id,
+          level: finalStats.finalLevel,
+          score: finalStats.totalPrecisionScore,
+          duration:
+            (gameInstanceRef.current.gameMetrics.gameEndTime || Date.now()) -
+            (gameInstanceRef.current.gameMetrics.gameStartTime || Date.now()),
+          sessionData: {
+            // Game completion metrics
+            finalLevel: finalStats.finalLevel,
+            totalScore: finalStats.totalPrecisionScore,
+            averageAccuracy: finalStats.averageAccuracy,
+
+            // Performance metrics
+            perfectPlacements: finalStats.perfectPlacements,
+            maxConsecutiveStreak: finalStats.maxConsecutiveStreak || 0,
+            averageReactionTime: finalStats.averageReactionTime,
+            totalGameTime: finalStats.totalGameTime || 0,
+
+            // Financial metrics - coins spent only (no earnings)
+            entryFee: sessionFinancials.entryFee,
+            coinsSpentOnContinues: sessionFinancials.coinsSpentOnContinues,
+            totalCoinsSpent: sessionFinancials.totalCoinsSpent,
+            continueAttempts: sessionFinancials.continueAttempts,
+
+            // Detailed game metrics
+            gameStartTime: gameInstanceRef.current.gameMetrics.gameStartTime,
+            gameEndTime: gameInstanceRef.current.gameMetrics.gameEndTime,
+            totalPrecisionScore:
+              gameInstanceRef.current.gameMetrics.totalPrecisionScore,
+            totalOverlapPercentage:
+              gameInstanceRef.current.gameMetrics.totalOverlapPercentage,
+            consecutiveSuccessStreak:
+              gameInstanceRef.current.gameMetrics.consecutiveSuccessStreak,
+
+            // Block placement metrics
+            blockPlacementTimes:
+              gameInstanceRef.current.gameMetrics.blockPlacementTimes,
+            totalTowerArea: gameInstanceRef.current.gameMetrics.totalTowerArea,
+            blockAreas: gameInstanceRef.current.gameMetrics.blockAreas,
+            totalAreaLost: gameInstanceRef.current.gameMetrics.totalAreaLost,
+            areaLossHistory:
+              gameInstanceRef.current.gameMetrics.areaLossHistory,
+            minBlockArea: gameInstanceRef.current.gameMetrics.minBlockArea,
+            maxBlockArea: gameInstanceRef.current.gameMetrics.maxBlockArea,
+            initialBlockArea:
+              gameInstanceRef.current.gameMetrics.initialBlockArea,
+
+            // Timing analysis
+            lastBlockTime: gameInstanceRef.current.gameMetrics.lastBlockTime,
+
+            // Session metadata
+            gameType: "Tower Block",
+            platform: "web",
+            timestamp: new Date().toISOString(),
+            version: "1.0.0",
+          },
+        };
+
+        const response = await fetch("/api/game-sessions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sessionData),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log(
+            "✅ Game session submitted successfully:",
+            result.sessionId
+          );
+        } else {
+          console.error("❌ Failed to submit game session:", result.message);
+        }
+      } catch (error) {
+        console.error("❌ Error submitting game session:", error);
+      }
+    },
+    [user]
+  );
+
   const handleGameOver = useCallback(() => {
     setShowContinueModal(false);
     endGame(); // This resets continue attempts automatically
@@ -172,79 +313,18 @@ export default function TowerBlockGame() {
     const finalStats = calculateGameStats();
     setGameStats(finalStats);
 
-    // Calculate and show rewards
+    // Calculate and show final results
     if (currentLevel > 0) {
-      const rewards: GameReward[] = [];
+      // Show a simple completion message with score
+      const finalScore = finalStats?.totalPrecisionScore || 0;
 
-      // Base level reward (more generous)
-      const levelReward = Math.max(2, Math.floor(currentLevel * 0.75)); // Increased from currentLevel / 2
-      rewards.push({
-        amount: levelReward,
-        reason: `Reached Level ${currentLevel}`,
-        type: "level",
-      });
-
-      // Perfect placement bonus
-      if (
-        gameInstanceRef.current &&
-        gameInstanceRef.current.gameMetrics.perfectPlacements > 0
-      ) {
-        const perfectBonus =
-          gameInstanceRef.current.gameMetrics.perfectPlacements * 3; // Increased from * 2
-        rewards.push({
-          amount: perfectBonus,
-          reason: `${gameInstanceRef.current.gameMetrics.perfectPlacements} Perfect Blocks`,
-          type: "perfect",
-        });
-      }
-
-      // Streak bonus
-      if (
-        gameInstanceRef.current &&
-        gameInstanceRef.current.gameMetrics.maxConsecutiveStreak >= 3
-      ) {
-        // Reduced from 5
-        const streakBonus = Math.floor(
-          gameInstanceRef.current.gameMetrics.maxConsecutiveStreak / 3 // Reduced divisor
-        );
-        rewards.push({
-          amount: streakBonus,
-          reason: `${gameInstanceRef.current.gameMetrics.maxConsecutiveStreak} Block Streak`,
-          type: "streak",
-        });
-      }
-
-      // High level achievement
-      if (currentLevel >= 15) {
-        // Reduced from 20
-        rewards.push({
-          amount: 15, // Increased from 10
-          reason: "Tower Master Achievement",
-          type: "achievement",
-        });
-      }
-
-      // Award points for performance (no coins)
-      // Convert coin rewards to points (multiply by 10 for better point values)
-      rewards.forEach((reward) => {
-        earnPoints(reward.amount * 10, reward.reason);
-      });
-
-      // Award additional points based on level reached
-      const levelPointsEarned = currentLevel * 10; // 10 points per level
-      if (levelPointsEarned > 0) {
-        earnPoints(levelPointsEarned, `Level completion bonus`);
-      }
-
-      // Bonus points for achievements
-      if (finalStats && finalStats.perfectPlacements >= 5) {
-        earnPoints(50, "Perfect block streak bonus");
-      }
-      if (currentLevel >= 15) {
-        earnPoints(100, "Tower Master achievement");
-      }
-
-      setGameRewards(rewards);
+      setGameRewards([
+        {
+          amount: finalScore,
+          reason: `Game Complete - Level ${currentLevel}`,
+          type: "score",
+        },
+      ]);
       setShowRewardModal(true);
 
       // Play victory sound
@@ -256,38 +336,45 @@ export default function TowerBlockGame() {
         });
       }
     } else {
-      // Even for level 0, give a small consolation points reward
-      const consolationPoints = 10;
-      earnPoints(consolationPoints, "Thanks for playing!");
+      // Level 0 - just show completion message
       setGameRewards([
         {
-          amount: 1, // Keep amount for display purposes
-          reason: "Thanks for playing!",
-          type: "bonus",
+          amount: 0,
+          reason: "Game Over - Try Again!",
+          type: "score",
         },
       ]);
       setShowRewardModal(true);
     }
-  }, [currentLevel, endGame, earnPoints, calculateGameStats]);
+
+    // Submit game session with final stats
+    submitGameSession(finalStats);
+  }, [currentLevel, endGame, calculateGameStats, submitGameSession]);
 
   const handleContinueGame = useCallback(() => {
     // Use the centralized continue system from CurrencyContext
     if (gameContinue()) {
       setShowContinueModal(false);
 
+      // Update financial tracking
+      setSessionFinancials((prev) => ({
+        ...prev,
+        coinsSpentOnContinues: prev.coinsSpentOnContinues + continueCost,
+        totalCoinsSpent: prev.totalCoinsSpent + continueCost,
+        continueAttempts: prev.continueAttempts + 1,
+      }));
+
       // Reset the game state but keep the level
       if (gameInstanceRef.current) {
         console.log(
-          `Continuing game at level ${currentLevel}, continue attempt #${
-            gameInstanceRef.current?.gameSession?.currentContinueIndex || 0
-          }`
+          `Continuing game at level ${currentLevel}, continue attempt #${continueAttempt}, cost: ${continueCost} coins`
         );
         gameInstanceRef.current.continueFromLastPosition();
       }
     } else {
       console.error("Failed to continue game - insufficient coins");
     }
-  }, [gameContinue, currentLevel]);
+  }, [gameContinue, currentLevel, continueCost, continueAttempt]);
 
   const handlePause = useCallback(() => {
     if (!isPaused) {
@@ -780,6 +867,7 @@ export default function TowerBlockGame() {
       newBlocks: THREE.Group;
       gameMetrics: GameMetrics;
       actionLocked: boolean; // <<< FIX 1/4: Add a new property for the lock
+      gameStarted: boolean; // Add flag to track if game has been manually started
 
       constructor() {
         this.STATES = {
@@ -804,6 +892,7 @@ export default function TowerBlockGame() {
         this.stage.add(this.choppedBlocks);
         this.stage.add(this.newBlocks);
         this.actionLocked = false; // <<< FIX 2/4: Initialize the lock
+        this.gameStarted = false; // Initialize as not started
 
         this.gameMetrics = {
           gameStartTime: Date.now(),
@@ -857,6 +946,12 @@ export default function TowerBlockGame() {
       onAction() {
         // <<< FIX 3/4: Check and set the lock
         if (this.actionLocked) return;
+
+        // Don't respond to automatic events until game is manually started
+        if (!this.gameStarted && this.internalState === this.STATES.READY) {
+          return;
+        }
+
         this.actionLocked = true;
 
         switch (this.internalState) {
@@ -907,6 +1002,14 @@ export default function TowerBlockGame() {
             maxBlockArea: 0,
             lastBlockTime: Date.now(),
           };
+        }
+      }
+
+      // Method to manually start the game from external code
+      manualStart() {
+        this.gameStarted = true;
+        if (this.internalState === this.STATES.READY) {
+          this.startGame();
         }
       }
 

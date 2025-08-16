@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useReducer,
 } from "react";
+import { GameConfig, gameConfigService } from "../lib/gameConfig";
 import { useAuth } from "./AuthContext";
 
 // Types
@@ -25,6 +26,8 @@ interface GameSession {
   continueCosts: number[];
   currentContinueIndex: number;
   gameId: string;
+  gameSlug: string;
+  gameConfig: GameConfig | null;
 }
 
 interface CurrencyContextType {
@@ -34,7 +37,7 @@ interface CurrencyContextType {
     spendCoins: (amount: number, reason: string) => boolean;
     earnCoins: (amount: number, reason: string) => void;
     earnPoints: (amount: number, reason: string) => void;
-    startGameSession: (gameId: string) => boolean;
+    startGameSession: (gameSlug: string) => Promise<boolean>;
     endGameSession: () => void;
     getContinueCost: () => number;
     incrementContinueAttempt: () => void;
@@ -50,7 +53,10 @@ type CurrencyAction =
   | { type: "EARN_POINTS"; payload: { amount: number; reason: string } }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "LOAD_STATE"; payload: CurrencyState }
-  | { type: "START_GAME_SESSION"; payload: string }
+  | {
+      type: "START_GAME_SESSION";
+      payload: { gameId: string; gameSlug: string; gameConfig: GameConfig };
+    }
   | { type: "END_GAME_SESSION" }
   | { type: "INCREMENT_CONTINUE_ATTEMPT" }
   | { type: "RESET_CONTINUE_ATTEMPTS" };
@@ -68,9 +74,11 @@ const initialCurrencyState: CurrencyState = {
 const initialGameSession: GameSession = {
   isActive: false,
   baseEntryCost: 1,
-  continueCosts: [2, 4, 8, 16], // Exponential progression: 2, 4, 8, 16 coins
+  continueCosts: [2, 4, 8, 16], // Default progression
   currentContinueIndex: 0,
   gameId: "",
+  gameSlug: "",
+  gameConfig: null,
 };
 
 // Reducer
@@ -126,7 +134,12 @@ function gameSessionReducer(
       return {
         ...state,
         isActive: true,
-        gameId: action.payload,
+        gameId: action.payload.gameId,
+        gameSlug: action.payload.gameSlug,
+        gameConfig: action.payload.gameConfig,
+        baseEntryCost: action.payload.gameConfig?.entryfee || 1,
+        continueCosts: action.payload.gameConfig?.frontendConfig?.continueRules
+          .costProgression || [2, 4, 8, 16],
         currentContinueIndex: 0,
       };
 
@@ -135,6 +148,8 @@ function gameSessionReducer(
         ...state,
         isActive: false,
         gameId: "",
+        gameSlug: "",
+        gameConfig: null,
         currentContinueIndex: 0,
       };
 
@@ -200,9 +215,9 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   useEffect(() => {
     const loadSavedState = () => {
       try {
-        const savedState = localStorage.getItem("faydaClubCurrency");
+        const savedState = sessionStorage.getItem("faydaClubCurrency");
         if (savedState && !isAuthenticated) {
-          // Only load from localStorage if not authenticated
+          // Only load from sessionStorage if not authenticated
           const parsed = JSON.parse(savedState);
           dispatchCurrency({ type: "LOAD_STATE", payload: parsed });
         }
@@ -218,7 +233,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   useEffect(() => {
     if (!isAuthenticated) {
       try {
-        localStorage.setItem("faydaClubCurrency", JSON.stringify(currency));
+        sessionStorage.setItem("faydaClubCurrency", JSON.stringify(currency));
       } catch (error) {
         console.error("Failed to save currency state:", error);
       }
@@ -287,16 +302,46 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     }
   };
 
-  const startGameSession = (gameId: string): boolean => {
-    const entryCost = gameSession.baseEntryCost;
+  const startGameSession = async (gameSlug: string): Promise<boolean> => {
+    try {
+      // Load game configurations if not already loaded
+      await gameConfigService.loadGames();
 
-    if (currency.coins >= entryCost) {
-      dispatchGameSession({ type: "START_GAME_SESSION", payload: gameId });
-      dispatchGameSession({ type: "RESET_CONTINUE_ATTEMPTS" }); // Reset continue attempts for new game
-      return spendCoins(entryCost, `Started ${gameId} game`);
+      // Get game configuration
+      const gameConfig = gameConfigService.getGameBySlug(gameSlug);
+
+      if (!gameConfig) {
+        console.error(`No configuration found for game: ${gameSlug}`);
+        return false;
+      }
+
+      if (!gameConfig.hasImplementation) {
+        console.error(
+          `Game ${gameSlug} does not have a frontend implementation`
+        );
+        return false;
+      }
+
+      const entryCost = gameConfig.entryfee;
+
+      if (currency.coins >= entryCost) {
+        dispatchGameSession({
+          type: "START_GAME_SESSION",
+          payload: {
+            gameId: gameConfig.id,
+            gameSlug: gameSlug,
+            gameConfig: gameConfig,
+          },
+        });
+        dispatchGameSession({ type: "RESET_CONTINUE_ATTEMPTS" });
+        return spendCoins(entryCost, `Started ${gameConfig.name} game`);
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error starting game session:", error);
+      return false;
     }
-
-    return false;
   };
 
   const endGameSession = (): void => {
@@ -360,12 +405,17 @@ export function useGameCurrency() {
   return {
     coins: currency.coins,
     points: currency.points,
-    canStartGame: actions.hasEnoughCoins(gameSession.baseEntryCost),
+    gameConfig: gameSession.gameConfig,
+    canStartGame: (gameSlug: string) => {
+      const gameConfig = gameConfigService.getGameBySlug(gameSlug);
+      const entryCost = gameConfig?.entryfee || 1;
+      return actions.hasEnoughCoins(entryCost);
+    },
     canContinue: actions.hasEnoughCoins(actions.getContinueCost()),
     continueCost: actions.getContinueCost(),
     continueAttempt: gameSession.currentContinueIndex,
     maxContinues: gameSession.continueCosts.length,
-    startGame: (gameId: string) => actions.startGameSession(gameId),
+    startGame: (gameSlug: string) => actions.startGameSession(gameSlug),
     endGame: actions.endGameSession,
     continue: () => {
       const cost = actions.getContinueCost();

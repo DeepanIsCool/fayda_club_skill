@@ -5,7 +5,7 @@ import { gsap } from "gsap";
 import { AlertCircle, Coins, Heart, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { useGameCurrency } from "../contexts/CurrencyContext";
+import { useGameCurrency } from "../../contexts/CurrencyContext";
 
 interface ContinueModalProps {
   isOpen: boolean;

@@ -11,9 +11,12 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { HeaderCurrencyDisplay } from "./components/CurrencyDisplay";
+import { toast } from "react-hot-toast";
+import { HeaderCurrencyDisplay } from "./components/tower-block/CurrencyDisplay";
 import { useAuth } from "./contexts/AuthContext";
+import { GameConfig, gameConfigService } from "./lib/gameConfig";
 
 interface UserProfile {
   id?: string;
@@ -24,6 +27,8 @@ interface UserProfile {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
+
   // Use Auth Context instead of local state
   const {
     isAuthenticated,
@@ -44,6 +49,11 @@ export default function Dashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Game loading states
+  const [games, setGames] = useState<GameConfig[]>([]);
+  const [gamesLoading, setGamesLoading] = useState(true);
+  const [gamesError, setGamesError] = useState<string | null>(null);
+
   // Form states
   const [signInForm, setSignInForm] = useState({ email: "", password: "" });
   const [signUpForm, setSignUpForm] = useState({
@@ -58,16 +68,39 @@ export default function Dashboard() {
     phone: "",
   });
 
-  const games = [
-    {
-      name: "Tower Block",
-      description: "Build the highest tower possible with precision.",
-      path: "/games/tower-block",
-      cost: 1,
-      difficulty: "Medium",
-      rewards: "2-20 coins",
-    },
-  ];
+  // Load games on component mount
+  useEffect(() => {
+    const loadGames = async () => {
+      try {
+        setGamesLoading(true);
+        setGamesError(null);
+
+        const gameConfigs = await gameConfigService.loadGames();
+        console.log("🎮 All loaded game configs:", gameConfigs);
+
+        // Filter to only show games that have frontend implementations
+        const availableGames = gameConfigs.filter(
+          (game) => game.hasImplementation
+        );
+
+        console.log("✅ Available games after filtering:", availableGames);
+        console.log(
+          "🔍 Games without implementation:",
+          gameConfigs.filter((game) => !game.hasImplementation)
+        );
+
+        setGames(availableGames);
+        console.log(`✅ Loaded ${availableGames.length} available games`);
+      } catch (error) {
+        console.error("❌ Failed to load games:", error);
+        setGamesError("Failed to load games. Please try again.");
+      } finally {
+        setGamesLoading(false);
+      }
+    };
+
+    loadGames();
+  }, []);
 
   // Authentication functions
   const handleSignIn = async (e: React.FormEvent) => {
@@ -132,12 +165,13 @@ export default function Dashboard() {
     clearError();
   };
 
-  const handleGameClick = (e: React.MouseEvent, _gamePath: string) => {
+  const handleGameClick = (e: React.MouseEvent, gamePath: string) => {
     if (!isAuthenticated) {
       e.preventDefault();
-      alert("Please sign in to play games!");
+      toast.error("Please sign in to play games!");
       return;
     }
+    // Let the Link handle navigation for authenticated users
   };
 
   return (
@@ -190,65 +224,141 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex flex-col items-center px-4 sm:px-6 lg:px-8 pb-8">
-        {/* Games Grid */}
-        <div className="w-full max-w-2xl">
-          {games.map((game) => (
-            <Link key={game.name} href={game.path} passHref className="block">
-              <div
-                className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 mb-6 cursor-pointer border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
-                onClick={(e) => handleGameClick(e, game.path)}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-2">
-                      {game.name}
-                    </h2>
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-3">
-                      {game.description}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 text-xs sm:text-sm font-medium">
-                      <Coins size={16} /> {game.cost}
-                    </div>
-                  </div>
-                </div>
+        {/* Loading State */}
+        {gamesLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <span className="ml-3 text-gray-600 dark:text-gray-300">
+              Loading games...
+            </span>
+          </div>
+        )}
 
-                <div className="flex justify-between items-center">
-                  <div className="flex gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    <span className="flex items-center gap-1">
-                      🎯 {game.difficulty}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      💰 {game.rewards}
-                    </span>
-                  </div>
-
-                  <button
-                    className="px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
-                    title="Open game"
-                    aria-label="Open game"
-                  >
-                    <svg
-                      className="w-4 h-4 sm:w-5 sm:h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </button>
-                </div>
+        {/* Error State */}
+        {gamesError && (
+          <div className="w-full max-w-2xl">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
+              <div className="text-red-600 dark:text-red-400 mb-2">
+                ❌ {gamesError}
               </div>
-            </Link>
-          ))}
-        </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-sm text-red-600 dark:text-red-400 underline hover:no-underline"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Games Grid */}
+        {!gamesLoading && !gamesError && (
+          <div className="w-full max-w-2xl">
+            {games.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-500 dark:text-gray-400 mb-4">🎮</div>
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  No games available
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Check back later for new games!
+                </p>
+              </div>
+            ) : (
+              games.map((game) => {
+                const gamePath =
+                  game.frontendConfig?.path || `/games/${game.slug}`;
+                const gameIcon =
+                  game.frontendConfig?.displayConfig.icons.main || "🎮";
+                const primaryColor =
+                  game.frontendConfig?.displayConfig.colors.primary ||
+                  "#3B82F6";
+
+                return (
+                  <Link
+                    key={game.id}
+                    href={gamePath}
+                    passHref
+                    className="block"
+                  >
+                    <div
+                      className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 mb-6 cursor-pointer border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
+                      onClick={(e) => handleGameClick(e, gamePath)}
+                      style={{
+                        borderColor: `${primaryColor}20`,
+                      }}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-2">
+                            {gameIcon} {game.name}
+                          </h2>
+                          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-3">
+                            {game.description}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs sm:text-sm font-medium"
+                            style={{
+                              backgroundColor: `${primaryColor}20`,
+                              color: primaryColor,
+                            }}
+                          >
+                            <Coins size={16} /> {game.entryfee}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                          <span className="flex items-center gap-1">
+                            {game.frontendConfig?.displayConfig.icons
+                              .difficulty || "⭐"}{" "}
+                            Level {game.hardness}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            🏆 {game.rating}/5
+                          </span>
+                          <span className="flex items-center gap-1">
+                            📱 {game.category}
+                          </span>
+                        </div>
+
+                        <button
+                          className="px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+                          style={{
+                            background: `linear-gradient(to right, ${primaryColor}, ${
+                              game.frontendConfig?.displayConfig.colors
+                                .secondary || "#1E40AF"
+                            })`,
+                          }}
+                          title="Play game"
+                          aria-label="Play game"
+                        >
+                          <svg
+                            className="w-4 h-4 sm:w-5 sm:h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })
+            )}
+          </div>
+        )}
 
         {/* Footer Info */}
         <div className="mt-8 text-center text-gray-500 dark:text-gray-400 text-xs sm:text-sm">

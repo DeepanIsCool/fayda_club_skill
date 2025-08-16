@@ -8,7 +8,7 @@ import React, { useEffect, useRef } from "react";
 interface Reward {
   amount: number;
   reason: string;
-  type: "level" | "perfect" | "streak" | "bonus" | "achievement";
+  type: "level" | "perfect" | "streak" | "bonus" | "achievement" | "score";
 }
 
 interface GameStats {

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
 import { AlertTriangle, Coins, Play, Target, Trophy } from "lucide-react";
 import React, { useEffect, useRef } from "react";
-import { useGameCurrency } from "../contexts/CurrencyContext";
+import { useGameCurrency } from "../../contexts/CurrencyContext";
 
 interface GameStartModalProps {
   isOpen: boolean;

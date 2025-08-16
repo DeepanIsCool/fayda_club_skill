@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
 import { Coins, Minus, Plus, Star } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { useCurrency } from "../contexts/CurrencyContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface CoinTransaction {
   id: string;
