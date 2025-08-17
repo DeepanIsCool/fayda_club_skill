@@ -106,7 +106,6 @@ export default function TowerBlockGame() {
     resumeGame: () => void;
     restartGame: () => void;
     onAction: () => void;
-    manualStart: () => void;
     stage: {
       onResize: () => void;
       container: HTMLDivElement;
@@ -119,52 +118,46 @@ export default function TowerBlockGame() {
 
   const gameInstanceRef = useRef<GameInstance | null>(null);
 
-  const handleStartGame = useCallback(async () => {
-    try {
-      const success = await startGame("tower-block");
-      if (success) {
-        // Get the entry fee from game config
-        await gameConfigService.loadGames();
-        const gameConfig = gameConfigService.getGameBySlug("tower-block");
-        const entryFee = gameConfig?.entryfee || 2;
+  const handleStartGame = useCallback(() => {
+    // The startGame function now returns a Promise, so we handle it.
+    startGame("tower-block")
+      .then((success) => {
+        if (success) {
+          setShowStartModal(false);
+          setGameInitialized(true);
+          setCurrentLevel(0);
+          setGameRewards([]);
 
-        setShowStartModal(false);
-        setGameInitialized(true);
-        setCurrentLevel(0);
-        setGameRewards([]);
-
-        // Initialize session financial tracking
-        setSessionFinancials({
-          entryFee: entryFee,
-          coinsSpentOnContinues: 0,
-          totalCoinsSpent: entryFee,
-          continueAttempts: 0,
-        });
-
-        // Play start game sound
-        const audioStart = audioStartRef.current;
-        if (audioStart) {
-          audioStart.currentTime = 0;
-          audioStart.play().catch(() => {
-            // Audio play failed, likely due to user interaction requirements
+          // Initialize session financial tracking from game config
+          const gameConfig = gameConfigService.getGameBySlug("tower-block");
+          const entryFee = gameConfig?.entryfee || 1; // Default entry fee
+          setSessionFinancials({
+            entryFee: entryFee,
+            coinsSpentOnContinues: 0,
+            totalCoinsSpent: entryFee,
+            continueAttempts: 0,
           });
-        }
 
-        // Manually start the game (this will set gameStarted = true and start the game)
-        setTimeout(() => {
-          if (gameInstanceRef.current && gameInstanceRef.current.manualStart) {
-            gameInstanceRef.current.manualStart();
+          // Play start game sound
+          const audioStart = audioStartRef.current;
+          if (audioStart) {
+            audioStart.currentTime = 0;
+            audioStart.play().catch(() => {
+              // Audio play failed, likely due to user interaction requirements
+            });
           }
-        }, 100);
-
-        console.log("✅ Tower Block game started successfully");
-      } else {
-        console.error("❌ Failed to start Tower Block game");
-      }
-    } catch (error) {
-      console.error("❌ Error starting Tower Block game:", error);
-    }
+          console.log("✅ Tower Block game started successfully");
+        } else {
+          console.error(
+            "❌ Failed to start Tower Block game (likely insufficient coins or config error)"
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Error starting Tower Block game:", error);
+      });
   }, [startGame]);
+
   const calculateGameStats = useCallback(() => {
     if (!gameInstanceRef.current?.gameMetrics) return null;
 
@@ -302,7 +295,7 @@ export default function TowerBlockGame() {
         console.error("❌ Error submitting game session:", error);
       }
     },
-    [user]
+    [user, sessionFinancials]
   );
 
   const handleGameOver = useCallback(() => {
@@ -873,8 +866,8 @@ export default function TowerBlockGame() {
       choppedBlocks: THREE.Group;
       newBlocks: THREE.Group;
       gameMetrics: GameMetrics;
-      actionLocked: boolean; // <<< FIX 1/4: Add a new property for the lock
-      gameStarted: boolean; // Add flag to track if game has been manually started
+      actionLocked: boolean;
+      actionDebounce: boolean;
 
       constructor() {
         this.STATES = {
@@ -898,8 +891,8 @@ export default function TowerBlockGame() {
         this.stage.add(this.placedBlocks);
         this.stage.add(this.choppedBlocks);
         this.stage.add(this.newBlocks);
-        this.actionLocked = false; // <<< FIX 2/4: Initialize the lock
-        this.gameStarted = false; // Initialize as not started
+        this.actionLocked = false;
+        this.actionDebounce = false;
 
         this.gameMetrics = {
           gameStartTime: Date.now(),
@@ -951,14 +944,7 @@ export default function TowerBlockGame() {
       }
 
       onAction() {
-        // <<< FIX 3/4: Check and set the lock
         if (this.actionLocked) return;
-
-        // Don't respond to automatic events until game is manually started
-        if (!this.gameStarted && this.internalState === this.STATES.READY) {
-          return;
-        }
-
         this.actionLocked = true;
 
         switch (this.internalState) {
@@ -973,7 +959,6 @@ export default function TowerBlockGame() {
             break;
         }
 
-        // <<< FIX 4/4: Release the lock after a short delay
         setTimeout(() => {
           this.actionLocked = false;
         }, 200);
@@ -981,10 +966,10 @@ export default function TowerBlockGame() {
 
       startGame() {
         if (this.internalState !== this.STATES.PLAYING) {
+          this.actionDebounce = true;
           this.scoreContainer.innerHTML = "0";
           this.updateState(this.STATES.PLAYING);
 
-          // Create the foundation block if no blocks exist
           if (this.blocks.length === 0) {
             const foundationBlock = new Block(null);
             this.blocks.push(foundationBlock);
@@ -1009,14 +994,6 @@ export default function TowerBlockGame() {
             maxBlockArea: 0,
             lastBlockTime: Date.now(),
           };
-        }
-      }
-
-      // Method to manually start the game from external code
-      manualStart() {
-        this.gameStarted = true;
-        if (this.internalState === this.STATES.READY) {
-          this.startGame();
         }
       }
 
@@ -1063,6 +1040,11 @@ export default function TowerBlockGame() {
       }
 
       placeBlock() {
+        if (this.actionDebounce) {
+          this.actionDebounce = false;
+          return;
+        }
+
         const currentBlock = this.blocks[this.blocks.length - 1];
 
         // Don't place foundation block or invalid blocks

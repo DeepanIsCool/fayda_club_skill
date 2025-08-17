@@ -369,7 +369,7 @@ export function RewardModal({
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  onClose();
+                  window.location.href = "/";
                 }}
                 className="
                   w-full py-3 sm:py-4 px-4 rounded-xl
