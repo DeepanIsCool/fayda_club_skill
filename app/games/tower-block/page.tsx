@@ -950,6 +950,9 @@ export default function TowerBlockGame() {
         switch (this.internalState) {
           case this.STATES.READY:
             this.startGame();
+            if (this.internalState === this.STATES.PLAYING) {
+              this.placeBlock();
+            }
             break;
           case this.STATES.PLAYING:
             this.placeBlock();
