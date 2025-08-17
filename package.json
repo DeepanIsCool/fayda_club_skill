@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@fontsource/clear-sans": "^5.2.5",
     "@types/three": "^0.179.0",
     "framer-motion": "^12.23.12",
     "gsap": "^3.13.0",
@@ -20,6 +21,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.5.2",
+    "sass": "^1.90.0",
     "three": "^0.179.1"
   },
   "devDependencies": {
