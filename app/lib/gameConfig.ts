@@ -150,8 +150,8 @@ export class GameConfigService {
         },
       ],
       continueRules: {
-        costProgression: [2, 4, 8, 16],
-        maxContinues: 4,
+        costProgression: [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024],
+        maxContinues: 100,
       },
       achievements: [
         {

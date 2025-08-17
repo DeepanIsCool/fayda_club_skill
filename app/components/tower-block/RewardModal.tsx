@@ -383,7 +383,7 @@ export function RewardModal({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Awesome! Continue Playing
+                Awesome! Go to Dashboard
               </motion.button>
             </div>
           </motion.div>
