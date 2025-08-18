@@ -18,7 +18,7 @@ const storageManager = {
       return null
     }
   },
-  setGameState: (state: any) => {
+  setGameState: (state: unknown) => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state))
     } catch (e) {
@@ -119,13 +119,13 @@ const setup = useCallback((fromStorage = false) => {
     
     // Check if a saved state exists and has a grid property before proceeding
     if (loadedState && loadedState.grid) {
-      newGrid = (loadedState.grid.cells || loadedState.grid).map((col: any) =>
-        col.map((cell: any) =>
-          cell
+      newGrid = (loadedState.grid.cells || loadedState.grid).map((col: unknown) =>
+        (col as Array<unknown>).map((cell: unknown) =>
+          cell && typeof cell === 'object' && cell !== null && 'position' in cell && 'value' in cell && 'id' in cell
             ? {
-                position: { x: cell.position.x, y: cell.position.y },
-                value: cell.value,
-                id: cell.id,
+                position: { x: (cell as TileState).position.x, y: (cell as TileState).position.y },
+                value: (cell as TileState).value,
+                id: (cell as TileState).id,
                 previousPosition: null,
                 mergedFrom: null,
               }

@@ -22,6 +22,7 @@ export function GameStartModal({
   gameDescription = "Test your skills and build the highest tower!",
 }: GameStartModalProps) {
   const { coins, canStartGame } = useGameCurrency();
+  const canStart = canStartGame("tower-block");
   const coinIconRef = useRef<HTMLDivElement>(null);
   const startButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -46,7 +47,7 @@ export function GameStartModal({
   // Button pulse when ready
   useEffect(() => {
     const btn = startButtonRef.current;
-    if (isOpen && canStartGame && btn) {
+    if (isOpen && canStart && btn) {
       gsap.to(btn, {
         scale: 1.05,
         duration: 1,
@@ -62,7 +63,7 @@ export function GameStartModal({
   }, [isOpen, canStartGame]);
 
   const handleStart = () => {
-    if (canStartGame) {
+    if (canStart) {
       onStart();
     }
   };
@@ -136,7 +137,7 @@ export function GameStartModal({
                 className={`
                 p-4 rounded-xl border-2 transition-all duration-300
                 ${
-                  canStartGame
+                  canStart
                     ? "border-green-300 bg-green-50 dark:bg-green-900/20"
                     : "border-red-300 bg-red-50 dark:bg-red-900/20"
                 }
@@ -148,7 +149,7 @@ export function GameStartModal({
                       <Coins
                         size={24}
                         className={
-                          canStartGame ? "text-green-600" : "text-red-600"
+                          canStart ? "text-green-600" : "text-red-600"
                         }
                       />
                     </div>
@@ -158,14 +159,14 @@ export function GameStartModal({
                   </div>
                   <span
                     className={`text-2xl font-bold ${
-                      canStartGame ? "text-green-600" : "text-red-600"
+                      canStart ? "text-green-600" : "text-red-600"
                     }`}
                   >
                     {coins}
                   </span>
                 </div>
 
-                {!canStartGame && (
+                {!canStart && (
                   <motion.div
                     className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg"
                     initial={{ opacity: 0, height: 0 }}
@@ -199,18 +200,18 @@ export function GameStartModal({
                 <motion.button
                   ref={startButtonRef}
                   onClick={handleStart}
-                  disabled={!canStartGame}
+                  disabled={!canStart}
                   className={`
                     flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl
                     font-semibold transition-all duration-200
                     ${
-                      canStartGame
+                      canStart
                         ? "bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl"
                         : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     }
                   `}
-                  whileHover={canStartGame ? { scale: 1.02 } : {}}
-                  whileTap={canStartGame ? { scale: 0.98 } : {}}
+                  whileHover={canStart ? { scale: 1.02 } : {}}
+                  whileTap={canStart ? { scale: 0.98 } : {}}
                 >
                   <Play size={18} />
                   Start Game

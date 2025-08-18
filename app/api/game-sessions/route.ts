@@ -6,7 +6,7 @@ interface GameSessionRequest {
   level: number;
   score: number;
   duration: number;
-  sessionData: Record<string, any>;
+  sessionData: Record<string, unknown>;
   achievements?: string[];
 }
 

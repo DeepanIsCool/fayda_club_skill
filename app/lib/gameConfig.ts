@@ -102,7 +102,7 @@ export interface GameSessionData {
   level: number;
   score: number;
   duration: number;
-  sessionData: Record<string, any>;
+  sessionData: Record<string, unknown>;
   achievements?: string[];
   metadata: {
     timestamp: number;
@@ -604,7 +604,7 @@ export class GameConfigService {
    */
   public calculateRewards(
     gameConfig: GameConfig,
-    gameStats: Record<string, any>
+  gameStats: Record<string, unknown>
   ): Array<{ amount: number; reason: string; type: string }> {
     if (!gameConfig.frontendConfig) {
       return [];
@@ -625,8 +625,8 @@ export class GameConfigService {
         }
 
         // Calculate reward amount
-        const amount =
-          this.evaluateExpression(rule.formula, gameStats) * rule.multiplier;
+  const formulaResult = this.evaluateExpression(rule.formula, gameStats);
+  const amount = (typeof formulaResult === 'number' ? formulaResult : 0) * rule.multiplier;
 
         if (amount > 0) {
           rewards.push({
@@ -648,7 +648,7 @@ export class GameConfigService {
    */
   public calculateAchievements(
     gameConfig: GameConfig,
-    gameStats: Record<string, any>
+  gameStats: Record<string, unknown>
   ): GameAchievement[] {
     if (!gameConfig.frontendConfig) {
       return [];
@@ -679,8 +679,8 @@ export class GameConfigService {
    */
   private evaluateExpression(
     expression: string,
-    context: Record<string, any>
-  ): any {
+    context: Record<string, unknown>
+  ): unknown {
     try {
       // Create a safe evaluation context
       const safeContext = {

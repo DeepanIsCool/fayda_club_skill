@@ -18,7 +18,7 @@ interface User {
   wallet?: number;
   score?: number;
   createdAt?: string;
-  games?: Record<string, any>;
+  games?: Record<string, unknown>;
 }
 
 interface AuthContextType {
