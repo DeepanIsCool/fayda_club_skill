@@ -164,7 +164,7 @@ streakBonus = Math.floor(maxConsecutiveStreak / 5);
 #### **Achievement Bonus**
 
 ```typescript
-// Tower Master: 10 coins if currentLevel >= 20
+// Tower Master: 10 coins if currentLevel >= 20 .
 ```
 
 ### 🎯 Cost System
