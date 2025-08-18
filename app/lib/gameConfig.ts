@@ -24,9 +24,9 @@ export interface GameAchievement {
   description: string;
   condition: string; // JavaScript expression
   reward: number;
-  type: 'level' | 'performance' | 'special' | 'streak' | 'perfect';
+  type: "level" | "performance" | "special" | "streak" | "perfect";
   icon?: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  rarity: "common" | "rare" | "epic" | "legendary";
 }
 
 export interface GameDisplayConfig {
@@ -41,7 +41,7 @@ export interface GameDisplayConfig {
     difficulty: string;
     category: string;
   };
-  theme: 'light' | 'dark' | 'auto';
+  theme: "light" | "dark" | "auto";
 }
 
 export interface GameFrontendConfig {
@@ -69,13 +69,13 @@ export interface GameConfig {
   rules: string;
   rating: number;
   createdAt: string;
-  
+
   // Computed properties
   slug: string;
-  
+
   // Frontend configuration
   frontendConfig?: GameFrontendConfig;
-  
+
   // Status
   isAvailable: boolean;
   hasImplementation: boolean;
@@ -120,112 +120,268 @@ export class GameConfigService {
   private configs: Map<string, GameConfig> = new Map();
   private apiCache: { data: ApiGameResponse; timestamp: number } | null = null;
   private readonly cacheExpiry = 5 * 60 * 1000; // 5 minutes
-  private readonly apiUrl = '/api/games';
-  
+  private readonly apiUrl = "/api/games";
+
   // Frontend game mappings - this is where we define which games have implementations
-  private readonly frontendMappings: Map<string, Partial<GameFrontendConfig>> = new Map([
-    ['Tower Block', {
-      component: 'TowerBlockGame',
-      path: '/games/tower-block',
-      rewardRules: [
+  private readonly frontendMappings: Map<string, Partial<GameFrontendConfig>> =
+    new Map([
+      [
+        "Tower Block",
         {
-          id: 'level_reward',
-          name: 'Level Completion',
-          formula: 'Math.max(2, Math.floor(level * 0.75))',
-          multiplier: 1,
-        },
-        {
-          id: 'perfect_bonus',
-          name: 'Perfect Placement',
-          formula: 'perfectPlacements * 3',
-          multiplier: 1,
-          conditions: 'perfectPlacements > 0',
-        },
-        {
-          id: 'streak_bonus',
-          name: 'Consecutive Streak',
-          formula: 'Math.floor(maxConsecutiveStreak / 3)',
-          multiplier: 1,
-          conditions: 'maxConsecutiveStreak >= 3',
+          component: "TowerBlockGame",
+          path: "/games/tower-block",
+          rewardRules: [
+            {
+              id: "level_reward",
+              name: "Level Completion",
+              formula: "Math.max(2, Math.floor(level * 0.75))",
+              multiplier: 1,
+            },
+            {
+              id: "perfect_bonus",
+              name: "Perfect Placement",
+              formula: "perfectPlacements * 3",
+              multiplier: 1,
+              conditions: "perfectPlacements > 0",
+            },
+            {
+              id: "streak_bonus",
+              name: "Consecutive Streak",
+              formula: "Math.floor(maxConsecutiveStreak / 3)",
+              multiplier: 1,
+              conditions: "maxConsecutiveStreak >= 3",
+            },
+          ],
+          continueRules: {
+            costProgression: [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024],
+            maxContinues: 100,
+          },
+          achievements: [
+            {
+              id: "tower_starter",
+              name: "Tower Starter",
+              description: "Complete your first level",
+              condition: "level >= 1",
+              reward: 5,
+              type: "level",
+              icon: "🏗️",
+              rarity: "common",
+            },
+            {
+              id: "tower_builder",
+              name: "Tower Builder",
+              description: "Reach level 5",
+              condition: "level >= 5",
+              reward: 10,
+              type: "level",
+              icon: "🏢",
+              rarity: "common",
+            },
+            {
+              id: "tower_master",
+              name: "Tower Master",
+              description: "Reach level 15",
+              condition: "level >= 15",
+              reward: 25,
+              type: "level",
+              icon: "🏗️",
+              rarity: "rare",
+            },
+            {
+              id: "precision_expert",
+              name: "Precision Expert",
+              description: "Achieve 5 perfect placements in one game",
+              condition: "perfectPlacements >= 5",
+              reward: 15,
+              type: "performance",
+              icon: "🎯",
+              rarity: "rare",
+            },
+            {
+              id: "streak_master",
+              name: "Streak Master",
+              description: "Achieve a 10+ consecutive streak",
+              condition: "maxConsecutiveStreak >= 10",
+              reward: 20,
+              type: "streak",
+              icon: "🔥",
+              rarity: "epic",
+            },
+          ],
+          displayConfig: {
+            colors: {
+              primary: "#3B82F6",
+              secondary: "#1E40AF",
+              accent: "#10B981",
+              background: "#F8FAFC",
+            },
+            icons: {
+              main: "🏗️",
+              difficulty: "🎯",
+              category: "🎮",
+            },
+            theme: "auto" as const,
+          },
+          metadata: {
+            version: "1.0.0",
+            lastUpdated: new Date().toISOString(),
+          },
         },
       ],
-      continueRules: {
-        costProgression: [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024],
-        maxContinues: 100,
-      },
-      achievements: [
+      [
+        "2048",
         {
-          id: 'tower_starter',
-          name: 'Tower Starter',
-          description: 'Complete your first level',
-          condition: 'level >= 1',
-          reward: 5,
-          type: 'level',
-          icon: '🏗️',
-          rarity: 'common',
-        },
-        {
-          id: 'tower_builder',
-          name: 'Tower Builder',
-          description: 'Reach level 5',
-          condition: 'level >= 5',
-          reward: 10,
-          type: 'level',
-          icon: '🏢',
-          rarity: 'common',
-        },
-        {
-          id: 'tower_master',
-          name: 'Tower Master',
-          description: 'Reach level 15',
-          condition: 'level >= 15',
-          reward: 25,
-          type: 'level',
-          icon: '🏗️',
-          rarity: 'rare',
-        },
-        {
-          id: 'precision_expert',
-          name: 'Precision Expert',
-          description: 'Achieve 5 perfect placements in one game',
-          condition: 'perfectPlacements >= 5',
-          reward: 15,
-          type: 'performance',
-          icon: '🎯',
-          rarity: 'rare',
-        },
-        {
-          id: 'streak_master',
-          name: 'Streak Master',
-          description: 'Achieve a 10+ consecutive streak',
-          condition: 'maxConsecutiveStreak >= 10',
-          reward: 20,
-          type: 'streak',
-          icon: '🔥',
-          rarity: 'epic',
+          component: "Game2048",
+          path: "/games/2048",
+          rewardRules: [
+            {
+              id: "score_reward",
+              name: "Score Milestone",
+              formula: "Math.floor(score / 256)",
+              multiplier: 1,
+            },
+            {
+              id: "tile_2048",
+              name: "2048 Tile Bonus",
+              formula: "has2048Tile ? 50 : 0",
+              multiplier: 1,
+              conditions: "has2048Tile === true",
+            },
+          ],
+          continueRules: {
+            costProgression: [2, 4, 8, 16, 32],
+            maxContinues: 5,
+          },
+          achievements: [
+            {
+              id: "first_512",
+              name: "First 512",
+              description: "Reach a 512 tile",
+              condition: "maxTile >= 512",
+              reward: 10,
+              type: "performance",
+              icon: "🔢",
+              rarity: "common",
+            },
+            {
+              id: "first_2048",
+              name: "2048 Achiever",
+              description: "Reach a 2048 tile",
+              condition: "maxTile >= 2048",
+              reward: 50,
+              type: "special",
+              icon: "🎉",
+              rarity: "epic",
+            },
+            {
+              id: "score_5000",
+              name: "Score 5000",
+              description: "Score 5000 points in a game",
+              condition: "score >= 5000",
+              reward: 25,
+              type: "performance",
+              icon: "🏆",
+              rarity: "rare",
+            },
+          ],
+          displayConfig: {
+            colors: {
+              primary: "#F59E42",
+              secondary: "#F6E58D",
+              accent: "#FFD700",
+              background: "#FFF8E1",
+            },
+            icons: {
+              main: "🔢",
+              difficulty: "🧩",
+              category: "🕹️",
+            },
+            theme: "auto" as const,
+          },
+          metadata: {
+            version: "1.0.0",
+            lastUpdated: new Date().toISOString(),
+          },
         },
       ],
-      displayConfig: {
-        colors: {
-          primary: '#3B82F6',
-          secondary: '#1E40AF',
-          accent: '#10B981',
-          background: '#F8FAFC',
+      [
+        "Tetris",
+        {
+          component: "TetrisGame",
+          path: "/games/tetris",
+          rewardRules: [
+            {
+              id: "line_clear",
+              name: "Line Clear",
+              formula: "linesCleared",
+              multiplier: 2,
+            },
+            {
+              id: "tetris_clear",
+              name: "Tetris (4 lines)",
+              formula: "tetrisCount * 10",
+              multiplier: 1,
+              conditions: "tetrisCount > 0",
+            },
+          ],
+          continueRules: {
+            costProgression: [2, 4, 8, 16, 32],
+            maxContinues: 3,
+          },
+          achievements: [
+            {
+              id: "first_tetris",
+              name: "First Tetris",
+              description: "Clear 4 lines at once",
+              condition: "tetrisCount >= 1",
+              reward: 10,
+              type: "performance",
+              icon: "🟦",
+              rarity: "common",
+            },
+            {
+              id: "lines_40",
+              name: "40 Lines",
+              description: "Clear 40 lines in one game",
+              condition: "linesCleared >= 40",
+              reward: 25,
+              type: "performance",
+              icon: "🧱",
+              rarity: "rare",
+            },
+            {
+              id: "score_10000",
+              name: "Score 10,000",
+              description: "Score 10,000 points in a game",
+              condition: "score >= 10000",
+              reward: 50,
+              type: "performance",
+              icon: "🏆",
+              rarity: "epic",
+            },
+          ],
+          displayConfig: {
+            colors: {
+              primary: "#3B82F6",
+              secondary: "#6366F1",
+              accent: "#F59E42",
+              background: "#EEF2FF",
+            },
+            icons: {
+              main: "🟦",
+              difficulty: "🧩",
+              category: "🎮",
+            },
+            theme: "auto" as const,
+          },
+          metadata: {
+            version: "1.0.0",
+            lastUpdated: new Date().toISOString(),
+          },
         },
-        icons: {
-          main: '🏗️',
-          difficulty: '🎯',
-          category: '🎮',
-        },
-        theme: 'auto' as const,
-      },
-      metadata: {
-        version: '1.0.0',
-        lastUpdated: new Date().toISOString(),
-      },
-    }],
-    // Add more game mappings here as games are implemented
-  ]);
+      ],
+      // Add more game mappings here as games are implemented
+    ]);
 
   private constructor() {}
 
@@ -239,17 +395,20 @@ export class GameConfigService {
   /**
    * Fetch games from API with caching
    */
-  public async fetchGamesFromAPI(): Promise<ApiGameResponse['games']> {
+  public async fetchGamesFromAPI(): Promise<ApiGameResponse["games"]> {
     // Check cache first
-    if (this.apiCache && Date.now() - this.apiCache.timestamp < this.cacheExpiry) {
+    if (
+      this.apiCache &&
+      Date.now() - this.apiCache.timestamp < this.cacheExpiry
+    ) {
       return this.apiCache.data.games;
     }
 
     try {
       const response = await fetch(this.apiUrl, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         // Add timeout
         signal: AbortSignal.timeout(10000), // 10 seconds
@@ -260,9 +419,9 @@ export class GameConfigService {
       }
 
       const data: ApiGameResponse = await response.json();
-      
+
       if (!data.success) {
-        throw new Error('API returned unsuccessful response');
+        throw new Error("API returned unsuccessful response");
       }
 
       // Cache the result
@@ -273,10 +432,9 @@ export class GameConfigService {
 
       console.log(`✅ Loaded ${data.games.length} games from API`);
       return data.games;
-
     } catch (error) {
-      console.error('❌ Error fetching games from API:', error);
-      
+      console.error("❌ Error fetching games from API:", error);
+
       // Return empty array on error, but don't cache the failure
       return [];
     }
@@ -289,9 +447,9 @@ export class GameConfigService {
     return name
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s-]/g, '') // Remove special characters
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-'); // Replace multiple hyphens with single
+      .replace(/[^\w\s-]/g, "") // Remove special characters
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/-+/g, "-"); // Replace multiple hyphens with single
   }
 
   /**
@@ -300,14 +458,18 @@ export class GameConfigService {
   public async loadGames(): Promise<GameConfig[]> {
     try {
       const apiGames = await this.fetchGamesFromAPI();
-      console.log('🔍 Raw API games:', apiGames);
-      
-      const configs = apiGames.map(apiGame => {
+      console.log("🔍 Raw API games:", apiGames);
+
+      const configs = apiGames.map((apiGame) => {
         const slug = this.slugify(apiGame.name);
         const frontendMapping = this.frontendMappings.get(apiGame.name);
-        
-        console.log(`🎮 Processing game: "${apiGame.name}" -> slug: "${slug}", hasMapping: ${!!frontendMapping}`);
-        
+
+        console.log(
+          `🎮 Processing game: "${
+            apiGame.name
+          }" -> slug: "${slug}", hasMapping: ${!!frontendMapping}`
+        );
+
         const config: GameConfig = {
           // API properties
           id: apiGame.id,
@@ -319,16 +481,18 @@ export class GameConfigService {
           rules: apiGame.rules,
           rating: apiGame.rating,
           createdAt: apiGame.createdAt,
-          
+
           // Computed properties
           slug,
-          
+
           // Frontend configuration (if available)
-          frontendConfig: frontendMapping ? {
-            ...this.getDefaultFrontendConfig(slug),
-            ...frontendMapping,
-          } as GameFrontendConfig : undefined,
-          
+          frontendConfig: frontendMapping
+            ? ({
+                ...this.getDefaultFrontendConfig(slug),
+                ...frontendMapping,
+              } as GameFrontendConfig)
+            : undefined,
+
           // Status
           isAvailable: true,
           hasImplementation: !!frontendMapping,
@@ -337,16 +501,18 @@ export class GameConfigService {
         // Store by both slug and ID for quick lookup
         this.configs.set(slug, config);
         this.configs.set(apiGame.id, config);
-        
+
         return config;
       });
 
       console.log(`✅ Processed ${configs.length} game configurations`);
-      console.log('🎯 Available frontend mappings:', Array.from(this.frontendMappings.keys()));
+      console.log(
+        "🎯 Available frontend mappings:",
+        Array.from(this.frontendMappings.keys())
+      );
       return configs;
-
     } catch (error) {
-      console.error('❌ Error loading games:', error);
+      console.error("❌ Error loading games:", error);
       return [];
     }
   }
@@ -356,13 +522,13 @@ export class GameConfigService {
    */
   private getDefaultFrontendConfig(slug: string): GameFrontendConfig {
     return {
-      component: 'GenericGame',
+      component: "GenericGame",
       path: `/games/${slug}`,
       rewardRules: [
         {
-          id: 'level_reward',
-          name: 'Level Completion',
-          formula: 'level',
+          id: "level_reward",
+          name: "Level Completion",
+          formula: "level",
           multiplier: 1,
         },
       ],
@@ -373,20 +539,20 @@ export class GameConfigService {
       achievements: [],
       displayConfig: {
         colors: {
-          primary: '#6B7280',
-          secondary: '#4B5563',
-          accent: '#9CA3AF',
-          background: '#F9FAFB',
+          primary: "#6B7280",
+          secondary: "#4B5563",
+          accent: "#9CA3AF",
+          background: "#F9FAFB",
         },
         icons: {
-          main: '🎮',
-          difficulty: '⭐',
-          category: '🎲',
+          main: "🎮",
+          difficulty: "⭐",
+          category: "🎲",
         },
-        theme: 'auto',
+        theme: "auto",
       },
       metadata: {
-        version: '1.0.0',
+        version: "1.0.0",
         lastUpdated: new Date().toISOString(),
       },
     };
@@ -410,7 +576,7 @@ export class GameConfigService {
    * Get game configuration by path
    */
   public getGameByPath(path: string): GameConfig | undefined {
-    const slug = path.replace('/games/', '');
+    const slug = path.replace("/games/", "");
     return this.getGameBySlug(slug);
   }
 
@@ -420,8 +586,8 @@ export class GameConfigService {
   public getAllGames(): GameConfig[] {
     const games = Array.from(this.configs.values());
     // Remove duplicates (since we store by both slug and ID)
-    const uniqueGames = games.filter((game, index, arr) => 
-      arr.findIndex(g => g.id === game.id) === index
+    const uniqueGames = games.filter(
+      (game, index, arr) => arr.findIndex((g) => g.id === game.id) === index
     );
     return uniqueGames;
   }
@@ -430,7 +596,7 @@ export class GameConfigService {
    * Get only games with frontend implementations
    */
   public getImplementedGames(): GameConfig[] {
-    return this.getAllGames().filter(game => game.hasImplementation);
+    return this.getAllGames().filter((game) => game.hasImplementation);
   }
 
   /**
@@ -451,13 +617,17 @@ export class GameConfigService {
       try {
         // Check conditions if any
         if (rule.conditions) {
-          const conditionResult = this.evaluateExpression(rule.conditions, gameStats);
+          const conditionResult = this.evaluateExpression(
+            rule.conditions,
+            gameStats
+          );
           if (!conditionResult) continue;
         }
 
         // Calculate reward amount
-        const amount = this.evaluateExpression(rule.formula, gameStats) * rule.multiplier;
-        
+        const amount =
+          this.evaluateExpression(rule.formula, gameStats) * rule.multiplier;
+
         if (amount > 0) {
           rewards.push({
             amount: Math.floor(amount),
@@ -489,7 +659,10 @@ export class GameConfigService {
 
     for (const achievement of achievementRules) {
       try {
-        const conditionMet = this.evaluateExpression(achievement.condition, gameStats);
+        const conditionMet = this.evaluateExpression(
+          achievement.condition,
+          gameStats
+        );
         if (conditionMet) {
           achievements.push(achievement);
         }
@@ -504,7 +677,10 @@ export class GameConfigService {
   /**
    * Safely evaluate JavaScript expressions with game stats context
    */
-  private evaluateExpression(expression: string, context: Record<string, any>): any {
+  private evaluateExpression(
+    expression: string,
+    context: Record<string, any>
+  ): any {
     try {
       // Create a safe evaluation context
       const safeContext = {
@@ -516,11 +692,11 @@ export class GameConfigService {
       // Create function with context variables as parameters
       const paramNames = Object.keys(safeContext);
       const paramValues = Object.values(safeContext);
-      
+
       const func = new Function(...paramNames, `return ${expression}`);
       return func(...paramValues);
     } catch (error) {
-      console.error('Error evaluating expression:', expression, error);
+      console.error("Error evaluating expression:", expression, error);
       return 0;
     }
   }
@@ -531,15 +707,21 @@ export class GameConfigService {
   public clearCache(): void {
     this.apiCache = null;
     this.configs.clear();
-    console.log('✅ Game configuration cache cleared');
+    console.log("✅ Game configuration cache cleared");
   }
 
   /**
    * Get cache status
    */
-  public getCacheStatus(): { isValid: boolean; timestamp: number | null; gameCount: number } {
+  public getCacheStatus(): {
+    isValid: boolean;
+    timestamp: number | null;
+    gameCount: number;
+  } {
     return {
-      isValid: this.apiCache !== null && Date.now() - this.apiCache.timestamp < this.cacheExpiry,
+      isValid:
+        this.apiCache !== null &&
+        Date.now() - this.apiCache.timestamp < this.cacheExpiry,
       timestamp: this.apiCache?.timestamp || null,
       gameCount: this.configs.size,
     };
@@ -552,7 +734,7 @@ export const gameConfigService = GameConfigService.getInstance();
 // Utility functions
 export function isGameAvailable(gameSlug: string): boolean {
   const game = gameConfigService.getGameBySlug(gameSlug);
-  return game?.isAvailable && game?.hasImplementation || false;
+  return (game?.isAvailable && game?.hasImplementation) || false;
 }
 
 export function getGameEntryCost(gameSlug: string): number {

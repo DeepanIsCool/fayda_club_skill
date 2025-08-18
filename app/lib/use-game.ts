@@ -109,63 +109,46 @@ export const useGame = () => {
 
   const isGameTerminated = over || (won && !keepPlaying)
 
-  const setup = useCallback((fromStorage = false) => {
-    let newGrid = initializeGrid()
-    let newScore = 0
-    let loadedState = null
+const setup = useCallback((fromStorage = false) => {
+  let newGrid = initializeGrid()
+  let newScore = 0
+  let loadedState = null
 
-    if (fromStorage) {
-      loadedState = storageManager.getGameState()
-      if (loadedState) {
-        newGrid = loadedState.grid.map((col: TileState[] | null) =>
-          (col ? col.map((cell: TileState | null) =>
-            cell
-              ? {
-                  position: { x: cell.position.x, y: cell.position.y },
-                  value: cell.value,
-                  id: cell.id,
-                  previousPosition: null,
-                  mergedFrom: null,
-                }
-              : null,
-          ) : [])
-        )
-        newScore = loadedState.score
-        setOver(loadedState.over)
-        setWon(loadedState.won)
-        setKeepPlaying(loadedState.keepPlaying)
-      }
- {
-        newGrid = loadedState.grid.cells.map((col: any) =>
-          col.map((cell: any) =>
-            cell
-              ? {
-                  position: { x: cell.position.x, y: cell.position.y },
-                  value: cell.value,
-                  id: cell.id,
-                  previousPosition: null,
-                  mergedFrom: null,
-                }
-              : null,
-          ),
-        )
-        newScore = loadedState.score
-        setOver(loadedState.over)
-        setWon(loadedState.won)
-        setKeepPlaying(loadedState.keepPlaying)
-      }
+  if (fromStorage) {
+    loadedState = storageManager.getGameState()
+    
+    // Check if a saved state exists and has a grid property before proceeding
+    if (loadedState && loadedState.grid) {
+      newGrid = (loadedState.grid.cells || loadedState.grid).map((col: any) =>
+        col.map((cell: any) =>
+          cell
+            ? {
+                position: { x: cell.position.x, y: cell.position.y },
+                value: cell.value,
+                id: cell.id,
+                previousPosition: null,
+                mergedFrom: null,
+              }
+            : null,
+        ),
+      )
+      newScore = loadedState.score
+      setOver(loadedState.over)
+      setWon(loadedState.won)
+      setKeepPlaying(loadedState.keepPlaying)
     }
+  }
 
-    if (!loadedState) {
-      newGrid = addRandomTile(newGrid)
-      newGrid = addRandomTile(newGrid)
-    }
-    setGrid(newGrid)
-    setScore(newScore)
-    setOver(false)
-    setWon(false)
-    setKeepPlaying(false)
-  }, [])
+  if (!loadedState) {
+    newGrid = addRandomTile(newGrid)
+    newGrid = addRandomTile(newGrid)
+  }
+  setGrid(newGrid)
+  setScore(newScore)
+  setOver(false)
+  setWon(false)
+  setKeepPlaying(false)
+}, [])
 
   useEffect(() => {
     setup(true)

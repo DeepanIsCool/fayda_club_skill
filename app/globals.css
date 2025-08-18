@@ -1,194 +1,129 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Updated design tokens to match modern Tetris design brief */
+  --background: oklch(0.98 0 0); /* #f8fafc - Light gray for main background */
+  --foreground: oklch(0.25 0 0); /* #1f2937 - Dark gray for text */
+  --card: oklch(1 0 0); /* #ffffff - White for cards and overlays */
+  --card-foreground: oklch(0.35 0 0); /* #374151 - Dark gray for card text */
+  --popover: oklch(1 0 0); /* #ffffff - White for popover backgrounds */
+  --popover-foreground: oklch(0.25 0 0); /* #1f2937 - Dark gray for popover text */
+  --primary: oklch(0.35 0 0); /* #374151 - Dark gray for game grid */
+  --primary-foreground: oklch(1 0 0); /* #ffffff - White for primary text */
+  --secondary: oklch(0.55 0.15 264); /* #6366f1 - Blue for buttons */
+  --secondary-foreground: oklch(1 0 0); /* #ffffff - White for button text */
+  --muted: oklch(0.98 0 0); /* #f8fafc - Light gray for muted elements */
+  --muted-foreground: oklch(0.25 0 0); /* #1f2937 - Dark gray for muted text */
+  --accent: oklch(0.55 0.15 264); /* #6366f1 - Blue for highlights */
+  --accent-foreground: oklch(1 0 0); /* #ffffff - White for accent text */
+  --destructive: oklch(0.65 0.15 45); /* #d97706 - Amber for destructive actions */
+  --destructive-foreground: oklch(1 0 0); /* #ffffff - White for destructive text */
+  --border: oklch(0.92 0 0); /* #e5e7eb - Light gray for borders */
+  --input: oklch(1 0 0); /* #ffffff - White for input fields */
+  --ring: oklch(0.55 0.15 264); /* #6366f1 - Blue for focus rings */
+  --chart-1: oklch(0.55 0.15 264); /* Chart color 1 */
+  --chart-2: oklch(0.65 0.15 45); /* Chart color 2 */
+  --chart-3: oklch(0.35 0 0); /* Chart color 3 */
+  --chart-4: oklch(0.25 0 0); /* Chart color 4 */
+  --chart-5: oklch(0.98 0 0); /* Chart color 5 */
+  --radius: 0.5rem; /* Rounded corners for buttons */
+  --sidebar: oklch(1 0 0); /* White for sidebars */
+  --sidebar-foreground: oklch(0.25 0 0); /* Dark gray for sidebar text */
+  --sidebar-primary: oklch(0.35 0 0); /* Dark gray for primary sidebar elements */
+  --sidebar-primary-foreground: oklch(1 0 0); /* White for sidebar text */
+  --sidebar-accent: oklch(0.55 0.15 264); /* Blue for sidebar accents */
+  --sidebar-accent-foreground: oklch(1 0 0); /* White for sidebar accent text */
+  --sidebar-border: oklch(0.92 0 0); /* Light gray for sidebar borders */
+  --sidebar-ring: oklch(0.55 0.15 264); /* Blue for sidebar focus rings */
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Added DM Sans font family */
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* Custom text glow effects */
-.text-shadow-glow {
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5),
-               0 0 20px rgba(255, 255, 255, 0.3),
-               0 0 30px rgba(255, 255, 255, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  .text-shadow-glow {
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3),
-                 0 0 20px rgba(255, 255, 255, 0.2),
-                 0 0 30px rgba(255, 255, 255, 0.1);
+  body {
+    @apply bg-background text-foreground font-sans;
   }
-}
-
-/* Tower Block Game Styles */
-.tower-block-game {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.game-ui-overlay {
-  pointer-events: none;
-  z-index: 10;
-}
-
-.game-ui-overlay > * {
-  pointer-events: auto;
-}
-
-/* Game State Classes */
-.loading {
-  opacity: 0.7;
-}
-
-.ready {
-  cursor: pointer;
-}
-
-.playing {
-  cursor: crosshair;
-}
-
-.ended {
-  cursor: default;
-}
-
-.resetting {
-  pointer-events: none;
-}
-
-.paused {
-  filter: grayscale(0.3);
-}
-
-/* Hide instructions when specified */
-.hide {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-/* Coin animation keyframes */
-@keyframes coinBounce {
-  0%, 20%, 53%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40%, 43% {
-    transform: translateY(-15px);
-  }
-  70% {
-    transform: translateY(-7px);
-  }
-  90% {
-    transform: translateY(-3px);
-  }
-}
-
-.coin-bounce {
-  animation: coinBounce 1s ease-in-out;
-}
-
-/* Modal backdrop blur */
-.modal-backdrop {
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
-
-/* Game container transitions */
-.game-container {
-  transition: opacity 0.3s ease-in-out;
-}
-
-/* Button hover effects */
-.game-button {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.game-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-}
-
-.game-button:active {
-  transform: translateY(0);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .game-ui-overlay .top-bar {
-    padding: 1rem;
-  }
-  
-  .game-ui-overlay .bottom-controls {
-    padding: 1rem;
-    gap: 0.75rem;
-  }
-  
-  .game-ui-overlay button {
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-  }
-}
-
-/* Animation for level progress */
-@keyframes levelUp {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.2);
-    color: #10b981;
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.level-up {
-  animation: levelUp 0.6s ease-out;
-}
-
-/* Smooth transitions for currency display */
-.currency-display {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Perfect block effect */
-@keyframes perfectBlock {
-  0% {
-    transform: scale(1);
-    filter: brightness(1);
-  }
-  50% {
-    transform: scale(1.05);
-    filter: brightness(1.3) hue-rotate(60deg);
-  }
-  100% {
-    transform: scale(1);
-    filter: brightness(1);
-  }
-}
-
-.perfect-block {
-  animation: perfectBlock 0.8s ease-out;
 }
