@@ -8,7 +8,7 @@ import React, {
   useReducer,
 } from "react";
 import { GameConfig, gameConfigService } from "../lib/gameConfig";
-import { useAuth } from "./AuthContext";
+import { useUser } from '@clerk/nextjs';
 
 // Types
 interface CurrencyState {
@@ -63,12 +63,12 @@ type CurrencyAction =
 
 // Initial States
 const initialCurrencyState: CurrencyState = {
-  coins: 100, // Starting coins for new users
-  points: 0, // Starting points for new users
-  totalEarned: 100,
+  coins: 0, // Start with 0 until loaded
+  points: 0, // Start with 0 until loaded
+  totalEarned: 0,
   totalSpent: 0,
   totalPointsEarned: 0,
-  isLoading: false,
+  isLoading: true, // Start in loading state
 };
 
 const initialGameSession: GameSession = {
@@ -118,7 +118,7 @@ function currencyReducer(
       };
 
     case "LOAD_STATE":
-      return action.payload;
+      return { ...state, ...action.payload, isLoading: false };
 
     default:
       return state;
@@ -184,7 +184,7 @@ interface CurrencyProviderProps {
 }
 
 export function CurrencyProvider({ children }: CurrencyProviderProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isSignedIn } = useUser();
   const [currency, dispatchCurrency] = useReducer(
     currencyReducer,
     initialCurrencyState
@@ -194,55 +194,43 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     initialGameSession
   );
 
-  // Sync currency with user wallet and score when user changes
+  // Sync currency from your API when user signs in
   useEffect(() => {
-    if (isAuthenticated && user) {
-      dispatchCurrency({
-        type: "LOAD_STATE",
-        payload: {
-          coins: user.wallet || currency.coins,
-          points: user.score || currency.points,
-          totalEarned: currency.totalEarned,
-          totalSpent: currency.totalSpent,
-          totalPointsEarned: currency.totalPointsEarned,
-          isLoading: false,
-        },
-      });
-    }
-  }, [user, isAuthenticated]);
-
-  // Load saved state on mount (fallback for when user data is not available)
-  useEffect(() => {
-    const loadSavedState = () => {
-      try {
-        const savedState = sessionStorage.getItem("faydaClubCurrency");
-        if (savedState && !isAuthenticated) {
-          // Only load from sessionStorage if not authenticated
-          const parsed = JSON.parse(savedState);
-          dispatchCurrency({ type: "LOAD_STATE", payload: parsed });
+    const fetchUserData = async () => {
+      if (isSignedIn && user) {
+        try {
+          dispatchCurrency({ type: "SET_LOADING", payload: true });
+          // The cookie should be sent automatically by the browser
+          const response = await fetch(`/api/users/${user.id}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch user data');
+          }
+          const data = await response.json();
+          
+          // Assuming the API returns a user object with wallet and score
+          if (data && data.user) {
+            dispatchCurrency({
+              type: "LOAD_STATE",
+              payload: {
+                ...initialCurrencyState, // Reset other stats on load
+                coins: data.user.wallet || 0,
+                points: data.user.score || 0,
+              },
+            });
+          }
+        } catch (error) {
+          console.error("Failed to load user currency data from API:", error);
+          dispatchCurrency({ type: "SET_LOADING", payload: false });
         }
-      } catch (error) {
-        console.error("Failed to load currency state:", error);
       }
     };
+    fetchUserData();
+  }, [user, isSignedIn]);
 
-    loadSavedState();
-  }, [isAuthenticated]);
-
-  // Save state whenever currency changes (but don't override server data)
-  useEffect(() => {
-    if (!isAuthenticated) {
-      try {
-        sessionStorage.setItem("faydaClubCurrency", JSON.stringify(currency));
-      } catch (error) {
-        console.error("Failed to save currency state:", error);
-      }
-    }
-  }, [currency, isAuthenticated]);
 
   // Actions
   const syncToServer = async (newCoins: number, newPoints: number) => {
-    if (!isAuthenticated || !user) return;
+    if (!isSignedIn || !user) return;
 
     try {
       await fetch("/api/auth/sync-currency", {
@@ -263,67 +251,49 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 
   const spendCoins = (amount: number, reason: string): boolean => {
     if (currency.coins >= amount) {
+      const newCoinTotal = currency.coins - amount;
       dispatchCurrency({ type: "SPEND_COINS", payload: { amount, reason } });
-
-      // Log transaction for analytics
       console.log(`💰 Spent ${amount} coins: ${reason}`);
-
-      // Sync to server if authenticated
-      if (isAuthenticated && user) {
-        syncToServer(currency.coins - amount, currency.points);
+      if (isSignedIn) {
+        syncToServer(newCoinTotal, currency.points);
       }
-
       return true;
     }
     return false;
   };
 
   const earnCoins = (amount: number, reason: string): void => {
+    const newCoinTotal = currency.coins + amount;
     dispatchCurrency({ type: "EARN_COINS", payload: { amount, reason } });
-
-    // Log transaction for analytics
     console.log(`💰 Earned ${amount} coins: ${reason}`);
-
-    // Sync to server if authenticated
-    if (isAuthenticated && user) {
-      syncToServer(currency.coins + amount, currency.points);
+    if (isSignedIn) {
+      syncToServer(newCoinTotal, currency.points);
     }
   };
 
   const earnPoints = (amount: number, reason: string): void => {
+    const newPointTotal = currency.points + amount;
     dispatchCurrency({ type: "EARN_POINTS", payload: { amount, reason } });
-
-    // Log transaction for analytics
     console.log(`⭐ Earned ${amount} points: ${reason}`);
-
-    // Sync to server if authenticated
-    if (isAuthenticated && user) {
-      syncToServer(currency.coins, currency.points + amount);
+    if (isSignedIn) {
+      syncToServer(currency.coins, newPointTotal);
     }
   };
 
   const startGameSession = async (gameSlug: string): Promise<boolean> => {
     try {
-      // Load game configurations if not already loaded
       await gameConfigService.loadGames();
-
-      // Get game configuration
       const gameConfig = gameConfigService.getGameBySlug(gameSlug);
-
       if (!gameConfig) {
         console.error(`No configuration found for game: ${gameSlug}`);
         return false;
       }
-
       if (!gameConfig.hasImplementation) {
-        console.error(
-          `Game ${gameSlug} does not have a frontend implementation`
-        );
+        console.error(`Game ${gameSlug} does not have a frontend implementation`);
         return false;
       }
 
       const entryCost = gameConfig.entryfee;
-
       if (currency.coins >= entryCost) {
         dispatchGameSession({
           type: "START_GAME_SESSION",
@@ -336,7 +306,6 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
         dispatchGameSession({ type: "RESET_CONTINUE_ATTEMPTS" });
         return spendCoins(entryCost, `Started ${gameConfig.name} game`);
       }
-
       return false;
     } catch (error) {
       console.error("Error starting game session:", error);
@@ -349,9 +318,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   };
 
   const getContinueCost = (): number => {
-    const cost =
-      gameSession.continueCosts[gameSession.currentContinueIndex] || 32; // Default to 32 (next in sequence) if beyond array
-    return cost; // Direct cost, not multiplied by base cost
+    return gameSession.continueCosts[gameSession.currentContinueIndex] || 32;
   };
 
   const incrementContinueAttempt = (): void => {

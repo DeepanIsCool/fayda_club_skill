@@ -7,7 +7,7 @@ export default function Game2048() {
 
   return (
     <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom duration-700 delay-300">
-      <div className="flex gap-4 mb-8 w-full max-w-md">
+      {/* <div className="flex gap-4 mb-8 w-full max-w-md">
         <div className="flex-1 bg-gradient-to-br from-amber-100 to-orange-100 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-amber-200/50 transform hover:scale-105 transition-all duration-200">
           <div className="text-amber-700 text-sm font-bold uppercase tracking-wider mb-1">Score</div>
           <div className="text-amber-900 text-2xl md:text-3xl font-black tabular-nums">{score.toLocaleString()}</div>
@@ -18,7 +18,7 @@ export default function Game2048() {
             {bestScore.toLocaleString()}
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="game-container relative w-full max-w-[500px] aspect-square p-4 md:p-6 cursor-default select-none touch-none bg-gradient-to-br from-amber-200 to-orange-200 rounded-3xl shadow-2xl border border-amber-300/50 backdrop-blur-sm">
         {(over || won) && (
@@ -119,13 +119,6 @@ export default function Game2048() {
               )
             })}
         </div>
-      </div>
-
-      <div className="mt-8 text-center max-w-md animate-in fade-in slide-in-from-bottom duration-700 delay-500">
-        <p className="text-amber-700/70 text-sm md:text-base leading-relaxed">
-          <strong className="text-amber-800">HOW TO PLAY:</strong> Use your arrow keys to move the tiles. When two tiles
-          with the same number touch, they merge into one!
-        </p>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Power1, TweenLite } from "gsap";
 import { Pause } from "lucide-react";
 import { useRouter } from "next/navigation";
+import useTranslation from "../../lib/useTranslation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { ContinueModal } from "../../components/tower-block/ContinueModal";
@@ -11,7 +12,6 @@ import { CompactCurrencyDisplay } from "../../components/tower-block/CurrencyDis
 import { GameStartModal } from "../../components/tower-block/GameStartModal";
 import { PauseModal } from "../../components/tower-block/PauseModal";
 import { RewardModal } from "../../components/tower-block/RewardModal";
-import { useAuth } from "../../contexts/AuthContext";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 import { gameConfigService } from "../../lib/gameConfig";
 
@@ -22,8 +22,8 @@ interface GameReward {
 }
 
 export default function TowerBlockGame() {
+  const t = useTranslation();
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const scoreContainerRef = useRef<HTMLDivElement>(null);
   const instructionsRef = useRef<HTMLDivElement>(null);
@@ -70,12 +70,7 @@ export default function TowerBlockGame() {
     continueAttempts: 0,
   });
 
-  // Redirect to dashboard if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/");
-    }
-  }, [isAuthenticated, router]);
+
 
   // Game instance ref
 
@@ -196,7 +191,7 @@ export default function TowerBlockGame() {
   // Submit game session data to API
   const submitGameSession = useCallback(
     async (finalStats: TowerGameStats | null) => {
-      if (!user || !gameInstanceRef.current || !finalStats) return;
+  if (!gameInstanceRef.current || !finalStats) return;
 
       try {
         // Get game configuration for ID
@@ -215,7 +210,7 @@ export default function TowerBlockGame() {
 
         const sessionData = {
           gameId: gameConfig.id,
-          userId: user.id,
+          userId: "guest",
           level: finalStats.finalLevel,
           score: calculatedGameScore,
           duration:
@@ -295,7 +290,7 @@ export default function TowerBlockGame() {
         console.error("❌ Error submitting game session:", error);
       }
     },
-    [user, sessionFinancials]
+  [sessionFinancials]
   );
 
   const handleGameOver = useCallback(() => {
@@ -1366,13 +1361,13 @@ export default function TowerBlockGame() {
               whileTap={{ scale: 0.95 }}
             >
               <Pause size={18} />
-              Pause
+              {t.pause}
             </motion.button>
 
             <div className="flex items-center gap-4">
               <div className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg">
                 <span className="font-semibold text-gray-800">
-                  Level: {currentLevel}
+                  {t.level}: {currentLevel}
                 </span>
               </div>
               <CompactCurrencyDisplay />
@@ -1398,7 +1393,7 @@ export default function TowerBlockGame() {
           gameInitialized ? "block" : "hidden"
         }`}
       >
-        <p>Click to drop the block</p>
+  <p>{t.clickToDrop || "Click to drop the block"}</p>
       </div>
 
       {/* Hidden start button for compatibility */}
@@ -1414,8 +1409,8 @@ export default function TowerBlockGame() {
         isOpen={showStartModal}
         onStart={handleStartGame}
         onCancel={handleBackToDashboard}
-        gameTitle="Tower Block"
-        gameDescription="Build the highest tower possible with precision timing!"
+        gameTitle={t.towerBlock}
+        gameDescription={t.towerBlockDesc || "Build the highest tower possible with precision timing!"}
       />
 
       <PauseModal
@@ -1423,7 +1418,7 @@ export default function TowerBlockGame() {
         onContinue={handleResume}
         onRestart={handlePauseRestart}
         onExit={handlePauseExit}
-        gameTitle="Tower Block"
+        gameTitle={t.towerBlock}
       />
 
       <ContinueModal
@@ -1431,7 +1426,7 @@ export default function TowerBlockGame() {
         onContinue={handleContinueGame}
         onGameOver={handleGameOver}
         currentLevel={currentLevel}
-        gameTitle="Tower Block"
+        gameTitle={t.towerBlock}
       />
 
       <RewardModal

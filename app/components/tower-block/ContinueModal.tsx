@@ -6,6 +6,7 @@ import { AlertCircle, Coins, Heart, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
+import useTranslation from "../../lib/useTranslation";
 
 interface ContinueModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export function ContinueModal({
 
   // Use centralized continue cost system
   const currentCost = continueCost;
+  const t = useTranslation();
 
   const modalRef = useRef<HTMLDivElement>(null);
   const pulseRef = useRef<HTMLDivElement>(null);
@@ -161,7 +163,7 @@ export function ContinueModal({
                 <div className="flex items-center justify-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                   <Coins size={20} className="text-yellow-600" />
                   <span className="text-gray-700 dark:text-gray-300">
-                    Your coins:{" "}
+                    {t.yourCoins}{" "}
                     <span className="font-bold text-yellow-600">{coins}</span>
                   </span>
                 </div>

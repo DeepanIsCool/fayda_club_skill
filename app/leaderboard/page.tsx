@@ -1,19 +1,38 @@
 "use client";
+import useTranslation from "../lib/useTranslation";
 
-import { AnimatePresence, motion } from "framer-motion";
-import Lottie from "lottie-react";
+import { motion } from "framer-motion";
 import {
-  Clock,
   Crown,
+  Gamepad2,
+  LayoutGrid,
+  Loader2,
   Medal,
-  Star,
-  Target,
-  TrendingUp,
+  ShieldAlert,
   Trophy,
-  Zap,
+  User,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 
+// Interfaces for data structures
 interface GameSession {
   id: string;
   session: {
@@ -29,17 +48,18 @@ interface GameSession {
   };
 }
 
-interface User {
+interface UserData {
   id: string;
   name: string;
   email: string;
   wallet: number;
   score: number;
   histories: GameSession[];
+  imageUrl?: string; // Add imageUrl for avatars
 }
 
 interface LeaderboardEntry {
-  user: User;
+  user: UserData;
   bestLevel: number;
   bestScore: number;
   totalGames: number;
@@ -47,124 +67,8 @@ interface LeaderboardEntry {
   rank: number;
 }
 
-// Lottie animation data for trophy (simple crown animation)
-const crownAnimation = {
-  v: "5.5.7",
-  fr: 60,
-  ip: 0,
-  op: 120,
-  w: 512,
-  h: 512,
-  nm: "Crown",
-  ddd: 0,
-  assets: [],
-  layers: [
-    {
-      ddd: 0,
-      ind: 1,
-      ty: 4,
-      nm: "Crown",
-      sr: 1,
-      ks: {
-        o: { a: 0, k: 100 },
-        r: {
-          a: 1,
-          k: [
-            {
-              i: { x: [0.667], y: [1] },
-              o: { x: [0.333], y: [0] },
-              t: 0,
-              s: [-5],
-            },
-            {
-              i: { x: [0.667], y: [1] },
-              o: { x: [0.333], y: [0] },
-              t: 60,
-              s: [5],
-            },
-            { t: 120, s: [-5] },
-          ],
-        },
-        p: { a: 0, k: [256, 256, 0] },
-        a: { a: 0, k: [0, 0, 0] },
-        s: {
-          a: 1,
-          k: [
-            {
-              i: { x: [0.667, 0.667, 0.667], y: [1, 1, 1] },
-              o: { x: [0.333, 0.333, 0.333], y: [0, 0, 0] },
-              t: 0,
-              s: [95, 95, 100],
-            },
-            {
-              i: { x: [0.667, 0.667, 0.667], y: [1, 1, 1] },
-              o: { x: [0.333, 0.333, 0.333], y: [0, 0, 0] },
-              t: 60,
-              s: [105, 105, 100],
-            },
-            { t: 120, s: [95, 95, 100] },
-          ],
-        },
-      },
-      ao: 0,
-      shapes: [
-        {
-          ty: "gr",
-          it: [
-            {
-              ind: 0,
-              ty: "sh",
-              ks: {
-                a: 0,
-                k: {
-                  i: [
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                  ],
-                  o: [
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                    [0, 0],
-                  ],
-                  v: [
-                    [-80, 40],
-                    [-40, -40],
-                    [0, -20],
-                    [40, -40],
-                    [80, 40],
-                    [0, 20],
-                    [-80, 40],
-                  ],
-                  c: true,
-                },
-              },
-            },
-            {
-              ty: "fl",
-              c: { a: 0, k: [1, 0.8, 0, 1] },
-              o: { a: 0, k: 100 },
-            },
-          ],
-        },
-      ],
-      ip: 0,
-      op: 300,
-      st: 0,
-    },
-  ],
-};
-
 export default function LeaderboardPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const t = useTranslation();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,24 +80,24 @@ export default function LeaderboardPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch("/api/users");
       const data = await response.json();
 
       if (data.success && data.users) {
-        setUsers(data.users);
         calculateLeaderboard(data.users);
       } else {
-        setError("Failed to fetch users");
+        setError("Failed to fetch leaderboard data.");
       }
     } catch (err) {
-      setError("Error fetching data");
+      setError("An error occurred while fetching data.");
       console.error("Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateLeaderboard = (usersData: User[]) => {
+  const calculateLeaderboard = (usersData: UserData[]) => {
     const entries: LeaderboardEntry[] = usersData
       .map((user) => {
         let bestLevel = 0;
@@ -227,9 +131,9 @@ export default function LeaderboardPage() {
       })
       .sort((a, b) => {
         if (a.bestLevel !== b.bestLevel) {
-          return b.bestLevel - a.bestLevel; // Higher level first
+          return b.bestLevel - a.bestLevel;
         }
-        return b.bestScore - a.bestScore; // Higher score first if same level
+        return b.bestScore - a.bestScore;
       })
       .map((entry, index) => ({
         ...entry,
@@ -239,256 +143,177 @@ export default function LeaderboardPage() {
     setLeaderboard(entries);
   };
 
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Crown className="w-8 h-8 text-yellow-500" />;
-      case 2:
-        return <Medal className="w-8 h-8 text-gray-400" />;
-      case 3:
-        return <Medal className="w-8 h-8 text-amber-600" />;
-      default:
-        return <Trophy className="w-6 h-6 text-gray-600" />;
-    }
-  };
+  const topThree = leaderboard.slice(0, 3);
+  const restOfLeaderboard = leaderboard.slice(3);
 
-  const getRankColor = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return "from-yellow-400 to-yellow-600";
-      case 2:
-        return "from-gray-300 to-gray-500";
-      case 3:
-        return "from-amber-500 to-amber-700";
-      default:
-        return "from-blue-400 to-blue-600";
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 mx-auto mb-4"
-          >
-            <Trophy className="w-full h-full text-yellow-500" />
-          </motion.div>
-          <motion.h2
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="text-2xl font-bold text-white"
-          >
-            Loading Leaderboard...
-          </motion.h2>
-        </div>
+  // Loading State Component
+  const LoadingState = () => (
+    <div className="flex flex-1 items-center justify-center">
+      <div className="flex flex-col items-center gap-2">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <p className="text-muted-foreground">Loading Leaderboard...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (error) {
+  // Error State Component
+  const ErrorState = () => (
+    <div className="flex flex-1 items-center justify-center">
+      <Card className="w-full max-w-md text-center">
+        <CardHeader>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50">
+            <ShieldAlert className="h-6 w-6 text-red-500" />
+          </div>
+          <CardTitle className="mt-4">Something went wrong</CardTitle>
+          <CardDescription>{error}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={fetchUsers}>Try Again</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // Podium Card Component
+  const PodiumCard = ({ entry, rank }: { entry: LeaderboardEntry, rank: number }) => {
+    const rankColors = {
+      1: "border-yellow-400 bg-yellow-400/10",
+      2: "border-gray-400 bg-gray-400/10",
+      3: "border-amber-600 bg-amber-600/10",
+    };
+    const rankIcon = {
+      1: <Crown className="h-22 w-8 text-yellow-400" />,
+      2: <Crown className="h-22 w-8 text-gray-400" />,
+      3: <Crown className="h-22 w-8 text-amber-600" />,
+    };
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-purple-900 to-indigo-900">
-        <div className="text-center">
-          <div className="text-6xl mb-4">💥</div>
-          <h2 className="text-2xl font-bold text-white mb-2">Oops!</h2>
-          <p className="text-red-300">{error}</p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={fetchUsers}
-            className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Try Again
-          </motion.button>
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: rank * 0.1 }}
+        className={`relative flex flex-col items-center rounded-xl border-2 p-6 ${rankColors[rank as keyof typeof rankColors]}`}
+      >
+        <div className="absolute -top-5">{rankIcon[rank as keyof typeof rankIcon]}</div>
+        <Avatar className="h-20 w-20 mt-6 mb-4">
+          <AvatarImage src={entry.user.imageUrl} />
+          <AvatarFallback>
+            <User className="h-10 w-10" />
+          </AvatarFallback>
+        </Avatar>
+        <h3 className="text-xl font-bold">{entry.user.name}</h3>
+        <p className="text-sm text-muted-foreground">Rank #{entry.rank}</p>
+        <div className="mt-4 text-center">
+          <p className="text-2xl font-bold text-primary">{entry.bestScore.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">Level {entry.bestLevel}</p>
         </div>
-      </div>
+      </motion.div>
     );
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-12"
-        >
-          <div className="relative inline-block">
-            <motion.div
-              animate={{
-                scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="w-24 h-24 mx-auto mb-4"
-            >
-              <div className="w-full h-full bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg">
-                <Lottie
-                  animationData={crownAnimation}
-                  className="w-12 h-12"
-                  loop={true}
-                />
-              </div>
-            </motion.div>
-            <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 mb-2">
-              LEADERBOARD
-            </h1>
-            <div className="flex items-center justify-center gap-2 text-white/70">
-              <Star className="w-5 h-5" />
-              <span className="text-lg">Tower Block Champions</span>
-              <Star className="w-5 h-5" />
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Stats Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
-        >
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 text-center border border-white/20">
-            <TrendingUp className="w-8 h-8 text-green-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">
-              {leaderboard.length}
-            </div>
-            <div className="text-white/70">Total Players</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 text-center border border-white/20">
-            <Zap className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">
-              {Math.max(...leaderboard.map((l) => l.bestLevel), 0)}
-            </div>
-            <div className="text-white/70">Highest Level</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 text-center border border-white/20">
-            <Target className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">
-              {Math.max(
-                ...leaderboard.map((l) => l.bestScore),
-                0
-              ).toLocaleString()}
-            </div>
-            <div className="text-white/70">Best Score</div>
-          </div>
-        </motion.div>
-
-        {/* Leaderboard */}
-        <div className="space-y-4">
-          <AnimatePresence>
-            {leaderboard.map((entry, index) => (
-              <motion.div
-                key={entry.user.id}
-                initial={{ opacity: 0, x: -100 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`
-                  relative overflow-hidden rounded-2xl border border-white/20 backdrop-blur-lg
-                  ${
-                    entry.rank <= 3
-                      ? `bg-gradient-to-r ${getRankColor(entry.rank)}/20`
-                      : "bg-white/10"
-                  }
-                  hover:bg-white/20 transition-all duration-300 group
-                `}
-              >
-                <div className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      {/* Rank */}
-                      <motion.div
-                        whileHover={{ scale: 1.2, rotate: 10 }}
-                        className={`
-                          w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl
-                          bg-gradient-to-br ${getRankColor(entry.rank)}
-                          ${entry.rank <= 3 ? "shadow-lg" : ""}
-                        `}
-                      >
-                        {entry.rank <= 3 ? (
-                          getRankIcon(entry.rank)
-                        ) : (
-                          <span className="text-white">#{entry.rank}</span>
-                        )}
-                      </motion.div>
-
-                      {/* Player Info */}
-                      <div>
-                        <h3 className="text-2xl font-bold text-white group-hover:text-yellow-300 transition-colors">
-                          {entry.user.name}
-                        </h3>
-                        <div className="flex items-center gap-4 text-white/70 text-sm">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {entry.totalGames} games
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Target className="w-4 h-4" />
-                            {entry.averageAccuracy.toFixed(1)}% accuracy
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="text-right">
-                      <div className="text-3xl font-bold text-white mb-1">
-                        Level {entry.bestLevel}
-                      </div>
-                      <div className="text-lg text-yellow-300 font-semibold">
-                        {entry.bestScore.toLocaleString()} pts
-                      </div>
-                      <div className="text-sm text-white/70">
-                        💰 {entry.user.wallet} coins
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Animated border for top 3 */}
-                {entry.rank <= 3 && (
-                  <motion.div
-                    className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${getRankColor(
-                      entry.rank
-                    )} opacity-30`}
-                    animate={{
-                      background: [
-                        `linear-gradient(0deg, var(--tw-gradient-from), var(--tw-gradient-to))`,
-                        `linear-gradient(360deg, var(--tw-gradient-from), var(--tw-gradient-to))`,
-                      ],
-                    }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  />
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
+    <div className="flex min-h-screen w-full bg-gray-100 dark:bg-gray-950">
+      {/* Sidebar Navigation */}
+      <aside className="hidden w-64 flex-col border-r bg-white p-4 dark:bg-black dark:border-gray-800 md:flex">
+        <div className="mb-8 flex items-center gap-2">
+          <Gamepad2 className="h-8 w-8 text-blue-500" />
+          <h1 className="text-xl font-bold">{t.title}</h1>
         </div>
-
-        {leaderboard.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-12"
+        <nav className="flex flex-col gap-2">
+          <Link
+            href="/"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-50"
           >
-            <div className="text-6xl mb-4">🎮</div>
-            <h3 className="text-2xl font-bold text-white mb-2">
-              No Games Played Yet
-            </h3>
-            <p className="text-white/70">
-              Be the first to climb the leaderboard!
-            </p>
-          </motion.div>
-        )}
+            <LayoutGrid className="h-5 w-5" />
+            {t.games}
+          </Link>
+          <Link
+            href="/leaderboard"
+            className="flex items-center gap-3 rounded-lg bg-blue-100 dark:bg-gray-800 px-3 py-2 text-blue-600 dark:text-gray-50 font-semibold"
+          >
+            <Trophy className="h-5 w-5" />
+            {t.leaderboard}
+          </Link>
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col">
+        <header className="flex h-16 items-center border-b bg-white px-6 dark:bg-black dark:border-gray-800">
+          <h2 className="text-xl font-semibold">{t.leaderboard}</h2>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <LoadingState />
+          ) : error ? (
+            <ErrorState />
+          ) : (
+            <div className="mx-auto max-w-5xl">
+              {/* Top 3 Podium */}
+              <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+                {topThree[1] && <PodiumCard entry={topThree[1]} rank={2} />}
+                {topThree[0] && <PodiumCard entry={topThree[0]} rank={1} />}
+                {topThree[2] && <PodiumCard entry={topThree[2]} rank={3} />}
+              </div>
+
+              {/* Rest of the Leaderboard */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.allPlayers || "All Players"}</CardTitle>
+                  <CardDescription>
+                    {t.fullRanking || "Full ranking of all players based on their performance."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">{t.rank || "Rank"}</TableHead>
+                        <TableHead>{t.player || "Player"}</TableHead>
+                        <TableHead className="text-right">{t.bestScore || "Best Score"}</TableHead>
+                        <TableHead className="text-right">{t.highestLevel || "Highest Level"}</TableHead>
+                        <TableHead className="text-right">{t.gamesPlayed || "Games Played"}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {restOfLeaderboard.map((entry) => (
+                        <TableRow key={entry.user.id}>
+                          <TableCell className="font-bold">#{entry.rank}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9">
+                                <AvatarImage src={entry.user.imageUrl} />
+                                <AvatarFallback>
+                                  <User className="h-5 w-5" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{entry.user.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {entry.user.email}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-primary">
+                            {entry.bestScore.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {entry.bestLevel}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {entry.totalGames}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

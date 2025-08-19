@@ -5,7 +5,7 @@ import { gsap } from "gsap";
 import { AlertTriangle, Coins, Play, Target, Trophy } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
-
+import useTranslation from "../../lib/useTranslation";
 interface GameStartModalProps {
   isOpen: boolean;
   onStart: () => void;
@@ -21,6 +21,7 @@ export function GameStartModal({
   gameTitle,
   gameDescription = "Test your skills and build the highest tower!",
 }: GameStartModalProps) {
+  const t = useTranslation();
   const { coins, canStartGame } = useGameCurrency();
   const canStart = canStartGame("tower-block");
   const coinIconRef = useRef<HTMLDivElement>(null);
@@ -154,7 +155,7 @@ export function GameStartModal({
                       />
                     </div>
                     <span className="font-semibold text-gray-800 dark:text-gray-200">
-                      Your Coins
+                      {t.yourCoins}
                     </span>
                   </div>
                   <span
@@ -175,7 +176,7 @@ export function GameStartModal({
                     <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
                       <AlertTriangle size={18} />
                       <p className="text-sm">
-                        You need at least 1 coin to play this game.
+                        {t.notEnoughCoins}
                       </p>
                     </div>
                   </motion.div>

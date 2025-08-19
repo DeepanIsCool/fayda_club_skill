@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import useTranslation from "@/app/lib/useTranslation"
 import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
-import { useMobile } from "@/app/lib/mobile"
 import { cn } from "@/app/lib/utils"
-import { Pause, Play, RotateCw, ArrowLeft, ArrowRight, Package } from "lucide-react"
+import { Pause, Play, RotateCw, Package } from "lucide-react"
 
 // Tetromino shapes and colors
 const TETROMINOES = {
@@ -100,7 +100,7 @@ const createPiece = (type: TetrominoType): Piece => ({
 })
 
 export default function TetrisGame() {
-  const isMobile = useMobile()
+  const t = useTranslation();
   const [board, setBoard] = useState<Board>(createEmptyBoard())
   const [currentPiece, setCurrentPiece] = useState<Piece | null>(null)
   const [nextPiece, setNextPiece] = useState<TetrominoType>(getRandomTetromino())
@@ -115,6 +115,9 @@ export default function TetrisGame() {
 
   const dropTimeRef = useRef(dropTime)
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
+  const boardRef = useRef<HTMLDivElement>(null)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
 
   // Initialize first piece
   useEffect(() => {
@@ -298,6 +301,10 @@ export default function TetrisGame() {
           e.preventDefault()
           rotate()
           break
+        case "ArrowDown":
+          e.preventDefault()
+          movePiece(0, 1)
+          break
         case "c":
         case "C":
           e.preventDefault()
@@ -305,6 +312,7 @@ export default function TetrisGame() {
           break
         case "p":
         case "P":
+        case " ":
           e.preventDefault()
           setIsPaused((prev) => !prev)
           break
@@ -314,6 +322,46 @@ export default function TetrisGame() {
     window.addEventListener("keydown", handleKeyPress)
     return () => window.removeEventListener("keydown", handleKeyPress)
   }, [movePiece, rotate, holdPiece, gameOver])
+
+  // Touch controls for mobile
+  useEffect(() => {
+    if (!boardRef.current || gameOver || isPaused) return
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault()
+      touchStartX.current = e.touches[0].clientX
+      touchStartY.current = e.touches[0].clientY
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault()
+      const dx = e.touches[0].clientX - touchStartX.current
+      const dy = e.touches[0].clientY - touchStartY.current
+      const threshold = 30
+
+      if (Math.abs(dx) > threshold) {
+        movePiece(Math.sign(dx), 0)
+        touchStartX.current = e.touches[0].clientX
+      }
+
+      if (dy > threshold) {
+        movePiece(0, 1)
+        touchStartY.current = e.touches[0].clientY
+      } else if (dy < -threshold) {
+        rotate()
+        touchStartY.current = e.touches[0].clientY
+      }
+    }
+
+    const element = boardRef.current
+    element.addEventListener("touchstart", handleTouchStart)
+    element.addEventListener("touchmove", handleTouchMove)
+
+    return () => {
+      element.removeEventListener("touchstart", handleTouchStart)
+      element.removeEventListener("touchmove", handleTouchMove)
+    }
+  }, [gameOver, isPaused, movePiece, rotate])
 
   // Reset game
   const resetGame = () => {
@@ -358,15 +406,15 @@ export default function TetrisGame() {
 
     const piece = TETROMINOES[type]
     return (
-      <div className="grid gap-0.5 p-1 md:p-3">
+      <div className="grid gap-0.5 items-center justify-center">
         {piece.shape.map((row, y) => (
-          <div key={y} className="flex gap-0.5">
+          <div key={y} className="flex gap-0.5 justify-center">
             {row.map((cell, x) => (
               <div
                 key={x}
                 className={cn(
-                  "w-2 h-2 md:w-3 md:h-3 rounded-sm border",
-                  cell ? `${piece.color} border-white/20` : "bg-muted border-border",
+                  "w-2 h-2 sm:w-3 sm:h-3 rounded-sm border",
+                  cell ? `${piece.color} border-white/20` : "bg-transparent border-transparent",
                 )}
               />
             ))}
@@ -377,216 +425,129 @@ export default function TetrisGame() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-1 md:p-4">
-      <div className="flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
-        <div className="text-center mb-2 md:mb-8">
-          <h1 className="text-2xl md:text-6xl font-bold text-primary mb-1 md:mb-2 tracking-tight">TETRIS</h1>
-          <p className="text-muted-foreground text-xs md:text-base font-medium">Classic block puzzle game</p>
-        </div>
+    <div className="min-h-screen bg-background p-2 sm:p-4 overflow-hidden">
+      {/* Header */}
+      {/* <div className="text-center mb-4">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-primary mb-1 tracking-tight">TETRIS</h1>
+      </div> */}
 
-        <div className="flex flex-col lg:flex-row gap-2 md:gap-6 items-center justify-center w-full">
-          {/* Mobile: Top info bar with HOLD, SCORE, NEXT in horizontal layout */}
-          <div className="flex lg:hidden justify-between items-center w-full max-w-sm gap-2 mb-2">
-            <Card className="p-2 bg-card border-border shadow-sm flex-1">
-              <h3 className="text-accent text-xs font-bold mb-1 flex items-center gap-1 uppercase tracking-wider">
-                <Package className="w-3 h-3" />
-                HOLD
+      {/* Top Info Bar - Mobile & Desktop */}
+      <div className="max-w-7xl mx-auto mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+          {/* Hold */}
+          <Card 
+            className={cn(
+              "p-2 sm:p-3 bg-card border-border shadow-sm transition-all duration-200",
+              canHold ? "cursor-pointer hover:bg-muted/50" : "opacity-50 cursor-not-allowed"
+            )}
+            onClick={() => canHold && holdPiece()}
+          >
+            <div className="text-center">
+              <h3 className="text-accent text-xs sm:text-sm font-bold mb-2 flex items-center justify-center gap-1 uppercase tracking-wider">
+                <Package className="w-3 h-3 sm:w-4 sm:h-4" />
+                {t.hold}
               </h3>
-              <div className="w-8 h-8 bg-muted border border-border rounded flex items-center justify-center">
+              <div className="h-12 sm:h-16 bg-muted/30 border border-border rounded flex items-center justify-center">
                 {renderMiniPiece(heldPiece)}
-              </div>
-            </Card>
-
-            <Card className="p-2 bg-card border-border shadow-sm flex-1">
-              <div className="text-card-foreground space-y-1 text-center">
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Score</div>
-                  <div className="font-bold text-xs text-accent">{score.toLocaleString()}</div>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <div>
-                    <div className="text-xs text-muted-foreground">LVL</div>
-                    <div className="font-bold text-xs text-primary">{level}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">LINES</div>
-                    <div className="font-bold text-xs text-secondary">{lines}</div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-2 bg-card border-border shadow-sm flex-1">
-              <h3 className="text-secondary text-xs font-bold mb-1 flex items-center gap-1 uppercase tracking-wider">
-                <RotateCw className="w-3 h-3" />
-                NEXT
-              </h3>
-              <div className="w-8 h-8 bg-muted border border-border rounded flex items-center justify-center">
-                {renderMiniPiece(nextPiece)}
-              </div>
-            </Card>
-          </div>
-
-          {/* Desktop: Side panels */}
-          <div className="hidden lg:flex flex-col gap-4 w-auto justify-start">
-            <Card className="p-6 bg-card border-border shadow-sm">
-              <h3 className="text-accent text-sm font-bold mb-4 flex items-center gap-2 uppercase tracking-wider">
-                <Package className="w-4 h-4" />
-                HOLD
-              </h3>
-              <div className="w-20 h-20 bg-muted border border-border rounded-lg flex items-center justify-center">
-                {renderMiniPiece(heldPiece)}
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-card border-border shadow-sm">
-              <div className="text-card-foreground space-y-4">
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Score</div>
-                  <div className="font-bold text-xl text-accent">{score.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Level</div>
-                  <div className="font-bold text-xl text-primary">{level}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Lines</div>
-                  <div className="font-bold text-xl text-secondary">{lines}</div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div className="flex flex-col items-center gap-2 md:gap-6">
-            <Card className="p-2 md:p-6 bg-card border-border shadow-lg relative overflow-hidden">
-              {(gameOver || isPaused) && (
-                <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-                  <div className="text-center text-foreground">
-                    <h2 className="text-xl md:text-4xl font-bold mb-2 md:mb-6 text-primary">
-                      {gameOver ? "GAME OVER" : "PAUSED"}
-                    </h2>
-                    {gameOver && (
-                      <Button
-                        onClick={resetGame}
-                        className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold py-2 md:py-3 px-4 md:px-8 rounded-lg shadow-sm transform hover:scale-105 transition-all duration-200 text-sm"
-                      >
-                        Play Again
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-10 gap-px bg-primary/5 p-1 md:p-4 rounded-lg border border-border">
-                {renderBoard().map((row, y) =>
-                  row.map((cell, x) => (
-                    <div
-                      key={`${y}-${x}`}
-                      className={cn(
-                        "w-3 h-3 md:w-7 md:h-7 border border-border/50 rounded-sm transition-all duration-150",
-                        cell ? `${cell} shadow-sm` : "bg-muted/50",
-                      )}
-                    />
-                  )),
-                )}
-              </div>
-            </Card>
-
-            <div className="flex flex-col gap-2 md:gap-6 w-full max-w-xs">
-              {/* Top row - Hold and Rotate */}
-              <div className="flex justify-center gap-2 md:gap-4">
-                <Button
-                  onTouchStart={() => holdPiece()}
-                  onClick={() => holdPiece()}
-                  disabled={!canHold}
-                  className="bg-secondary hover:bg-secondary/90 disabled:bg-muted disabled:text-muted-foreground text-secondary-foreground font-bold py-2 md:py-4 px-3 md:px-6 rounded-lg shadow-sm transform hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-1 md:gap-2 text-xs md:text-sm"
-                >
-                  <Package className="w-3 h-3 md:w-4 md:h-4" />
-                  HOLD
-                </Button>
-
-                <Button
-                  onTouchStart={e => {
-                    e.preventDefault();
-                    if (isMobile) rotate();
-                  }}
-                  onClick={e => {
-                    if (!isMobile) rotate();
-                  }}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold py-2 md:py-4 px-3 md:px-6 rounded-lg shadow-sm transform hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-1 md:gap-2 text-xs md:text-sm"
-                >
-                  <RotateCw className="w-3 h-3 md:w-4 md:h-4" />
-                  ROTATE
-                </Button>
-              </div>
-
-              {/* Bottom row - Left, Pause, Right */}
-              <div className="grid grid-cols-3 gap-2 md:gap-4 max-w-64 md:max-w-80 mx-auto">
-                <Button
-                  onTouchStart={() => movePiece(-1, 0)}
-                  onClick={() => movePiece(-1, 0)}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 md:h-16 rounded-lg shadow-sm transform hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center"
-                >
-                  <ArrowLeft className="w-4 h-4 md:w-6 md:h-6" />
-                </Button>
-
-                <Button
-                  onTouchStart={() => setIsPaused((prev) => !prev)}
-                  onClick={() => setIsPaused((prev) => !prev)}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold h-10 md:h-16 rounded-lg shadow-sm transform hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center gap-1 md:gap-2"
-                >
-                  {isPaused ? <Play className="w-3 h-3 md:w-5 md:h-5" /> : <Pause className="w-3 h-3 md:w-5 md:h-5" />}
-                  <span className="text-xs md:text-sm font-bold">{isPaused ? "PLAY" : "PAUSE"}</span>
-                </Button>
-
-                <Button
-                  onTouchStart={() => movePiece(1, 0)}
-                  onClick={() => movePiece(1, 0)}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 md:h-16 rounded-lg shadow-sm transform hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center"
-                >
-                  <ArrowRight className="w-4 h-4 md:w-6 md:h-6" />
-                </Button>
               </div>
             </div>
+          </Card>
 
-            {!isMobile && (
-              <Card className="p-6 bg-card border-border shadow-sm">
-                <div className="text-card-foreground text-sm space-y-2">
-                  <div className="font-bold mb-3 text-accent uppercase tracking-wider">Keyboard Controls:</div>
-                  <div className="grid grid-cols-2 gap-2 text-muted-foreground">
-                    <div>← → : Move</div>
-                    <div>↑ : Rotate</div>
-                    <div>C : Hold</div>
-                    <div>P : Pause</div>
-                  </div>
+          {/* Score */}
+          <Card className="p-2 sm:p-3 bg-card border-border shadow-sm">
+            <div className="text-center space-y-1">
+              <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider font-medium">{t.score}</div>
+              <div className="font-bold text-sm sm:text-lg text-accent">{score.toLocaleString()}</div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-muted-foreground">{t.level}</div>
+                  <div className="font-bold text-primary">{level}</div>
                 </div>
-              </Card>
-            )}
-          </div>
+                <div>
+                  <div className="text-muted-foreground">{t.lines}</div>
+                  <div className="font-bold text-secondary">{lines}</div>
+                </div>
+              </div>
+            </div>
+          </Card>
 
-          {/* Desktop: Right side panels */}
-          <div className="hidden lg:flex flex-col gap-4 w-auto justify-start">
-            <Card className="p-6 bg-card border-border shadow-sm">
-              <h3 className="text-secondary text-sm font-bold mb-4 flex items-center gap-2 uppercase tracking-wider">
-                <RotateCw className="w-4 h-4" />
-                NEXT
+          {/* Next */}
+          <Card className="p-2 sm:p-3 bg-card border-border shadow-sm">
+            <div className="text-center">
+              <h3 className="text-secondary text-xs sm:text-sm font-bold mb-2 flex items-center justify-center gap-1 uppercase tracking-wider">
+                <RotateCw className="w-3 h-3 sm:w-4 sm:h-4" />
+                {t.next}
               </h3>
-              <div className="w-20 h-20 bg-muted border border-border rounded-lg flex items-center justify-center">
+              <div className="h-12 sm:h-16 bg-muted/30 border border-border rounded flex items-center justify-center">
                 {renderMiniPiece(nextPiece)}
               </div>
-            </Card>
+            </div>
+          </Card>
 
-            {!gameOver && (
+          {/* Controls */}
+          <Card className="p-2 sm:p-3 bg-card border-border shadow-sm">
+            <div className="text-center space-y-2">
               <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setIsPaused((prev) => !prev)}
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold py-4 px-6 rounded-lg shadow-sm transform hover:scale-105 transition-all duration-200 flex items-center gap-2 text-sm"
+                className="w-full h-8 sm:h-10"
               >
                 {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                {isPaused ? "RESUME" : "PAUSE"}
+                <span className="ml-2 text-xs">{isPaused ? t.resume : t.pause}</span>
               </Button>
-            )}
-          </div>
+              <div className="hidden sm:block text-xs text-muted-foreground space-y-1">
+                <div>{t.arrowKeys}</div>
+                <div>{t.upToRotate}</div>
+              </div>
+            </div>
+          </Card>
         </div>
+      </div>
+
+      {/* Game Board - Maximized */}
+      <div className="flex justify-center">
+        <div className="relative">
+          <Card ref={boardRef} className="p-2 sm:p-4 bg-card border-border shadow-xl relative overflow-hidden">
+            {(gameOver || isPaused) && (
+              <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                <div className="text-center text-foreground">
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6 text-primary">
+                    {gameOver ? t.gameOver : t.pause}
+                  </h2>
+                  {gameOver && (
+                    <Button
+                      onClick={resetGame}
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold py-3 px-6 rounded-lg shadow-sm transform hover:scale-105 transition-all duration-200"
+                    >
+                      {t.play}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-10 gap-px bg-primary/5 p-2 sm:p-3 rounded-lg border border-border max-w-none">
+              {renderBoard().map((row, y) =>
+                row.map((cell, x) => (
+                  <div
+                    key={`${y}-${x}`}
+                    className={cn(
+                      "w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 border border-border/30 rounded-sm transition-all duration-150",
+                      cell ? `${cell} shadow-sm border-white/20` : "bg-muted/30",
+                    )}
+                  />
+                )),
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Mobile Instructions */}
+      <div className="sm:hidden text-center mt-4 text-xs text-muted-foreground space-y-1">
+        <div>{t.swipeInstructions}</div>
+        <div>{t.swipeDown}</div>
       </div>
     </div>
   )

@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export async function GET(request: NextRequest) {
   try {
     console.log('📡 Fetching games from external API...');
     
     // Make request to external API
-    const response = await fetch('https://ai.rajatkhandelwal.com/arcade/games', {
+    const response = await fetch(`${process.env.BASE_URL}/arcade/games`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
       // Add timeout to prevent hanging
       signal: AbortSignal.timeout(10000), // 10 seconds
-    });
+    }); 
 
     if (!response.ok) {
       console.error(`❌ External API error! status: ${response.status}`);

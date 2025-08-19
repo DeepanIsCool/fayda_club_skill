@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+// Removed dotenv import and config; not supported in Edge Runtime
 
 export async function GET(request: NextRequest) {
   try {
-    // Make request to external API
-    const response = await fetch('https://ai.rajatkhandelwal.com/arcade/users', {
+    const response = await fetch(`${process.env.BASE_URL}/arcade/users`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
-    // Return the response from external API
     return NextResponse.json(data, { status: response.status });
     
   } catch (error) {
