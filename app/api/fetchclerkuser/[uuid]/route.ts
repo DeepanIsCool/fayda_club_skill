@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest, { params }: { params: { uuid: string } }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function GET(req: NextRequest, { params }: any) {
   const { uuid } = params;
 
   if (!uuid) {
@@ -22,7 +23,13 @@ export async function GET(req: NextRequest, { params }: { params: { uuid: string
 
     const userData = await clerkRes.json();
     return NextResponse.json({ user: userData });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    let message = 'Unknown error';
+    if (err instanceof Error) {
+      message = err.message;
+    } else if (typeof err === 'string') {
+      message = err;
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
