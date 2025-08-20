@@ -1,4 +1,3 @@
-
 # Fayda Club - Skill-Based Gaming Platform
 
 A Next.js-based gaming platform where players can enjoy skill-based games and earn coins based on their performance. Currently features the Tower Block game with precision-based scoring and reward systems.
