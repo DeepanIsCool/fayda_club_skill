@@ -1,12 +1,5 @@
 "use client";
-
-import {
-  Coins,
-  Gamepad2,
-  LayoutGrid,
-  Search,
-  Trophy,
-} from "lucide-react";
+import { Gamepad2, LayoutGrid,Trophy} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -14,16 +7,10 @@ import { toast } from "react-hot-toast";
 import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
 import { useAuth } from "@clerk/nextjs";
 import { GameConfig, gameConfigService } from "./lib/gameConfig";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardTitle,
-} from "./components/ui/card";
+import { Card, CardContent, CardFooter, CardTitle} from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Skeleton } from "./components/ui/skeleton";
 import { HeaderCurrencyDisplay } from "./components/tower-block/CurrencyDisplay";
-import { Input } from "./components/ui/input";
 import useTranslation from "./lib/useTranslation";
 
 export default function Dashboard() {

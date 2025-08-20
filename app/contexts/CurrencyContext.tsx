@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useReducer,
+  useCallback, // Import useCallback
 } from "react";
 import { GameConfig, gameConfigService } from "../lib/gameConfig";
 import { useUser } from '@clerk/nextjs';
@@ -54,27 +55,27 @@ type CurrencyAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "LOAD_STATE"; payload: CurrencyState }
   | {
-      type: "START_GAME_SESSION";
-      payload: { gameId: string; gameSlug: string; gameConfig: GameConfig };
-    }
+    type: "START_GAME_SESSION";
+    payload: { gameId: string; gameSlug: string; gameConfig: GameConfig };
+  }
   | { type: "END_GAME_SESSION" }
   | { type: "INCREMENT_CONTINUE_ATTEMPT" }
   | { type: "RESET_CONTINUE_ATTEMPTS" };
 
 // Initial States
 const initialCurrencyState: CurrencyState = {
-  coins: 0, // Start with 0 until loaded
-  points: 0, // Start with 0 until loaded
+  coins: 0,
+  points: 0,
   totalEarned: 0,
   totalSpent: 0,
   totalPointsEarned: 0,
-  isLoading: true, // Start in loading state
+  isLoading: true,
 };
 
 const initialGameSession: GameSession = {
   isActive: false,
   baseEntryCost: 1,
-  continueCosts: [2, 4, 8, 16], // Default progression
+  continueCosts: [2, 4, 8, 16],
   currentContinueIndex: 0,
   gameId: "",
   gameSlug: "",
@@ -194,38 +195,39 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     initialGameSession
   );
 
-  // Sync currency from your API when user signs in
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (isSignedIn && user) {
-        try {
-          dispatchCurrency({ type: "SET_LOADING", payload: true });
-          // The cookie should be sent automatically by the browser
-          const response = await fetch(`/api/users/${user.id}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch user data');
-          }
-          const data = await response.json();
-          
-          // Assuming the API returns a user object with wallet and score
-          if (data && data.user) {
-            dispatchCurrency({
-              type: "LOAD_STATE",
-              payload: {
-                ...initialCurrencyState, // Reset other stats on load
-                coins: data.user.wallet || 0,
-                points: data.user.score || 0,
-              },
-            });
-          }
-        } catch (error) {
-          console.error("Failed to load user currency data from API:", error);
-          dispatchCurrency({ type: "SET_LOADING", payload: false });
+  // --- CHANGE START ---
+  // 1. Abstract the data fetching logic into a memoized function.
+  const fetchUserData = useCallback(async () => {
+    if (isSignedIn && user) {
+      try {
+        dispatchCurrency({ type: "SET_LOADING", payload: true });
+        const response = await fetch(`/api/user/id`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data');
         }
+        const data = await response.json();
+        if (data && data.user) {
+          dispatchCurrency({
+            type: "LOAD_STATE",
+            payload: {
+              ...initialCurrencyState,
+              coins: data.user.wallet || 0,
+              points: data.user.score || 0,
+            },
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load user currency data from API:", error);
+        dispatchCurrency({ type: "SET_LOADING", payload: false });
       }
-    };
-    fetchUserData();
+    }
   }, [user, isSignedIn]);
+
+  // 2. Call the fetching logic on initial load.
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
+  // --- CHANGE END ---
 
 
   // Actions
@@ -233,13 +235,12 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     if (!isSignedIn || !user) return;
 
     try {
-      await fetch("/api/auth/sync-currency", {
+      await fetch("/api/user/id", { // Corrected endpoint for updating user
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: user.id,
           wallet: newCoins,
           score: newPoints,
         }),
@@ -313,9 +314,13 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     }
   };
 
+  // --- CHANGE START ---
+  // 3. Update endGameSession to re-fetch data after resetting the game state.
   const endGameSession = (): void => {
     dispatchGameSession({ type: "END_GAME_SESSION" });
+    fetchUserData(); // Re-sync with server after game ends
   };
+  // --- CHANGE END ---
 
   const getContinueCost = (): number => {
     return gameSession.continueCosts[gameSession.currentContinueIndex] || 32;

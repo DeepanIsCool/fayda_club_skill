@@ -7,13 +7,12 @@ import {
   Gamepad2,
   LayoutGrid,
   Loader2,
-  Medal,
   ShieldAlert,
   Trophy,
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Button } from "../components/ui/button";
 import {
@@ -33,16 +32,18 @@ import {
 } from "../components/ui/table";
 
 // Interfaces for data structures
+interface SessionData {
+  finalLevel: number;
+  totalScore: number;
+  gameType: string;
+  timestamp: string;
+  gameDuration: number;
+  averageAccuracy: number;
+}
+
 interface GameSession {
   id: string;
-  session: {
-    finalLevel: number;
-    totalScore: number;
-    gameType: string;
-    timestamp: string;
-    gameDuration: number;
-    averageAccuracy: number;
-  };
+  session: SessionData | null;
   game: {
     name: string;
   };
@@ -50,12 +51,14 @@ interface GameSession {
 
 interface UserData {
   id: string;
-  name: string;
-  email: string;
+  uuid: string;
   wallet: number;
   score: number;
   histories: GameSession[];
-  imageUrl?: string; // Add imageUrl for avatars
+  // Fields populated from Clerk API
+  name?: string;
+  imageUrl?: string;
+  email?: string;
 }
 
 interface LeaderboardEntry {
@@ -81,51 +84,86 @@ export default function LeaderboardPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/users");
+      const response = await fetch("/api/user");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
 
-      if (data.success && data.users) {
-        calculateLeaderboard(data.users);
+      if (data.success && Array.isArray(data.users)) {
+        await calculateLeaderboard(data.users);
       } else {
-        setError("Failed to fetch leaderboard data.");
+        setError("Failed to fetch or parse leaderboard data.");
       }
-    } catch (err) {
+    } catch (err)
+      {
       setError("An error occurred while fetching data.");
       console.error("Error:", err);
     } finally {
-      setLoading(false);
+      // Add a small delay to make the skeleton visible for demonstration
+      setTimeout(() => setLoading(false), 500);
     }
   };
 
-  const calculateLeaderboard = (usersData: UserData[]) => {
-    const entries: LeaderboardEntry[] = usersData
+  const calculateLeaderboard = async (usersData: UserData[]) => {
+    const enrichedUsersDataPromises = usersData.map(async (user) => {
+      try {
+        const clerkResponse = await fetch(`/api/fetchclerkuser/${user.uuid}`);
+        if (!clerkResponse.ok) {
+          throw new Error("Clerk user not found");
+        }
+        const clerkData = await clerkResponse.json();
+
+        return {
+          ...user,
+          name: clerkData.user?.first_name || `User ${user.uuid.slice(-6)}`,
+          imageUrl: clerkData.user?.image_url,
+          email: `${user.id.slice(0, 12)}...`,
+        };
+      } catch (e) {
+        console.error(`Failed to fetch clerk data for user ${user.uuid}:`, e);
+        return {
+          ...user,
+          name: `User ${user.uuid.slice(-6)}`,
+          imageUrl: undefined,
+          email: `${user.id.slice(0, 12)}...`,
+        };
+      }
+    });
+
+    const enrichedUsersData = await Promise.all(enrichedUsersDataPromises);
+
+    const entries: LeaderboardEntry[] = enrichedUsersData
       .map((user) => {
         let bestLevel = 0;
         let bestScore = 0;
         let totalAccuracy = 0;
-        let gameCount = 0;
+        let validGameCount = 0;
 
-        user.histories.forEach((history) => {
-          if (history.session.finalLevel > bestLevel) {
-            bestLevel = history.session.finalLevel;
-            bestScore = history.session.totalScore;
-          } else if (
-            history.session.finalLevel === bestLevel &&
-            history.session.totalScore > bestScore
-          ) {
-            bestScore = history.session.totalScore;
-          }
-
-          totalAccuracy += history.session.averageAccuracy || 0;
-          gameCount++;
-        });
+        if (Array.isArray(user.histories)) {
+          user.histories.forEach((history) => {
+            if (history && history.session) {
+              if (history.session.finalLevel > bestLevel) {
+                bestLevel = history.session.finalLevel;
+                bestScore = history.session.totalScore;
+              } else if (
+                history.session.finalLevel === bestLevel &&
+                history.session.totalScore > bestScore
+              ) {
+                bestScore = history.session.totalScore;
+              }
+              totalAccuracy += history.session.averageAccuracy || 0;
+              validGameCount++;
+            }
+          });
+        }
 
         return {
           user,
           bestLevel,
           bestScore,
-          totalGames: user.histories.length,
-          averageAccuracy: gameCount > 0 ? totalAccuracy / gameCount : 0,
+          totalGames: user.histories?.length || 0,
+          averageAccuracy: validGameCount > 0 ? totalAccuracy / validGameCount : 0,
           rank: 0,
         };
       })
@@ -146,17 +184,75 @@ export default function LeaderboardPage() {
   const topThree = leaderboard.slice(0, 3);
   const restOfLeaderboard = leaderboard.slice(3);
 
-  // Loading State Component
-  const LoadingState = () => (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="flex flex-col items-center gap-2">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <p className="text-muted-foreground">Loading Leaderboard...</p>
+  // --- Skeleton Components ---
+  const Skeleton = ({ className }: { className?: string }) => (
+    <div className={`animate-pulse rounded-md bg-gray-200 dark:bg-gray-800 ${className}`} />
+  );
+
+  const PodiumCardSkeleton = () => (
+    <div className="flex flex-col items-center rounded-xl border-2 p-6 dark:border-gray-800">
+      <Skeleton className="h-20 w-20 rounded-full mt-6 mb-4" />
+      <Skeleton className="h-6 w-32 mb-2" />
+      <Skeleton className="h-4 w-20" />
+      <div className="mt-4 flex flex-col items-center">
+        <Skeleton className="h-8 w-24 mb-2" />
+        <Skeleton className="h-3 w-16" />
       </div>
     </div>
   );
 
-  // Error State Component
+  const TableRowSkeleton = () => (
+    <TableRow>
+      <TableCell><Skeleton className="h-5 w-8" /></TableCell>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-9 rounded-full" />
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-3 w-36" />
+          </div>
+        </div>
+      </TableCell>
+      <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+      <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
+      <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
+    </TableRow>
+  );
+
+  const SkeletonState = () => (
+    <div className="mx-auto max-w-5xl">
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+        <PodiumCardSkeleton />
+        <PodiumCardSkeleton />
+        <PodiumCardSkeleton />
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-full max-w-sm mt-2" />
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">{t.rank || "Rank"}</TableHead>
+                <TableHead>{t.player || "Player"}</TableHead>
+                <TableHead className="text-right">{t.bestScore || "Best Score"}</TableHead>
+                <TableHead className="text-right">{t.highestLevel || "Highest Level"}</TableHead>
+                <TableHead className="text-right">{t.gamesPlayed || "Games Played"}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...Array(5)].map((_, i) => <TableRowSkeleton key={i} />)}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+  
+  // --- End Skeleton Components ---
+
   const ErrorState = () => (
     <div className="flex flex-1 items-center justify-center">
       <Card className="w-full max-w-md text-center">
@@ -174,14 +270,13 @@ export default function LeaderboardPage() {
     </div>
   );
 
-  // Podium Card Component
   const PodiumCard = ({ entry, rank }: { entry: LeaderboardEntry, rank: number }) => {
-    const rankColors = {
+    const rankColors: { [key: number]: string } = {
       1: "border-yellow-400 bg-yellow-400/10",
       2: "border-gray-400 bg-gray-400/10",
       3: "border-amber-600 bg-amber-600/10",
     };
-    const rankIcon = {
+    const rankIcon: { [key: number]: JSX.Element } = {
       1: <Crown className="h-22 w-8 text-yellow-400" />,
       2: <Crown className="h-22 w-8 text-gray-400" />,
       3: <Crown className="h-22 w-8 text-amber-600" />,
@@ -192,9 +287,9 @@ export default function LeaderboardPage() {
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: rank * 0.1 }}
-        className={`relative flex flex-col items-center rounded-xl border-2 p-6 ${rankColors[rank as keyof typeof rankColors]}`}
+        className={`relative flex flex-col items-center rounded-xl border-2 p-6 ${rankColors[rank]}`}
       >
-        <div className="absolute -top-5">{rankIcon[rank as keyof typeof rankIcon]}</div>
+        <div className="absolute -top-5">{rankIcon[rank]}</div>
         <Avatar className="h-20 w-20 mt-6 mb-4">
           <AvatarImage src={entry.user.imageUrl} />
           <AvatarFallback>
@@ -213,7 +308,6 @@ export default function LeaderboardPage() {
 
   return (
     <div className="flex min-h-screen w-full bg-gray-100 dark:bg-gray-950">
-      {/* Sidebar Navigation */}
       <aside className="hidden w-64 flex-col border-r bg-white p-4 dark:bg-black dark:border-gray-800 md:flex">
         <div className="mb-8 flex items-center gap-2">
           <Gamepad2 className="h-8 w-8 text-blue-500" />
@@ -237,7 +331,6 @@ export default function LeaderboardPage() {
         </nav>
       </aside>
 
-      {/* Main Content */}
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 items-center border-b bg-white px-6 dark:bg-black dark:border-gray-800">
           <h2 className="text-xl font-semibold">{t.leaderboard}</h2>
@@ -245,19 +338,17 @@ export default function LeaderboardPage() {
 
         <main className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <LoadingState />
+            <SkeletonState />
           ) : error ? (
             <ErrorState />
           ) : (
             <div className="mx-auto max-w-5xl">
-              {/* Top 3 Podium */}
               <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
                 {topThree[1] && <PodiumCard entry={topThree[1]} rank={2} />}
                 {topThree[0] && <PodiumCard entry={topThree[0]} rank={1} />}
                 {topThree[2] && <PodiumCard entry={topThree[2]} rank={3} />}
               </div>
 
-              {/* Rest of the Leaderboard */}
               <Card>
                 <CardHeader>
                   <CardTitle>{t.allPlayers || "All Players"}</CardTitle>

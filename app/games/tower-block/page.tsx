@@ -8,7 +8,7 @@ import useTranslation from "../../lib/useTranslation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { ContinueModal } from "../../components/tower-block/ContinueModal";
-import { CompactCurrencyDisplay } from "../../components/tower-block/CurrencyDisplay";
+import { CurrencyDisplay } from "../../components/tower-block/CurrencyDisplay";
 import { GameStartModal } from "../../components/tower-block/GameStartModal";
 import { PauseModal } from "../../components/tower-block/PauseModal";
 import { RewardModal } from "../../components/tower-block/RewardModal";
@@ -268,7 +268,7 @@ export default function TowerBlockGame() {
           },
         };
 
-        const response = await fetch("/api/game-sessions", {
+        const response = await fetch("/api/session", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1370,7 +1370,7 @@ export default function TowerBlockGame() {
                   {t.level}: {currentLevel}
                 </span>
               </div>
-              <CompactCurrencyDisplay />
+              <CurrencyDisplay />
             </div>
           </div>
         </div>

@@ -120,7 +120,7 @@ export class GameConfigService {
   private configs: Map<string, GameConfig> = new Map();
   private apiCache: { data: ApiGameResponse; timestamp: number } | null = null;
   private readonly cacheExpiry = 5 * 60 * 1000; // 5 minutes
-  private readonly apiUrl = "/api/games";
+  private readonly apiUrl = "/api/game";
 
   // Frontend game mappings - this is where we define which games have implementations
   private readonly frontendMappings: Map<string, Partial<GameFrontendConfig>> =
