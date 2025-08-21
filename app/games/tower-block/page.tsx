@@ -1,8 +1,5 @@
 "use client";
-
-import { motion } from "framer-motion";
 import { Power1, TweenLite } from "gsap";
-import { Pause } from "lucide-react";
 import { useRouter } from "next/navigation";
 import useTranslation from "../../lib/useTranslation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,7 +7,6 @@ import * as THREE from "three";
 import { ContinueModal } from "../../components/tower-block/ContinueModal";
 import { CurrencyDisplay } from "../../components/tower-block/CurrencyDisplay";
 import { GameStartModal } from "../../components/tower-block/GameStartModal";
-import { PauseModal } from "../../components/tower-block/PauseModal";
 import { RewardModal } from "../../components/tower-block/RewardModal";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 import { gameConfigService } from "../../lib/gameConfig";
@@ -45,7 +41,6 @@ export default function TowerBlockGame() {
   } = useGameCurrency();
   const [showStartModal, setShowStartModal] = useState(true);
   const [showContinueModal, setShowContinueModal] = useState(false);
-  const [showPauseModal, setShowPauseModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [gameRewards, setGameRewards] = useState<GameReward[]>([]);
   interface TowerGameStats {
@@ -58,7 +53,6 @@ export default function TowerBlockGame() {
     totalGameTime?: number;
   }
   const [gameStats, setGameStats] = useState<TowerGameStats | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [gameInitialized, setGameInitialized] = useState(false);
 
@@ -97,8 +91,6 @@ export default function TowerBlockGame() {
   interface GameInstance {
     gameMetrics: GameMetrics;
     continueFromLastPosition: () => void;
-    pauseGame: () => void;
-    resumeGame: () => void;
     restartGame: () => void;
     onAction: () => void;
     stage: {
@@ -371,47 +363,9 @@ export default function TowerBlockGame() {
     }
   }, [gameContinue, currentLevel, continueCost, continueAttempt]);
 
-  const handlePause = useCallback(() => {
-    if (!isPaused) {
-      console.log("Pausing game");
-      setIsPaused(true);
-      setShowPauseModal(true);
-      if (gameInstanceRef.current) {
-        gameInstanceRef.current.pauseGame();
-        console.log("Game state after pause:", gameInstanceRef.current.state);
-      }
-    }
-  }, [isPaused]);
-
-  const handleResume = useCallback(() => {
-    console.log("Resuming game");
-    setIsPaused(false);
-    setShowPauseModal(false);
-    if (gameInstanceRef.current) {
-      gameInstanceRef.current.resumeGame();
-      console.log("Game state after resume:", gameInstanceRef.current.state);
-    }
-  }, []);
-
-  const handlePauseRestart = useCallback(() => {
-    setShowPauseModal(false);
-    setIsPaused(false);
-    if (gameInstanceRef.current) {
-      gameInstanceRef.current.restartGame();
-    }
-    setCurrentLevel(0);
-    // Note: We don't reset continue attempts for restart from pause
-    // as the player already paid for the game session
-  }, []);
-
   const handleBackToDashboard = useCallback(() => {
     router.push("/");
   }, [router]);
-
-  const handlePauseExit = useCallback(() => {
-    setShowPauseModal(false);
-    handleBackToDashboard();
-  }, [handleBackToDashboard]);
 
   // Custom function to trigger continue modal instead of ending game
   const triggerContinueModal = useCallback(() => {
@@ -487,7 +441,7 @@ export default function TowerBlockGame() {
       }
 
       onResize = () => {
-        const viewSize = 30;
+        const viewSize = 60;
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.camera.left = window.innerWidth / -viewSize;
         this.camera.right = window.innerWidth / viewSize;
@@ -871,7 +825,6 @@ export default function TowerBlockGame() {
           READY: "ready",
           ENDED: "ended",
           RESETTING: "resetting",
-          PAUSED: "paused",
         };
         this.internalState = this.STATES.LOADING;
         this.stage = new Stage();
@@ -1272,26 +1225,6 @@ export default function TowerBlockGame() {
         }
       }
 
-      pauseGame() {
-        console.log("pauseGame called, current state:", this.internalState);
-        if (this.internalState === this.STATES.PLAYING) {
-          this.updateState(this.STATES.PAUSED);
-          console.log("Game paused, new state:", this.internalState);
-        } else {
-          console.log("Cannot pause - game not in PLAYING state");
-        }
-      }
-
-      resumeGame() {
-        console.log("resumeGame called, current state:", this.internalState);
-        if (this.internalState === this.STATES.PAUSED) {
-          this.updateState(this.STATES.PLAYING);
-          console.log("Game resumed, new state:", this.internalState);
-        } else {
-          console.log("Cannot resume - game not in PAUSED state");
-        }
-      }
-
       tick() {
         // Only update block movement and animations when actually playing
         if (this.internalState === this.STATES.PLAYING) {
@@ -1307,14 +1240,11 @@ export default function TowerBlockGame() {
           });
         }
 
-        // Always render the scene (so we can see the paused game)
+        // Always render the scene
         this.stage.render();
 
-        // Continue the game loop for playing or paused states
-        if (
-          this.internalState === this.STATES.PLAYING ||
-          this.internalState === this.STATES.PAUSED
-        ) {
+        // Continue the game loop only when playing
+        if (this.internalState === this.STATES.PLAYING) {
           animationFrameId = requestAnimationFrame(() => this.tick());
         }
       }
@@ -1339,7 +1269,7 @@ export default function TowerBlockGame() {
         game.stage.container.removeChild(game.stage.renderer.domElement);
       }
     };
-  }, [gameInitialized, isPaused, triggerContinueModal]);
+  }, [gameInitialized, triggerContinueModal]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-gray-100">
@@ -1354,22 +1284,15 @@ export default function TowerBlockGame() {
         <div className="absolute inset-0 pointer-events-none z-10">
           {/* Top UI Bar */}
           <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center">
-            <motion.button
-              onClick={handlePause}
-              className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg hover:bg-white transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Pause size={18} />
-              {t.pause}
-            </motion.button>
+            {/* Empty div for spacing */}
+            <div></div>
 
             <div className="flex items-center gap-4">
-              <div className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg">
+              {/* <div className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg">
                 <span className="font-semibold text-gray-800">
                   {t.level}: {currentLevel}
                 </span>
-              </div>
+              </div> */}
               <CurrencyDisplay />
             </div>
           </div>
@@ -1380,7 +1303,7 @@ export default function TowerBlockGame() {
       <div
         ref={scoreContainerRef}
         className={`absolute top-20 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-gray-800 z-20 ${
-          gameInitialized && !isPaused ? "block" : "hidden"
+          gameInitialized ? "block" : "hidden"
         }`}
       >
         0
@@ -1393,7 +1316,6 @@ export default function TowerBlockGame() {
           gameInitialized ? "block" : "hidden"
         }`}
       >
-  <p>{t.clickToDrop || "Click to drop the block"}</p>
       </div>
 
       {/* Hidden start button for compatibility */}
@@ -1411,14 +1333,6 @@ export default function TowerBlockGame() {
         onCancel={handleBackToDashboard}
         gameTitle={t.towerBlock}
         gameDescription={t.towerBlockDesc || "Build the highest tower possible with precision timing!"}
-      />
-
-      <PauseModal
-        isOpen={showPauseModal}
-        onContinue={handleResume}
-        onRestart={handlePauseRestart}
-        onExit={handlePauseExit}
-        gameTitle={t.towerBlock}
       />
 
       <ContinueModal

@@ -123,7 +123,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 rounded-tl-2xl bg-[#0D0C13]">
+        <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
           {gamesError ? (
             <div className="flex items-center justify-center h-full">
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">

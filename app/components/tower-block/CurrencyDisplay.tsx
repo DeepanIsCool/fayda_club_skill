@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { Coins, Minus, Plus, Star } from "lucide-react";
+import { Minus, Plus, CircleStar, BadgeCent } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
 interface CoinTransaction {
@@ -123,7 +123,7 @@ export function CurrencyDisplay({
         whileTap={{ scale: 0.95 }}
       >
         <motion.div ref={coinRef} className="flex items-center justify-center">
-          <Coins size={config.icon} className="drop-shadow-sm" />
+          <BadgeCent size={config.icon} className="drop-shadow-sm" />
         </motion.div>
         <span className={`${config.text} drop-shadow-sm tabular-nums`}>
           {displayCoins.toLocaleString()}
@@ -180,18 +180,18 @@ export function HeaderCurrencyDisplay() {
     <div className="flex items-center gap-3">
       <div className="hidden sm:flex items-center gap-4">
         <div className="flex items-center gap-1 px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 font-semibold">
-          <Coins size={18} /> <span>{coins}</span>
+          <BadgeCent size={18} /> <span>{coins}</span>
         </div>
         <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 font-semibold">
-          <Star size={18} /> <span>{points}</span>
+          <CircleStar size={18} /> <span>{points}</span>
         </div>
       </div>
       <div className="flex sm:hidden items-center gap-2">
         <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 text-sm font-semibold">
-          <Coins size={14} /> <span>{coins}</span>
+          <BadgeCent size={14} /> <span>{coins}</span>
         </div>
         <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 text-sm font-semibold">
-          <Star size={14} /> <span>{points}</span>
+          <CircleStar size={14} /> <span>{points}</span>
         </div>
       </div>
     </div>

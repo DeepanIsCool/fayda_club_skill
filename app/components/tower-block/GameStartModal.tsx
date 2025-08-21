@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { AlertTriangle, Coins, Play, Target } from "lucide-react";
+import { BadgeCent, Play, Target } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 import useTranslation from "../../lib/useTranslation";
@@ -96,7 +96,7 @@ export function GameStartModal({
             transition={{ type: "spring", damping: 20, stiffness: 300 }}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white text-center">
+            <div className="bg-[#191948] p-6 text-white text-center">
               <h2 className="text-2xl font-bold mb-2">{gameTitle}</h2>
               <p className="text-blue-100">{gameDescription}</p>
             </div>
@@ -115,7 +115,7 @@ export function GameStartModal({
                   </p>
                 </div>
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <Coins className="mx-auto mb-2 text-green-600" size={24} />
+                  <BadgeCent className="mx-auto mb-2 text-green-600" size={24} />
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     Entry Cost
                   </p>
@@ -126,7 +126,7 @@ export function GameStartModal({
               </div>
 
               {/* Currency Status */}
-              <div
+              {/* <div
                 className={`
                 p-4 rounded-xl border-2 transition-all duration-300
                 ${canStart
@@ -137,15 +137,8 @@ export function GameStartModal({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div ref={coinIconRef}>
-                      <Coins
-                        size={24}
-                        className={
-                          canStart ? "text-green-600" : "text-red-600"
-                        }
-                      />
-                    </div>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    <span className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                      <Coins />
                       {t.yourCoins}
                     </span>
                   </div>
@@ -171,7 +164,7 @@ export function GameStartModal({
                     </div>
                   </motion.div>
                 )}
-              </div>
+              </div> */}
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <motion.button
