@@ -7,31 +7,20 @@ export default function Game2048() {
 
   return (
     <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom duration-700 delay-300">
-      {/* <div className="flex gap-4 mb-8 w-full max-w-md">
-        <div className="flex-1 bg-gradient-to-br from-amber-100 to-orange-100 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-amber-200/50 transform hover:scale-105 transition-all duration-200">
-          <div className="text-amber-700 text-sm font-bold uppercase tracking-wider mb-1">Score</div>
-          <div className="text-amber-900 text-2xl md:text-3xl font-black tabular-nums">{score.toLocaleString()}</div>
-        </div>
-        <div className="flex-1 bg-gradient-to-br from-yellow-100 to-amber-100 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-yellow-200/50 transform hover:scale-105 transition-all duration-200">
-          <div className="text-yellow-700 text-sm font-bold uppercase tracking-wider mb-1">Best</div>
-          <div className="text-yellow-900 text-2xl md:text-3xl font-black tabular-nums">
-            {bestScore.toLocaleString()}
-          </div>
-        </div>
-      </div> */}
-
-      <div className="game-container relative w-full max-w-[500px] aspect-square p-4 md:p-6 cursor-default select-none touch-none bg-gradient-to-br from-amber-200 to-orange-200 rounded-3xl shadow-2xl border border-amber-300/50 backdrop-blur-sm">
+      {/* --- MODIFIED: Main game container background --- */}
+      <div className="game-container relative w-full max-w-[500px] aspect-square p-4 md:p-6 cursor-default select-none touch-none bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl shadow-2xl border border-blue-800/50 backdrop-blur-sm">
         {(over || won) && (
           <div
             className={`absolute inset-0 z-[100] flex flex-col items-center justify-center rounded-3xl backdrop-blur-md animate-in fade-in zoom-in duration-500 ${
               won
-                ? "bg-gradient-to-br from-yellow-400/90 to-amber-400/90 text-white"
+                ? // --- MODIFIED: "You Win!" overlay ---
+                  "bg-gradient-to-br from-sky-500/90 to-cyan-400/90 text-white"
                 : "bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-white"
             }`}
           >
             <div className="text-center animate-in slide-in-from-bottom duration-700 delay-200">
               <p className="text-4xl md:text-6xl font-black mb-6 animate-bounce">
-                {won ? "🎉 You Win!" : "💀 Game Over!"}
+                {won ? "🎉 You Win!" : "Start New Game"}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {won && !keepPlaying && (
@@ -44,9 +33,10 @@ export default function Game2048() {
                 )}
                 <button
                   onClick={restart}
-                  className="group relative overflow-hidden bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 active:scale-95"
+                  // --- MODIFIED: "Try Again" button ---
+                  className="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 active:scale-95"
                 >
-                  <span className="relative z-10">Try Again</span>
+                  <span className="relative z-10">Start</span>
                   <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                 </button>
               </div>
@@ -60,7 +50,8 @@ export default function Game2048() {
               {Array.from({ length: 4 }).map((_, colIndex) => (
                 <div
                   key={colIndex}
-                  className="flex-1 aspect-square rounded-xl bg-gradient-to-br from-amber-300/40 to-orange-300/40 backdrop-blur-sm border border-amber-400/30 shadow-inner"
+                  // --- MODIFIED: Empty grid cell background ---
+                  className="flex-1 aspect-square rounded-xl bg-slate-800/50 backdrop-blur-sm border border-blue-900/30 shadow-inner"
                 />
               ))}
             </div>
@@ -75,27 +66,28 @@ export default function Game2048() {
               const x = tile.position.x
               const y = tile.position.y
 
-              const baseSize = "calc((100% - 0.75rem) / 4)" // 3rem total gap / 4 tiles
-              const gapSize = "0.25rem" // gap-2 = 0.5rem, so 0.25rem per side
+              const baseSize = "calc((100% - 0.75rem) / 4)"
+              const gapSize = "0.25rem"
 
+              // --- MODIFIED: Entire tile styling function ---
               const getTileStyles = (value: number) => {
                 const baseClasses = "text-white font-black shadow-lg border border-white/20"
                 const styles = {
-                  2: `bg-gradient-to-br from-slate-300 to-slate-400 text-slate-700 ${baseClasses}`,
-                  4: `bg-gradient-to-br from-slate-400 to-slate-500 text-slate-800 ${baseClasses}`,
-                  8: `bg-gradient-to-br from-orange-400 to-orange-500 ${baseClasses}`,
-                  16: `bg-gradient-to-br from-orange-500 to-red-500 ${baseClasses}`,
-                  32: `bg-gradient-to-br from-red-500 to-red-600 ${baseClasses}`,
-                  64: `bg-gradient-to-br from-red-600 to-red-700 ${baseClasses}`,
-                  128: `bg-gradient-to-br from-yellow-400 to-yellow-500 text-2xl md:text-3xl ${baseClasses}`,
-                  256: `bg-gradient-to-br from-yellow-500 to-amber-500 text-2xl md:text-3xl ${baseClasses}`,
-                  512: `bg-gradient-to-br from-amber-500 to-orange-500 text-2xl md:text-3xl ${baseClasses}`,
-                  1024: `bg-gradient-to-br from-orange-500 to-red-500 text-xl md:text-2xl ${baseClasses}`,
-                  2048: `bg-gradient-to-br from-yellow-400 to-yellow-500 text-xl md:text-2xl animate-pulse ${baseClasses}`,
+                  2: `bg-gradient-to-br from-slate-700 to-slate-800 text-gray-200 ${baseClasses}`,
+                  4: `bg-gradient-to-br from-slate-600 to-slate-700 text-gray-100 ${baseClasses}`,
+                  8: `bg-gradient-to-br from-blue-700 to-blue-800 ${baseClasses}`,
+                  16: `bg-gradient-to-br from-blue-600 to-blue-700 ${baseClasses}`,
+                  32: `bg-gradient-to-br from-sky-600 to-sky-700 ${baseClasses}`,
+                  64: `bg-gradient-to-br from-sky-500 to-sky-600 ${baseClasses}`,
+                  128: `bg-gradient-to-br from-cyan-500 to-cyan-600 text-2xl md:text-3xl ${baseClasses}`,
+                  256: `bg-gradient-to-br from-cyan-400 to-cyan-500 text-2xl md:text-3xl ${baseClasses}`,
+                  512: `bg-gradient-to-br from-teal-400 to-teal-500 text-2xl md:text-3xl ${baseClasses}`,
+                  1024: `bg-gradient-to-br from-indigo-500 to-indigo-600 text-xl md:text-2xl ${baseClasses}`,
+                  2048: `bg-gradient-to-br from-indigo-400 to-purple-500 text-xl md:text-2xl animate-pulse ${baseClasses}`,
                 }
                 return (
                   styles[value as keyof typeof styles] ||
-                  `bg-gradient-to-br from-purple-600 to-purple-700 text-lg md:text-xl ${baseClasses}`
+                  `bg-gradient-to-br from-purple-600 to-violet-700 text-lg md:text-xl ${baseClasses}`
                 )
               }
 
@@ -111,7 +103,9 @@ export default function Game2048() {
                   }}
                 >
                   <div
-                    className={`w-full h-full rounded-xl flex items-center justify-center text-3xl md:text-4xl transform hover:scale-105 transition-all duration-150 ${getTileStyles(tile.value)}`}
+                    className={`w-full h-full rounded-xl flex items-center justify-center text-3xl md:text-4xl transform hover:scale-105 transition-all duration-150 ${getTileStyles(
+                      tile.value,
+                    )}`}
                   >
                     {tile.value}
                   </div>
