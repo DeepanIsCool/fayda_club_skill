@@ -1300,14 +1300,21 @@ export default function TowerBlockGame() {
       )}
 
       {/* Score Display */}
-      <div
+      {/* <div
         ref={scoreContainerRef}
         className={`absolute top-20 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-gray-800 z-20 ${
           gameInitialized ? "block" : "hidden"
         }`}
       >
         0
-      </div>
+      </div> */}
+<div
+  ref={scoreContainerRef}
+  className={`absolute top-20 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-gray-800 z-20 ${gameInitialized ? "block" : "hidden"}`}
+  style={{ visibility: "hidden" }}
+>
+  0
+</div>
 
       {/* Instructions */}
       <div

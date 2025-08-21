@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { AlertCircle, Coins, Heart, X } from "lucide-react";
+import { BadgeCent } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
@@ -108,26 +108,15 @@ export function ContinueModal({
             {/* Header with pulse effect */}
             <div
               ref={pulseRef}
-              className="bg-gradient-to-r from-orange-500 to-red-500 p-6 text-white text-center"
+              className="bg-[#191948] p-6 text-white text-center"
             >
               <div className="flex justify-center mb-3">
-                <AlertCircle size={48} className="drop-shadow-lg" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Game Over!</h2>
-              <p className="text-orange-100">
-                Level {currentLevel} • {gameTitle}
-              </p>
+              <h2 className="text-2xl font-bold mb-2">Game Over</h2>
             </div>
 
             {/* Content */}
             <div className="p-6 space-y-6">
-              {/* Encouragement */}
-              <div className="text-center">
-                <p className="text-gray-600 dark:text-gray-300 mb-4">
-                  Don&apos;t give up! Continue your progress:
-                </p>
-              </div>
-
               {/* Single Continue Button */}
               <div className="space-y-4">
                 <div className="text-center">
@@ -150,35 +139,14 @@ export function ContinueModal({
                     whileTap={canContinue ? { scale: 0.95 } : {}}
                     disabled={!canContinue}
                   >
-                    <Heart size={24} className="text-white" />
                     <span>Continue Playing</span>
                     <div className="flex items-center gap-1 bg-white/20 rounded-full px-3 py-1">
-                      <Coins size={18} className="text-yellow-200" />
+                      <BadgeCent size={18} className="text-yellow-200" />
                       <span className="font-bold">{currentCost}</span>
                     </div>
                   </motion.button>
                 </div>
 
-                {/* Current coins display */}
-                <div className="flex items-center justify-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                  <Coins size={20} className="text-yellow-600" />
-                  <span className="text-gray-700 dark:text-gray-300">
-                    {t.yourCoins}{" "}
-                    <span className="font-bold text-yellow-600">{coins}</span>
-                  </span>
-                </div>
-
-                {/* Continue count info */}
-                <div className="text-center text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                  {continueAttempt === 0 ? (
-                    <span>💪 First continue attempt - Keep going!</span>
-                  ) : (
-                    <span>
-                      🔥 Continue attempt #{continueAttempt + 1} - You&apos;ve
-                      got this!
-                    </span>
-                  )}
-                </div>
               </div>
 
               {/* Game Over Button (appears after 3 seconds) */}
@@ -204,8 +172,7 @@ export function ContinueModal({
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <X size={18} />
-                      Game Over / Exit Game
+                      Exit
                     </motion.button>
                   </motion.div>
                 )}

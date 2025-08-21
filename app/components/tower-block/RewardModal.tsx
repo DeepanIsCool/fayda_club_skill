@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { Coins, Crosshair, Trophy, Zap } from "lucide-react";
+import { BadgeCent } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 
 interface Reward {
@@ -132,7 +132,7 @@ export function RewardModal({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 p-4 sm:p-6 text-white text-center relative overflow-hidden">
+            <div className="bg-[#191948] p-4 sm:p-6 text-white text-center relative overflow-hidden">
               {/* Animated background pattern */}
               <motion.div
                 className="absolute inset-0 opacity-20"
@@ -150,26 +150,14 @@ export function RewardModal({
                 transition={{ delay: 0.3 }}
               >
                 <div className="flex justify-center mb-2 sm:mb-3">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                  >
-                    <Coins
-                      size={40}
-                      className="sm:w-12 sm:h-12 drop-shadow-lg"
-                    />
-                  </motion.div>
+                  <BadgeCent
+                    size={40}
+                    className="sm:w-12 sm:h-12 drop-shadow-lg"
+                  />
                 </div>
                 <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2 drop-shadow-lg text-shadow-glow">
-                  Congratulations!
+                  Congratulations
                 </h2>
-                <p className="text-yellow-100 text-base sm:text-lg drop-shadow-md text-shadow-glow">
-                  Level {gameLevel} Complete
-                </p>
               </motion.div>
             </div>
 
@@ -190,7 +178,7 @@ export function RewardModal({
                           {r.reason}
                         </span>
                         <span className="flex items-center gap-1 font-semibold text-green-600 dark:text-green-400">
-                          <Coins size={14} /> {r.amount}
+                          <BadgeCent size={14} /> {r.amount}
                         </span>
                       </li>
                     ))}
@@ -230,7 +218,7 @@ export function RewardModal({
                         stiffness: 300,
                       }}
                     >
-                      <Coins size={16} />+{reward.amount}
+                      <BadgeCent size={16} />+{reward.amount}
                     </motion.div>
                   </motion.div>
                 ))}
@@ -245,12 +233,11 @@ export function RewardModal({
                   transition={{ delay: 0.8 }}
                 >
                   <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-center mb-3 sm:mb-4 text-base sm:text-lg drop-shadow-sm">
-                    📊 Game Statistics
                   </h3>
 
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {/* Level */}
-                    <motion.div
+                    {/* <motion.div
                       className="p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
                       initial={{ scale: 0.9, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
@@ -268,10 +255,10 @@ export function RewardModal({
                       <p className="text-lg sm:text-xl font-bold text-blue-800 dark:text-blue-200 drop-shadow-sm">
                         {gameStats.finalLevel}
                       </p>
-                    </motion.div>
+                    </motion.div> */}
 
                     {/* Average Accuracy */}
-                    <motion.div
+                    {/* <motion.div
                       className="p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700"
                       initial={{ scale: 0.9, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
@@ -289,7 +276,7 @@ export function RewardModal({
                       <p className="text-lg sm:text-xl font-bold text-green-800 dark:text-green-200 drop-shadow-sm">
                         {gameStats.averageAccuracy.toFixed(1)}%
                       </p>
-                    </motion.div>
+                    </motion.div> */}
 
                     {/* Perfect Hits */}
                     {/* <motion.div
@@ -311,7 +298,7 @@ export function RewardModal({
                   </div>
 
                   {/* Avg Reaction Time - Full Width */}
-                  <motion.div
+                  {/* <motion.div
                     className="p-2 sm:p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700"
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -329,7 +316,7 @@ export function RewardModal({
                     <p className="text-lg sm:text-xl font-bold text-indigo-800 dark:text-indigo-200 text-center drop-shadow-sm">
                       {gameStats.averageReactionTime.toFixed(2)}s
                     </p>
-                  </motion.div>
+                  </motion.div> */}
                 </motion.div>
               )}
 
@@ -345,22 +332,18 @@ export function RewardModal({
                   <div className="flex items-center justify-center gap-2">
                     {gameStats && (
                       <>
-                        <Zap
-                          size={28}
-                          className="sm:w-8 sm:h-8 text-yellow-500 drop-shadow-md"
-                        />
                         <span className="text-2xl sm:text-3xl font-bold text-blue-600 drop-shadow-md">
                           {rewards
                             .find((r) => r.type === "score")
                             ?.amount?.toFixed(2) || "0.00"}{" "}
-                          pts
+                          points
                         </span>
                       </>
                     )}
                   </div>
-                  <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 mt-2 drop-shadow-sm">
+                  {/* <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 mt-2 drop-shadow-sm">
                     Total coins: {totalCoins}
-                  </p>
+                  </p> */}
                 </div>
               </motion.div>
 
@@ -373,7 +356,7 @@ export function RewardModal({
                 }}
                 className="
                   w-full py-3 sm:py-4 px-4 rounded-xl
-                  bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700
+                  bg-[#191948]
                   text-white font-semibold shadow-lg hover:shadow-xl
                   transition-all duration-200 text-base sm:text-lg drop-shadow-md
                 "
