@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { BadgeCent, Play, Target } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
+import { getGameEntryCost } from "../../lib/gameConfig";
 import useTranslation from "../../lib/useTranslation";
 interface GameStartModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function GameStartModal({
   const canStart = canStartGame("tower-block");
   const coinIconRef = useRef<HTMLDivElement>(null);
   const startButtonRef = useRef<HTMLButtonElement>(null);
+  const entryCost = getGameEntryCost("tower-block");
 
   // Coin bounce animation
   useEffect(() => {
@@ -115,12 +117,15 @@ export function GameStartModal({
                   </p>
                 </div>
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <BadgeCent className="mx-auto mb-2 text-green-600" size={24} />
+                  <BadgeCent
+                    className="mx-auto mb-2 text-green-600"
+                    size={24}
+                  />
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     Entry Cost
                   </p>
                   <p className="font-semibold text-gray-800 dark:text-gray-200">
-                    1 Coin
+                    {entryCost} Coin{entryCost > 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
@@ -174,9 +179,10 @@ export function GameStartModal({
                   className={`
                     flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl
                     font-semibold transition-all duration-200
-                    ${canStart
-                      ? "bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl"
-                      : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    ${
+                      canStart
+                        ? "bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl"
+                        : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     }
                   `}
                   whileHover={canStart ? { scale: 1.02 } : {}}
