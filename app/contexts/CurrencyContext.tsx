@@ -6,7 +6,8 @@ import React, {
   useContext,
   useEffect,
   useReducer,
-  useCallback, // Import useCallback
+  useCallback,
+  useState, // Import useState
 } from "react";
 import { GameConfig, gameConfigService } from "../lib/gameConfig";
 import { useUser } from '@clerk/nextjs';
@@ -34,6 +35,7 @@ interface GameSession {
 interface CurrencyContextType {
   currency: CurrencyState;
   gameSession: GameSession;
+  isInitialized: boolean; // Add isInitialized state
   actions: {
     spendCoins: (amount: number, reason: string) => boolean;
     earnCoins: (amount: number, reason: string) => void;
@@ -44,6 +46,7 @@ interface CurrencyContextType {
     incrementContinueAttempt: () => void;
     resetContinueAttempts: () => void;
     hasEnoughCoins: (amount: number) => boolean;
+    initialize: () => void; // Add initialize action
   };
 }
 
@@ -194,11 +197,11 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     gameSessionReducer,
     initialGameSession
   );
+  const [isInitialized, setIsInitialized] = useState(false); // New state
 
-  // --- CHANGE START ---
-  // 1. Abstract the data fetching logic into a memoized function.
   const fetchUserData = useCallback(async () => {
-    if (isSignedIn && user) {
+    // Only fetch if the context is initialized and the user is signed in.
+    if (isInitialized && isSignedIn && user) {
       try {
         dispatchCurrency({ type: "SET_LOADING", payload: true });
         const response = await fetch(`/api/user/id`);
@@ -218,16 +221,15 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
         }
       } catch (error) {
         console.error("Failed to load user currency data from API:", error);
+      } finally {
         dispatchCurrency({ type: "SET_LOADING", payload: false });
       }
     }
-  }, [user, isSignedIn]);
+  }, [user, isSignedIn, isInitialized]); // Add isInitialized to dependency array
 
-  // 2. Call the fetching logic on initial load.
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
-  // --- CHANGE END ---
 
 
   // Actions
@@ -235,7 +237,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     if (!isSignedIn || !user) return;
 
     try {
-      await fetch("/api/user/id", { // Corrected endpoint for updating user
+      await fetch("/api/user/id", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -313,14 +315,11 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
       return false;
     }
   };
-
-  // --- CHANGE START ---
-  // 3. Update endGameSession to re-fetch data after resetting the game state.
+  
   const endGameSession = (): void => {
     dispatchGameSession({ type: "END_GAME_SESSION" });
-    fetchUserData(); // Re-sync with server after game ends
+    fetchUserData();
   };
-  // --- CHANGE END ---
 
   const getContinueCost = (): number => {
     return gameSession.continueCosts[gameSession.currentContinueIndex] || 32;
@@ -337,10 +336,15 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   const hasEnoughCoins = (amount: number): boolean => {
     return currency.coins >= amount;
   };
+  
+  const initialize = () => {
+    setIsInitialized(true);
+  };
 
   const contextValue: CurrencyContextType = {
     currency,
     gameSession,
+    isInitialized,
     actions: {
       spendCoins,
       earnCoins,
@@ -351,6 +355,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
       incrementContinueAttempt,
       resetContinueAttempts,
       hasEnoughCoins,
+      initialize,
     },
   };
 

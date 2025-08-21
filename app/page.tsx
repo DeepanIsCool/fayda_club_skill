@@ -1,5 +1,5 @@
 "use client";
-import { Gamepad2, LayoutGrid,Trophy} from "lucide-react";
+import { Gamepad2, LayoutGrid, Trophy } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -7,11 +7,12 @@ import { toast } from "react-hot-toast";
 import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
 import { useAuth } from "@clerk/nextjs";
 import { GameConfig, gameConfigService } from "./lib/gameConfig";
-import { Card, CardContent, CardFooter, CardTitle} from "./components/ui/card";
+import { Card, CardContent, CardFooter, CardTitle } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Skeleton } from "./components/ui/skeleton";
 import { HeaderCurrencyDisplay } from "./components/tower-block/CurrencyDisplay";
 import useTranslation from "./lib/useTranslation";
+import { useCurrency } from "./contexts/CurrencyContext"; // Import the hook
 
 export default function Dashboard() {
   const { isSignedIn, user } = useUser();
@@ -19,7 +20,8 @@ export default function Dashboard() {
   const [games, setGames] = useState<GameConfig[]>([]);
   const [gamesLoading, setGamesLoading] = useState(true);
   const [gamesError, setGamesError] = useState<string | null>(null);
-  const t = useTranslation(); // Use the translation hook
+  const t = useTranslation();
+  const { actions } = useCurrency(); // Get actions from the CurrencyContext
 
   useEffect(() => {
     const loadGames = async () => {
@@ -46,12 +48,19 @@ export default function Dashboard() {
         try {
           const jwt = await getToken();
           if (jwt) {
-            await fetch("/api/auth", {
+            const response = await fetch("/api/auth", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${jwt}`,
               },
             });
+
+            // If the auth request is successful, initialize the currency context
+            if (response.ok) {
+              actions.initialize();
+            } else {
+              console.error("Backend authentication failed:", response.statusText);
+            }
           }
         } catch (err) {
           console.error("Failed to log Clerk auth:", err);
@@ -59,7 +68,7 @@ export default function Dashboard() {
       }
     };
     logClerkAuth();
-  }, [isSignedIn, user, getToken]);
+  }, [isSignedIn, user, getToken, actions]); // Add actions to dependency array
 
   const featuredGames = useMemo(() => games.slice(0, 5), [games]);
 
@@ -71,12 +80,12 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex min-h-screen w-full bg-gray-100 dark:bg-gray-950">
+    <div className="flex min-h-screen w-full bg-[#191948] dark:bg-gray-950">
       {/* Sidebar Navigation */}
-      <aside className="hidden w-64 flex-col border-r bg-white p-4 dark:bg-black dark:border-gray-800 md:flex">
+      <aside className="hidden w-64 flex-col  bg-[#191948] p-4 dark:bg-black dark:border-gray-800 md:flex">
         <div className="mb-8 flex items-center gap-2">
           <Gamepad2 className="h-8 w-8 text-blue-500" />
-          <h1 className="text-xl font-bold">{t.title}</h1>
+          <h1 className="text-xl font-bold text-gray-200">{t.title}</h1>
         </div>
         <nav className="flex flex-col gap-2">
           <Link
@@ -88,7 +97,7 @@ export default function Dashboard() {
           </Link>
           <Link
             href="/leaderboard"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-200 transition-colors hover:bg-[#23239b3e] hover:text-gray-200"
           >
             <Trophy className="h-5 w-5" />
             {t.leaderboard}
@@ -98,7 +107,7 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white px-6 dark:bg-black dark:border-gray-800">
+        <header className="flex h-16 shrink-0 items-center justify-between  bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
           <div className="relative w-full max-w-sm">
 
           </div>
@@ -114,7 +123,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-6 rounded-tl-2xl bg-[#0D0C13]">
           {gamesError ? (
             <div className="flex items-center justify-center h-full">
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
@@ -124,40 +133,40 @@ export default function Dashboard() {
           ) : (
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold tracking-tight">{t.allGames}</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-200">{t.allGames}</h2>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {gamesLoading
                   ? [...Array(5)].map((_, i) => <GameCardSkeleton key={i} />)
                   : games.map((game) => (
-                      <Link
-                        key={game.id}
-                        href={`/games/${game.slug}`}
-                        className="block group"
-                        onClick={(e) => {
-                          if (!isSignedIn) {
-                            e.preventDefault();
-                            toast.error(t.signInToPlay);
-                          }
-                        }}
-                      >
-                        <Card className="overflow-hidden border-none bg-transparent shadow-none">
-                          <CardContent className="p-0">
-                            <div className="aspect-[3/4] w-full relative overflow-hidden rounded-xl transition-transform">
-                              <Image
-                                src="/tetris.png"
-                                alt={game.name}
-                                layout="fill"
-                                objectFit="cover"
-                              />
-                            </div>
-                          </CardContent>
-                          <CardFooter className="p-0 pt-3">
-                            <CardTitle className="text-base font-semibold">{game.name}</CardTitle>
-                          </CardFooter>
-                        </Card>
-                      </Link>
-                    ))}
+                    <Link
+                      key={game.id}
+                      href={`/games/${game.slug}`}
+                      className="block group"
+                      onClick={(e) => {
+                        if (!isSignedIn) {
+                          e.preventDefault();
+                          toast.error(t.signInToPlay);
+                        }
+                      }}
+                    >
+                      <Card className="overflow-hidden border-none bg-transparent shadow-none">
+                        <CardContent className="p-0">
+                          <div className="aspect-[3/4] w-full relative overflow-hidden rounded-xl transition-transform">
+                            <Image
+                              src={game.frontendConfig?.imageUrl || "/images/games/default.jpeg"}
+                              alt={game.name}
+                              layout="fill"
+                              objectFit="cover"
+                            />
+                          </div>
+                        </CardContent>
+                        <CardFooter className="p-0 pt-3">
+                          <CardTitle className="text-base font-semibold text-gray-200">{game.name}</CardTitle>
+                        </CardFooter>
+                      </Card>
+                    </Link>
+                  ))}
               </div>
             </section>
           )}

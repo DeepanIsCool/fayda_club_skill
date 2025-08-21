@@ -4,75 +4,50 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated design tokens to match modern Tetris design brief */
-  --background: oklch(0.98 0 0); /* #f8fafc - Light gray for main background */
-  --foreground: oklch(0.25 0 0); /* #1f2937 - Dark gray for text */
-  --card: oklch(1 0 0); /* #ffffff - White for cards and overlays */
-  --card-foreground: oklch(0.35 0 0); /* #374151 - Dark gray for card text */
-  --popover: oklch(1 0 0); /* #ffffff - White for popover backgrounds */
-  --popover-foreground: oklch(0.25 0 0); /* #1f2937 - Dark gray for popover text */
-  --primary: oklch(0.35 0 0); /* #374151 - Dark gray for game grid */
-  --primary-foreground: oklch(1 0 0); /* #ffffff - White for primary text */
-  --secondary: oklch(0.55 0.15 264); /* #6366f1 - Blue for buttons */
-  --secondary-foreground: oklch(1 0 0); /* #ffffff - White for button text */
-  --muted: oklch(0.98 0 0); /* #f8fafc - Light gray for muted elements */
-  --muted-foreground: oklch(0.25 0 0); /* #1f2937 - Dark gray for muted text */
-  --accent: oklch(0.55 0.15 264); /* #6366f1 - Blue for highlights */
-  --accent-foreground: oklch(1 0 0); /* #ffffff - White for accent text */
-  --destructive: oklch(0.65 0.15 45); /* #d97706 - Amber for destructive actions */
-  --destructive-foreground: oklch(1 0 0); /* #ffffff - White for destructive text */
-  --border: oklch(0.92 0 0); /* #e5e7eb - Light gray for borders */
-  --input: oklch(1 0 0); /* #ffffff - White for input fields */
-  --ring: oklch(0.55 0.15 264); /* #6366f1 - Blue for focus rings */
-  --chart-1: oklch(0.55 0.15 264); /* Chart color 1 */
-  --chart-2: oklch(0.65 0.15 45); /* Chart color 2 */
-  --chart-3: oklch(0.35 0 0); /* Chart color 3 */
-  --chart-4: oklch(0.25 0 0); /* Chart color 4 */
-  --chart-5: oklch(0.98 0 0); /* Chart color 5 */
-  --radius: 0.5rem; /* Rounded corners for buttons */
-  --sidebar: oklch(1 0 0); /* White for sidebars */
-  --sidebar-foreground: oklch(0.25 0 0); /* Dark gray for sidebar text */
-  --sidebar-primary: oklch(0.35 0 0); /* Dark gray for primary sidebar elements */
-  --sidebar-primary-foreground: oklch(1 0 0); /* White for sidebar text */
-  --sidebar-accent: oklch(0.55 0.15 264); /* Blue for sidebar accents */
-  --sidebar-accent-foreground: oklch(1 0 0); /* White for sidebar accent text */
-  --sidebar-border: oklch(0.92 0 0); /* Light gray for sidebar borders */
-  --sidebar-ring: oklch(0.55 0.15 264); /* Blue for sidebar focus rings */
+  /* Light Theme */
+  --background: oklch(0.98 0.01 255);      /* Light Gray */
+  --foreground: oklch(0.15 0.06 255);      /* Deep Navy */
+  --card: oklch(1 0 0);                    /* White */
+  --card-foreground: oklch(0.15 0.06 255); /* Deep Navy */
+  --popover: oklch(1 0 0);                 /* White */
+  --popover-foreground: oklch(0.15 0.06 255); /* Deep Navy */
+  --primary: oklch(0.45 0.15 250);         /* Bright Blue */
+  --primary-foreground: oklch(0.98 0.01 255); /* Light Gray */
+  --secondary: oklch(0.33 0.12 253);       /* Shadow Blue */
+  --secondary-foreground: oklch(0.98 0.01 255); /* Light Gray */
+  --muted: oklch(0.95 0.02 255);           /* Lighter Gray */
+  --muted-foreground: oklch(0.45 0.04 255); /* Muted Navy */
+  --accent: oklch(0.52 0.16 248);          /* Highlight Blue */
+  --accent-foreground: oklch(0.98 0.01 255); /* Light Gray */
+  --destructive: oklch(0.65 0.22 15);      /* Red for alerts */
+  --destructive-foreground: oklch(0.98 0.01 255); /* Light Gray */
+  --border: oklch(0.9 0.03 255);            /* Subtle Border */
+  --input: oklch(0.9 0.03 255);             /* Input Background */
+  --ring: oklch(0.52 0.16 248);             /* Highlight Blue for focus rings */
+  --radius: 0.5rem;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* Dark Theme from your Tetris image */
+  --background: oklch(0.15 0.06 255);      /* Deep Navy */
+  --foreground: oklch(0.93 0.01 255);      /* Light Gray */
+  --card: oklch(0.18 0.06 255);            /* Slightly Lighter Navy */
+  --card-foreground: oklch(0.93 0.01 255); /* Light Gray */
+  --popover: oklch(0.18 0.06 255);         /* Slightly Lighter Navy */
+  --popover-foreground: oklch(0.93 0.01 255); /* Light Gray */
+  --primary: oklch(0.45 0.15 250);         /* Bright Blue */
+  --primary-foreground: oklch(0.93 0.01 255); /* Light Gray */
+  --secondary: oklch(0.33 0.12 253);       /* Shadow Blue */
+  --secondary-foreground: oklch(0.93 0.01 255); /* Light Gray */
+  --muted: oklch(0.25 0.07 255);           /* Muted Navy */
+  --muted-foreground: oklch(0.65 0.05 255); /* Muted Gray */
+  --accent: oklch(0.52 0.16 248);          /* Highlight Blue */
+  --accent-foreground: oklch(0.93 0.01 255); /* Light Gray */
+  --destructive: oklch(0.65 0.22 15);      /* Red for alerts */
+  --destructive-foreground: oklch(0.93 0.01 255); /* Light Gray */
+  --border: oklch(0.25 0.07 255);           /* Subtle Border */
+  --input: oklch(0.25 0.07 255);            /* Input Background */
+  --ring: oklch(0.52 0.16 248);             /* Highlight Blue for focus rings */
 }
 
 @theme inline {
@@ -95,25 +70,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-
-  /* Added DM Sans font family */
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

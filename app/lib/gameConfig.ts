@@ -47,6 +47,7 @@ export interface GameDisplayConfig {
 export interface GameFrontendConfig {
   component: string;
   path: string;
+  imageUrl: string;
   rewardRules: GameRewardRule[];
   continueRules: GameContinueRule;
   achievements: GameAchievement[];
@@ -130,6 +131,8 @@ export class GameConfigService {
         {
           component: "TowerBlockGame",
           path: "/games/tower-block",
+          imageUrl: "/images/games/tower.jpeg", // Unique image for Tower Block
+
           rewardRules: [
             {
               id: "level_reward",
@@ -233,6 +236,8 @@ export class GameConfigService {
         {
           component: "Game2048",
           path: "/games/2048",
+          imageUrl: "/images/games/2048.jpeg", // Unique image for 2048
+
           rewardRules: [
             {
               id: "score_reward",
@@ -309,6 +314,7 @@ export class GameConfigService {
         {
           component: "TetrisGame",
           path: "/games/tetris",
+          imageUrl: "/images/games/tetris.jpeg", // Unique image for Tetris
           rewardRules: [
             {
               id: "line_clear",
@@ -524,6 +530,7 @@ export class GameConfigService {
     return {
       component: "GenericGame",
       path: `/games/${slug}`,
+      imageUrl: `/images/games/${slug}.jpeg`, // Default image path
       rewardRules: [
         {
           id: "level_reward",
@@ -604,7 +611,7 @@ export class GameConfigService {
    */
   public calculateRewards(
     gameConfig: GameConfig,
-  gameStats: Record<string, unknown>
+    gameStats: Record<string, unknown>
   ): Array<{ amount: number; reason: string; type: string }> {
     if (!gameConfig.frontendConfig) {
       return [];
@@ -625,8 +632,10 @@ export class GameConfigService {
         }
 
         // Calculate reward amount
-  const formulaResult = this.evaluateExpression(rule.formula, gameStats);
-  const amount = (typeof formulaResult === 'number' ? formulaResult : 0) * rule.multiplier;
+        const formulaResult = this.evaluateExpression(rule.formula, gameStats);
+        const amount =
+          (typeof formulaResult === "number" ? formulaResult : 0) *
+          rule.multiplier;
 
         if (amount > 0) {
           rewards.push({
@@ -648,7 +657,7 @@ export class GameConfigService {
    */
   public calculateAchievements(
     gameConfig: GameConfig,
-  gameStats: Record<string, unknown>
+    gameStats: Record<string, unknown>
   ): GameAchievement[] {
     if (!gameConfig.frontendConfig) {
       return [];

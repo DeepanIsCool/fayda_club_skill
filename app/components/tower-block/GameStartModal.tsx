@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { AlertTriangle, Coins, Play, Target, Trophy } from "lucide-react";
+import { AlertTriangle, Coins, Play, Target } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 import useTranslation from "../../lib/useTranslation";
@@ -97,14 +97,6 @@ export function GameStartModal({
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white text-center">
-              <motion.div
-                className="flex justify-center mb-3"
-                initial={{ rotate: 0 }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              >
-                <Trophy size={48} className="drop-shadow-lg" />
-              </motion.div>
               <h2 className="text-2xl font-bold mb-2">{gameTitle}</h2>
               <p className="text-blue-100">{gameDescription}</p>
             </div>
@@ -137,11 +129,10 @@ export function GameStartModal({
               <div
                 className={`
                 p-4 rounded-xl border-2 transition-all duration-300
-                ${
-                  canStart
+                ${canStart
                     ? "border-green-300 bg-green-50 dark:bg-green-900/20"
                     : "border-red-300 bg-red-50 dark:bg-red-900/20"
-                }
+                  }
               `}
               >
                 <div className="flex items-center justify-between">
@@ -159,9 +150,8 @@ export function GameStartModal({
                     </span>
                   </div>
                   <span
-                    className={`text-2xl font-bold ${
-                      canStart ? "text-green-600" : "text-red-600"
-                    }`}
+                    className={`text-2xl font-bold ${canStart ? "text-green-600" : "text-red-600"
+                      }`}
                   >
                     {coins}
                   </span>
@@ -182,20 +172,6 @@ export function GameStartModal({
                   </motion.div>
                 )}
               </div>
-
-              {/* Game Rules */}
-              {/* <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  💡 Game Rules
-                </h4>
-                <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-                  <li>• Entry cost: 1 coin</li>
-                  <li>• Failed? Continue for extra coins (2x, 3x, 5x)</li>
-                  <li>• Higher levels = better rewards</li>
-                  <li>• Perfect blocks = bonus points</li>
-                </ul>
-              </div> */}
-
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <motion.button
@@ -205,10 +181,9 @@ export function GameStartModal({
                   className={`
                     flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl
                     font-semibold transition-all duration-200
-                    ${
-                      canStart
-                        ? "bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl"
-                        : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    ${canStart
+                      ? "bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl"
+                      : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     }
                   `}
                   whileHover={canStart ? { scale: 1.02 } : {}}
