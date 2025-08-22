@@ -106,29 +106,40 @@ export default function LeaderboardPage() {
   const [mobileOpen, setMobileOpen] = useState(false); // <-- State for mobile drawer
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsersWithRetry();
   }, []);
 
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch("/api/user");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  const fetchUsersWithRetry = async (retries = 3, delay = 2000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        await fetchUsers();
+        return;
+      } catch (err) {
+        if (i === retries - 1) {
+          setError("An error occurred while fetching data.");
+          console.error("Error:", err);
+          setLoading(false);
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
       }
-      const data = await response.json();
+    }
+  };
 
-      if (data.success && Array.isArray(data.users)) {
-        await calculateLeaderboard(data.users);
-      } else {
-        setError("Failed to fetch or parse leaderboard data.");
-      }
-    } catch (err) {
-      setError("An error occurred while fetching data.");
-      console.error("Error:", err);
-    } finally {
-      setTimeout(() => setLoading(false), 500);
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
+    const response = await fetch("/api/user");
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+
+    if (data.success && Array.isArray(data.users)) {
+      await calculateLeaderboard(data.users);
+      setLoading(false);
+    } else {
+      throw new Error("Failed to fetch or parse leaderboard data.");
     }
   };
 
@@ -287,7 +298,7 @@ export default function LeaderboardPage() {
           <CardDescription>{error}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={fetchUsers}>Try Again</Button>
+          <Button onClick={() => fetchUsersWithRetry()}>Try Again</Button>
         </CardContent>
       </Card>
     </div>
