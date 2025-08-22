@@ -306,8 +306,13 @@ export default function LeaderboardPage() {
     <div className="flex min-h-screen w-full bg-[#191948] dark:bg-gray-950">
       <aside className="hidden w-64 flex-col bg-[#191948] p-4 dark:bg-black dark:border-gray-800 md:flex">
         <div className="mb-8 flex items-center gap-2">
+<<<<<<< Updated upstream
           <Swords className="h-8 w-8 text-blue-500" />
           <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
+=======
+          <Gamepad2 className="h-8 w-8 text-blue-500" />
+          <h1 className="text-xl font-bold">Fayda Club</h1>
+>>>>>>> Stashed changes
         </div>
         <nav className="flex flex-col gap-2">
           <Link
@@ -328,6 +333,7 @@ export default function LeaderboardPage() {
       </aside>
 
       <div className="flex flex-1 flex-col">
+<<<<<<< Updated upstream
         <header className="flex h-16 shrink-0 items-center justify-between  bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
           <div className="relative w-full max-w-sm">
 
@@ -342,6 +348,10 @@ export default function LeaderboardPage() {
               </SignInButton>
             )}
           </div>
+=======
+        <header className="flex h-16 items-center border-b bg-white px-6 dark:bg-black dark:border-gray-800">
+          <h2 className="text-xl font-semibold">Leaderboard</h2>
+>>>>>>> Stashed changes
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
@@ -373,7 +383,11 @@ export default function LeaderboardPage() {
                         <TableHead className="w-16">Rank</TableHead>
                         <TableHead>Player</TableHead>
                         <TableHead className="text-right">Best Score</TableHead>
+<<<<<<< Updated upstream
                         {/* <TableHead className="text-right">Highest Level</TableHead> */}
+=======
+                        <TableHead className="text-right">Highest Level</TableHead>
+>>>>>>> Stashed changes
                         <TableHead className="text-right">Games Played</TableHead>
                       </TableRow>
                     </TableHeader>

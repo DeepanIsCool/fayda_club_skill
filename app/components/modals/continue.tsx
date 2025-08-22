@@ -35,7 +35,12 @@ export function ContinueModal({
   const { coins, canContinue } = useGameCurrency();
   const [showExit, setShowExit] = useState(false);
 
+<<<<<<< Updated upstream:app/components/modals/continue.tsx
   const currentCost = continueCost ?? 0;
+=======
+  // Use centralized continue cost system
+  const currentCost = continueCost;
+>>>>>>> Stashed changes:app/components/tower-block/ContinueModal.tsx
 
   const modalRef = useRef<HTMLDivElement>(null);
   const pulseRef = useRef<HTMLDivElement>(null);
