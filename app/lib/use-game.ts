@@ -51,6 +51,12 @@ const storageManager = {
   },
 }
 
+
+// Unique tile id generator
+let globalTileId = 1;
+
+const getUniqueTileId = () => globalTileId++;
+
 // Grid management functions
 const initializeGrid = (): GridState => {
   return Array.from({ length: TILE_SIZE }, () => Array.from({ length: TILE_SIZE }, () => null))
@@ -88,7 +94,7 @@ const addRandomTile = (grid: GridState): GridState => {
       newGrid[position.x][position.y] = {
         position,
         value,
-        id: Date.now() + Math.random(),
+        id: getUniqueTileId(),
         previousPosition: null,
         mergedFrom: null,
       }
@@ -276,7 +282,7 @@ const setup = useCallback((fromStorage = false) => {
                 ...nextTile,
                 position: next,
                 value: nextTile.value * 2,
-                id: Date.now() + Math.random(),
+                id: getUniqueTileId(),
                 previousPosition: tile.position ? { ...tile.position } : null,
                 mergedFrom: [{ ...tile }, { ...nextTile }],
               }
