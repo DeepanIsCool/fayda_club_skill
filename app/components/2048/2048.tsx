@@ -10,7 +10,7 @@ import { RewardModal } from "../modals/reward";
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CircleArrowLeft } from "lucide-react";
+import { CircleArrowLeft } from "lucide-react";
 import { Button } from "@/ui/button";
 
 
@@ -53,6 +53,7 @@ export default function Game2048() {
     maxContinues,
     continue: doContinue,
     earnReward,
+    earnPoints,
   } = useGameCurrency();
   const entryCost = getGameEntryCost("2048");
   const canStart = canStartGame("2048", entryCost);
@@ -81,6 +82,9 @@ export default function Game2048() {
     if (won) {
       setShowRewardModal(true);
       markEndTime();
+      const finalScore = getFinalScore();
+      earnPoints(finalScore, "2048 game won");
+
       // Example reward calculation (customize as needed)
       setPendingReward({
         rewards: [
@@ -91,7 +95,7 @@ export default function Game2048() {
         gameStats: getSessionData(),
       });
     }
-  }, [won, getFinalScore, getSessionData, markEndTime]);
+  }, [won, getFinalScore, getSessionData, markEndTime, earnPoints]);
 
   // Handlers for ContinueModal
   const handleContinue = () => {
@@ -104,11 +108,13 @@ export default function Game2048() {
     setShowContinueModal(false);
     // Show reward modal on exit as well
     setShowRewardModal(true);
+    const finalScore = getFinalScore();
+    earnPoints(finalScore, "2048 game over");
     setPendingReward({
       rewards: [
-        { amount: getFinalScore(), reason: "score", type: "score" },
+        { amount: finalScore, reason: "score", type: "score" },
       ],
-      totalCoins: getFinalScore(),
+      totalCoins: finalScore,
       gameLevel: 0,
       gameStats: getSessionData(),
     });

@@ -309,6 +309,7 @@ export default function TowerBlockGame() {
       const avgAcc = finalStats?.averageAccuracy || 0;
       const avgRT = Math.max(finalStats?.averageReactionTime || 0.5, 0.5);
       const finalScore = Math.round(avgAcc / Math.sqrt(avgRT));
+      earnPoints(finalScore, "Tower Block Score");
 
       setGameRewards([
         {
@@ -333,7 +334,7 @@ export default function TowerBlockGame() {
 
     // Submit game session with final stats
     submitGameSession(finalStats);
-  }, [currentLevel, endGame, calculateGameStats, submitGameSession]);
+  }, [currentLevel, endGame, calculateGameStats, submitGameSession, earnPoints]);
 
   const handleContinueGame = useCallback(() => {
     // Use the centralized continue system from CurrencyContext
