@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { GridState, Position, TileState } from "./types"
 
 const TILE_SIZE = 4
@@ -106,6 +106,11 @@ export const useGame = () => {
   const [over, setOver] = useState<boolean>(false)
   const [won, setWon] = useState<boolean>(false)
   const [keepPlaying, setKeepPlaying] = useState<boolean>(false)
+  // --- Metrics ---
+  const [moves, setMoves] = useState<number>(0)
+  const [startTime, setStartTime] = useState<number | null>(null)
+  const [endTime, setEndTime] = useState<number | null>(null)
+  const [highestTile, setHighestTile] = useState<number>(0)
 
   const isGameTerminated = over || (won && !keepPlaying)
 
@@ -116,7 +121,6 @@ const setup = useCallback((fromStorage = false) => {
 
   if (fromStorage) {
     loadedState = storageManager.getGameState()
-    
     // Check if a saved state exists and has a grid property before proceeding
     if (loadedState && loadedState.grid) {
       newGrid = (loadedState.grid.cells || loadedState.grid).map((col: unknown) =>
@@ -136,12 +140,20 @@ const setup = useCallback((fromStorage = false) => {
       setOver(loadedState.over)
       setWon(loadedState.won)
       setKeepPlaying(loadedState.keepPlaying)
+      setMoves(loadedState.moves || 0)
+      setStartTime(loadedState.startTime || Date.now())
+      setEndTime(loadedState.endTime || null)
+      setHighestTile(loadedState.highestTile || 0)
     }
   }
 
   if (!loadedState) {
     newGrid = addRandomTile(newGrid)
     newGrid = addRandomTile(newGrid)
+    setMoves(0)
+    setStartTime(Date.now())
+    setEndTime(null)
+    setHighestTile(0)
   }
   setGrid(newGrid)
   setScore(newScore)
@@ -240,6 +252,7 @@ const setup = useCallback((fromStorage = false) => {
         }),
       )
       let newScore = score
+      let newHighestTile = highestTile
 
       traversals.x.forEach((x) => {
         traversals.y.forEach((y) => {
@@ -268,6 +281,9 @@ const setup = useCallback((fromStorage = false) => {
                 mergedFrom: [{ ...tile }, { ...nextTile }],
               }
               newScore += nextTile.value * 2
+              if (nextTile.value * 2 > newHighestTile) {
+                newHighestTile = nextTile.value * 2
+              }
               if (nextTile.value * 2 === 2048) setWon(true)
               moved = true
             } else {
@@ -282,10 +298,17 @@ const setup = useCallback((fromStorage = false) => {
         })
       })
 
+      // Check for highest tile in grid after move
+      newGrid.forEach(row => row.forEach(tile => {
+        if (tile && tile.value > newHighestTile) newHighestTile = tile.value
+      }))
+
       if (moved) {
         newGrid = addRandomTile(newGrid)
         setGrid(newGrid)
         setScore(newScore)
+        setMoves(moves + 1)
+        setHighestTile(newHighestTile)
         if (!movesAvailable(newGrid)) {
           setOver(true)
         }
@@ -409,5 +432,38 @@ const setup = useCallback((fromStorage = false) => {
     }
   }, [restart, move])
 
-  return { grid, score, bestScore, over, won, keepPlaying, restart, keepPlayingFunc }
+  // --- FinalScore calculation ---
+  function getFinalScore() {
+    const totalScore = score
+    const moveCount = moves > 0 ? moves : 1
+    const timeMinutes = startTime && endTime ? Math.max((endTime - startTime) / 60000, 0.01) : 0.01
+    const highest = highestTile > 0 ? highestTile : 2
+    const log2Highest = Math.log2(highest)
+    const multiplier = Math.max(0.25, log2Highest - 9)
+    return (totalScore / Math.sqrt(moveCount) / Math.sqrt(timeMinutes)) * multiplier
+  }
+
+  // --- End game time tracking ---
+  function markEndTime() {
+    if (!endTime) setEndTime(Date.now())
+  }
+
+  // --- Session data for API ---
+  function getSessionData() {
+    return {
+      score,
+      moves,
+      startTime,
+      endTime,
+      duration: startTime && endTime ? endTime - startTime : null,
+      highestTile,
+      finalScore: getFinalScore(),
+      bestScore,
+      over,
+      won,
+      keepPlaying,
+    }
+  }
+
+  return { grid, score, bestScore, over, won, keepPlaying, restart, keepPlayingFunc, moves, startTime, endTime, highestTile, getFinalScore, markEndTime, getSessionData }
 }
