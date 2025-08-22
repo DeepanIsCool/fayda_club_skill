@@ -37,11 +37,20 @@ export default function Game2048() {
   const [showContinueModal, setShowContinueModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   type Reward = { amount: number; reason: string; type: "level" | "perfect" | "streak" | "bonus" | "achievement" | "score" };
+  interface GameStats {
+    finalLevel: number;
+    totalPrecisionScore: number;
+    averageAccuracy: number;
+    perfectPlacements: number;
+    averageReactionTime: number;
+    maxConsecutiveStreak?: number;
+    totalGameTime?: number;
+  }
   type RewardModalState = {
     rewards: Reward[];
     totalCoins: number;
     gameLevel: number;
-    gameStats: any;
+    gameStats: GameStats;
   } | null;
   const [pendingReward, setPendingReward] = useState<RewardModalState>(null);
   const {
@@ -92,7 +101,7 @@ export default function Game2048() {
         ],
         totalCoins: getFinalScore(),
         gameLevel: 0,
-        gameStats: getSessionData(),
+        gameStats: getSessionData() as GameStats,
       });
     }
   }, [won, getFinalScore, getSessionData, markEndTime, earnPoints]);
@@ -116,7 +125,7 @@ export default function Game2048() {
       ],
       totalCoins: finalScore,
       gameLevel: 0,
-      gameStats: getSessionData(),
+      gameStats: getSessionData() as GameStats,
     });
   };
 

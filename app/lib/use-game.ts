@@ -360,19 +360,16 @@ const setup = useCallback(() => {
 
   // --- Session data for API ---
   function getSessionData() {
+    // Map to GameStats interface for RewardModal
     return {
-      score,
-      moves,
-      startTime,
-      endTime,
-      duration: startTime && endTime ? endTime - startTime : null,
-      highestTile,
-      finalScore: getFinalScore(),
-      bestScore,
-      over,
-      won,
-      keepPlaying,
-    }
+      finalLevel: highestTile || 0,
+      totalPrecisionScore: score || 0,
+      averageAccuracy: 100, // Placeholder, update with real value if available
+      perfectPlacements: 0, // Placeholder, update with real value if available
+      averageReactionTime: 0, // Placeholder, update with real value if available
+      maxConsecutiveStreak: undefined,
+      totalGameTime: startTime && endTime ? endTime - startTime : undefined,
+    };
   }
 
   return { grid, score, bestScore, over, won, keepPlaying, restart, keepPlayingFunc, moves, startTime, endTime, highestTile, getFinalScore, markEndTime, getSessionData }
