@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { Minus, Plus, CircleStar, BadgeCent } from "lucide-react";
+import { CircleStar, BadgeCent } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { Skeleton } from "../../../ui/skeleton";
@@ -116,29 +116,6 @@ export function CurrencyDisplay({
           {displayCoins.toLocaleString()}
         </span>
       </motion.div>
-
-      <AnimatePresence>
-        {transactions.map((transaction, index) => (
-          <motion.div
-            key={transaction.id}
-            className={`
-              absolute left-1/2 top-0 z-50
-              flex items-center gap-1 px-2 py-1
-              rounded-md text-sm font-medium
-              pointer-events-none
-              ${transaction.type === "earn" ? "bg-green-500 text-white" : "bg-red-500 text-white"}
-            `}
-            style={{ transform: "translateX(-50%)", marginTop: `${index * -40}px` }}
-            initial={{ y: 0, opacity: 0, scale: 0.8 }}
-            animate={{ y: -60, opacity: 1, scale: 1 }}
-            exit={{ y: -100, opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            {transaction.type === "earn" ? <Plus size={14} /> : <Minus size={14} />}
-            {transaction.amount}
-          </motion.div>
-        ))}
-      </AnimatePresence>
     </div>
   );
 }

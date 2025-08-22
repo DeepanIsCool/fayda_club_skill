@@ -1,10 +1,15 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Button } from "@/ui/button"
-import { Card } from "@/ui/card"
+import { useRouter } from "next/navigation"
 import { cn } from "@/app/lib/utils"
-import { RotateCw, Package } from "lucide-react"
+import { CurrencyDisplay } from "../modals/currency"
+import { GameStartModal } from "../modals/start"
+import { ContinueModal } from "../modals/continue"
+import { RewardModal } from "../modals/reward"
+import { useIsMobile } from "@/ui/use-mobile"
+import { useGameCurrency } from "../../contexts/CurrencyContext"
+import { getGameEntryCost } from "../../lib/gameConfig"
 
 // Tetrominoes (classic colors)
 const TETROMINOES = {
@@ -18,8 +23,7 @@ const TETROMINOES = {
 }
 
 const BOARD_WIDTH = 10
-const isMobile = typeof window !== "undefined" && window.innerWidth < 768
-const BOARD_HEIGHT = isMobile ? 20 : 10
+const BOARD_HEIGHT = 20 // Classic 10x20 board
 const INITIAL_DROP_TIME = 1000
 
 type TetrominoType = keyof typeof TETROMINOES
@@ -35,7 +39,7 @@ interface Piece {
 
 // Fisher-Yates shuffle algorithm
 function shuffle<T>(array: T[]): T[] {
-  let currentIndex = array.length,  randomIndex;
+  let currentIndex = array.length, randomIndex;
 
   while (currentIndex != 0) {
     randomIndex = Math.floor(Math.random() * currentIndex);
@@ -49,6 +53,21 @@ function shuffle<T>(array: T[]): T[] {
 }
 
 export default function TetrisGame() {
+  const router = useRouter();
+  // Start modal state
+  const [showStartModal, setShowStartModal] = useState(true);
+  const [showContinueModal, setShowContinueModal] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [pendingReward, setPendingReward] = useState<any>(null);
+
+  const isMobile = useIsMobile();
+  const {
+    coins,
+    canStartGame,
+    startGame,
+    earnPoints,
+  } = useGameCurrency();
+  const entryCost = getGameEntryCost("tetris");
   const bagRef = useRef<TetrominoType[]>([]);
 
   const fillBag = () => {
@@ -105,10 +124,12 @@ export default function TetrisGame() {
   const [nextPiece, setNextPiece] = useState<TetrominoType>(() => getNextTetromino());
   const [heldPiece, setHeldPiece] = useState<TetrominoType | null>(null);
   const [canHold, setCanHold] = useState(true);
-  const [score, setScore] = useState(24);
+  const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [lines, setLines] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  // Track continues used
+  const [continuesUsed, setContinuesUsed] = useState(0);
   const [dropTime, setDropTime] = useState(INITIAL_DROP_TIME);
 
   const dropTimeRef = useRef(dropTime);
@@ -118,11 +139,11 @@ export default function TetrisGame() {
   const touchStartY = useRef(0);
 
   useEffect(() => {
-    if (!currentPiece) {
+    if (!currentPiece && !showStartModal) {
       setCurrentPiece(createPiece(nextPiece))
       setNextPiece(getNextTetromino())
     }
-  }, [currentPiece, nextPiece])
+  }, [currentPiece, nextPiece, showStartModal])
 
   const checkCollision = useCallback((piece: Piece, board: Board, dx = 0, dy = 0): boolean => {
     for (let y = 0; y < piece.shape.length; y++) {
@@ -150,6 +171,7 @@ export default function TetrisGame() {
         setLines((prev) => prev + linesCleared)
         setScore((prev) => prev + calculateScore(linesCleared, level))
         if (currentPiece.position.y <= 0) {
+          setTimeout(() => setShowContinueModal(true), 300);
           setGameOver(true)
           return
         }
@@ -216,21 +238,47 @@ export default function TetrisGame() {
 
   useEffect(() => {
     if (!boardRef.current || gameOver) return
-    const handleTouchStart = (e: TouchEvent) => { e.preventDefault(); touchStartX.current = e.touches[0].clientX; touchStartY.current = e.touches[0].clientY }
+    let tapTimeout: NodeJS.Timeout | null = null;
+    let lastTap = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      const now = Date.now();
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+      if (tapTimeout) clearTimeout(tapTimeout);
+      tapTimeout = setTimeout(() => {
+        tapTimeout = null;
+      }, 300);
+      lastTap = now;
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      const dx = (e.changedTouches[0].clientX - touchStartX.current);
+      const dy = (e.changedTouches[0].clientY - touchStartY.current);
+      const duration = Date.now() - lastTap;
+      const tapThreshold = 15;
+      if (Math.abs(dx) < tapThreshold && Math.abs(dy) < tapThreshold && duration < 250) {
+        rotate();
+      }
+    };
     const handleTouchMove = (e: TouchEvent) => {
-      e.preventDefault()
-      const dx = e.touches[0].clientX - touchStartX.current
-      const dy = e.touches[0].clientY - touchStartY.current
-      const threshold = 30
+      e.preventDefault();
+      const dx = e.touches[0].clientX - touchStartX.current;
+      const dy = e.touches[0].clientY - touchStartY.current;
+      const threshold = 30;
       if (Math.abs(dx) > threshold) { movePiece(Math.sign(dx), 0); touchStartX.current = e.touches[0].clientX }
       if (dy > threshold) { movePiece(0, 1); touchStartY.current = e.touches[0].clientY }
       else if (dy < -threshold) { rotate(); touchStartY.current = e.touches[0].clientY }
-    }
-    const element = boardRef.current
-    element.addEventListener("touchstart", handleTouchStart)
-    element.addEventListener("touchmove", handleTouchMove)
-    return () => { element.removeEventListener("touchstart", handleTouchStart); element.removeEventListener("touchmove", handleTouchMove) }
-  }, [gameOver, movePiece, rotate])
+    };
+    const element = boardRef.current;
+    element.addEventListener("touchstart", handleTouchStart);
+    element.addEventListener("touchend", handleTouchEnd);
+    element.addEventListener("touchmove", handleTouchMove);
+    return () => {
+      element.removeEventListener("touchstart", handleTouchStart);
+      element.removeEventListener("touchend", handleTouchEnd);
+      element.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, [gameOver, movePiece, rotate]);
 
   const resetGame = () => {
     setBoard(createEmptyBoard())
@@ -244,6 +292,11 @@ export default function TetrisGame() {
     setLines(0)
     setGameOver(false)
     setDropTime(INITIAL_DROP_TIME)
+    setShowStartModal(true);
+    setContinuesUsed(0);
+    setShowContinueModal(false);
+    setShowRewardModal(false);
+    setPendingReward(null);
   }
 
   const renderBoard = () => {
@@ -267,14 +320,16 @@ export default function TetrisGame() {
   const renderMiniPiece = (type: TetrominoType | null) => {
     if (!type) return null
     const piece = TETROMINOES[type]
+    // Filter out empty rows to center the piece vertically
+    const shape = piece.shape.filter(row => row.some(cell => cell === 1));
     return (
       <div className="grid gap-0.5 items-center justify-center">
-        {piece.shape.map((row, y) => (
+        {shape.map((row, y) => (
           <div key={y} className="flex gap-0.5 justify-center">
             {row.map((cell, x) => (
               <div
                 key={x}
-                className={cn("w-2 h-2 sm:w-3 sm:h-3 rounded-sm border", cell ? `${piece.color} border-black/20` : "bg-transparent border-transparent")}
+                className={cn("w-3 h-3 md:w-4 md:h-4", cell ? `${piece.color}` : "bg-transparent")}
               />
             ))}
           </div>
@@ -283,77 +338,173 @@ export default function TetrisGame() {
     )
   }
 
+  // Continue/Reward modal handlers
+  const handleContinue = () => {
+    setShowContinueModal(false);
+    setGameOver(false);
+    setContinuesUsed((c) => c + 1);
+    resetGame();
+    setShowStartModal(false); // skip start modal for continue
+  };
+  // (removed duplicate handleGameOver)
+  const handleRewardClose = () => {
+    setShowRewardModal(false);
+    setPendingReward(null);
+    resetGame();
+  };
+
+  // Continue cost progression (example: [2,4,8,16,32])
+  const continueCosts = [2, 4, 8, 16, 32];
+  const continueCost = continueCosts[continuesUsed] || continueCosts[continueCosts.length - 1];
+
+  // Handler for starting the game: deduct entry cost
+  const handleStartGame = () => {
+    if (canStartGame("tetris", entryCost)) {
+      startGame("tetris");
+      setShowStartModal(false);
+    }
+  };
+
+  // Handler for cancel: go back to dashboard
+  const handleCancel = () => {
+    router.push("/");
+  };
+
+  // On game over, update points
+  const handleGameOver = () => {
+    setShowContinueModal(false);
+    setShowRewardModal(true);
+    setPendingReward({
+      rewards: [
+        { amount: score, reason: "score", type: "score" },
+      ],
+      totalCoins: score,
+      gameLevel: level,
+      gameStats: { finalLevel: level, totalGameTime: 0, perfectPlacements: 0, totalPrecisionScore: 0, averageAccuracy: 0 },
+    });
+  earnPoints(score, "tetris game over");
+  };
+
   return (
-    <div className="min-h-screen bg-slate-900 p-2 sm:p-4 text-white flex items-center justify-center">
-      <div className="w-full max-w-4xl">
-        <div className="grid grid-cols-1 gap-4">
-          {/* Top - Score, Level, Lines */}
-          <div className="flex justify-between gap-4">
-            <Card className="flex-1 p-3 sm:p-4 bg-slate-800 border-slate-700">
-              <div className="text-center">
-                <div className="text-xs sm:text-sm text-slate-400 mb-1">SCORE</div>
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{score}</div>
-              </div>
-            </Card>
-            <Card className="flex-1 p-3 sm:p-4 bg-slate-800 border-slate-700">
-              <div className="text-center">
-                <div className="text-xs sm:text-sm text-slate-400 mb-1">LEVEL</div>
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{level}</div>
-              </div>
-            </Card>
-            <Card className="flex-1 p-3 sm:p-4 bg-slate-800 border-slate-700">
-              <div className="text-center">
-                <div className="text-xs sm:text-sm text-slate-400 mb-1">LINES</div>
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-cyan-400">{lines}</div>
-              </div>
-            </Card>
+    <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-2 relative">
+      {/* Start Modal */}
+      <GameStartModal
+        isOpen={showStartModal}
+        onStart={handleStartGame}
+        onCancel={handleCancel}
+  gameKey="tetris"
+  gameTitle="Tetris"
+        gameDescription="Clear lines and score as high as possible!"
+        gameObjective="Clear lines by arranging falling blocks"
+      />
+      {/* Continue Modal */}
+      <ContinueModal
+        isOpen={showContinueModal}
+        onContinue={handleContinue}
+        onGameOver={handleGameOver}
+        currentLevel={level}
+  gameKey="tetris"
+  gameTitle="Tetris"
+        continueCost={continueCost}
+        continueLabel="Continue Playing"
+        exitLabel="Exit"
+        showExitAfterMs={1000}
+      />
+      {/* Reward Modal */}
+      <RewardModal
+        isOpen={showRewardModal}
+        onClose={handleRewardClose}
+        rewards={pendingReward?.rewards || []}
+        totalCoins={pendingReward?.totalCoins || 0}
+        gameLevel={pendingReward?.gameLevel || 0}
+        gameStats={pendingReward?.gameStats}
+      />
+      {/* CurrencyDisplay at top right on mobile */}
+      {isMobile && (
+        <div className="fixed top-2 right-2 z-50">
+          <CurrencyDisplay />
+        </div>
+      )}
+      <div className="flex flex-row items-start gap-3 md:gap-5">
+        {/* Left Column */}
+        <div className="flex flex-col gap-3 md:gap-4 w-20 md:w-28">
+          {/* Hold */}
+          <div
+            className={cn("bg-black border-2 border-gray-700 rounded-md p-2", canHold ? "cursor-pointer" : "opacity-60")}
+            onClick={() => canHold && holdPiece()}
+          >
+            <p className="text-center text-xs text-gray-400 mb-2">HOLD</p>
+            <div className="h-16 md:h-20 bg-slate-900 rounded-sm flex items-center justify-center">
+              {renderMiniPiece(heldPiece)}
+            </div>
           </div>
+          {/* Level */}
+          <div className="bg-black border-2 border-gray-700 rounded-md p-2 text-center">
+            <p className="text-xs text-gray-400">LEVEL</p>
+            <p className="text-lg md:text-xl font-bold">{level}</p>
+          </div>
+          {/* Lines */}
+          <div className="bg-black border-2 border-gray-700 rounded-md p-2 text-center">
+            <p className="text-xs text-gray-400">LINES</p>
+            <p className="text-lg md:text-xl font-bold">{lines}</p>
+          </div>
+        </div>
 
-          {/* Center - Game Board */}
-          <div className="flex justify-center">
-            <Card ref={boardRef} className="p-3 sm:p-4 lg:p-6 bg-slate-800 border-slate-700 relative">
-              {gameOver && (
-                <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-                  <div className="text-center text-white">
-                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 lg:mb-6 text-sky-400">Game Over</h2>
-                    <Button onClick={resetGame} className="bg-gradient-to-r from-blue-600 to-sky-600 hover:opacity-90 text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-lg">
-                      Play Again
-                    </Button>
-                  </div>
+        {/* Center Column */}
+        <div className="flex flex-col items-center gap-2">
+          {/* Score */}
+          <div className="bg-black border-2 border-gray-700 rounded-md p-2 w-full text-center">
+            <p className="text-xs text-gray-400">SCORE</p>
+            <p className="text-lg md:text-xl font-bold">{score}</p>
+          </div>
+          {/* Game Board */}
+          <div
+            ref={boardRef}
+            className="relative bg-black border-4 border-gray-600 border-t-gray-500 border-l-gray-500 rounded-md"
+            style={{ touchAction: "manipulation" }}
+            onClick={rotate}
+          >
+            {/* {gameOver && (
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-sm">
+                <div className="text-center text-white">
+                  <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-red-500">Game Over</h2>
+                  <button onClick={resetGame} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md">
+                    Again
+                  </button>
                 </div>
+              </div>
+            )} */}
+            <div className="grid grid-cols-10 gap-px bg-slate-900 p-px">
+              {renderBoard().map((row, y) =>
+                row.map((cell, x) => (
+                  <div
+                    key={`${y}-${x}`}
+                    className={cn(
+                      "w-[22px] h-[22px] sm:w-6 sm:h-6 md:w-7 md:h-7",
+                      cell ? cell : "bg-black"
+                    )}
+                  />
+                )),
               )}
-              <div className="grid grid-cols-10 gap-px bg-slate-950 p-2 sm:p-3 lg:p-4 rounded border-2 border-slate-600">
-                {renderBoard().map((row, y) =>
-                  row.map((cell, x) => (
-                    <div key={`${y}-${x}`} className={cn("w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 border border-slate-700 rounded-sm", cell ? `${cell} shadow-sm border-black/20` : "bg-slate-800")} />
-                  )),
-                )}
-              </div>
-            </Card>
+            </div>
           </div>
+        </div>
 
-          {/* Bottom - Next and Hold */}
-          <div className="flex justify-between gap-4">
-            <Card className="flex-1 p-3 sm:p-4 bg-slate-800 border-slate-700">
-              <div className="text-center">
-                <div className="text-xs sm:text-sm text-slate-400 mb-2">NEXT</div>
-                <div className="h-12 sm:h-16 lg:h-20 bg-slate-900 border border-slate-600 rounded flex items-center justify-center">
-                  {renderMiniPiece(nextPiece)}
-                </div>
-              </div>
-            </Card>
-            <Card 
-              className={cn("flex-1 p-3 sm:p-4 bg-red-300 border-slate-700", canHold ? "cursor-pointer hover:bg-red-400" : "opacity-50")}
-              onClick={() => canHold && holdPiece()}
-            >
-              <div className="text-center">
-                <div className="text-xs sm:text-sm text-slate-800 font-bold mb-2">HOLD</div>
-                <div className="h-12 sm:h-16 lg:h-20 bg-slate-900 border border-slate-600 rounded flex items-center justify-center">
-                  {renderMiniPiece(heldPiece)}
-                </div>
-              </div>
-            </Card>
+        {/* Right Column */}
+        <div className="flex flex-col gap-4 w-20 md:w-28">
+          {/* Next */}
+          <div className="bg-black border-2 border-gray-700 rounded-md p-2">
+            <p className="text-center text-xs text-gray-400 mb-2">NEXT</p>
+            <div className="h-24 md:h-28 bg-slate-900 rounded-sm flex items-center justify-center">
+              {renderMiniPiece(nextPiece)}
+            </div>
           </div>
+          {/* CurrencyDisplay below NEXT on desktop */}
+          {!isMobile && (
+            <div>
+              <CurrencyDisplay />
+            </div>
+          )}
         </div>
       </div>
     </div>
