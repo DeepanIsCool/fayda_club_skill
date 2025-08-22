@@ -4,60 +4,10 @@ import { useCallback, useEffect, useState } from "react"
 import type { GridState, Position, TileState } from "./types"
 
 const TILE_SIZE = 4
-const LOCAL_STORAGE_KEY = "2048GameState"
-const BEST_SCORE_KEY = "2048BestScore"
-
-// LocalStorageManager replacement
-const storageManager = {
-  getGameState: () => {
-    try {
-      const state = localStorage.getItem(LOCAL_STORAGE_KEY)
-      return state ? JSON.parse(state) : null
-    } catch (e) {
-      console.error("Failed to load game state from localStorage", e)
-      return null
-    }
-  },
-  setGameState: (state: unknown) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state))
-    } catch (e) {
-      console.error("Failed to save game state to localStorage", e)
-    }
-  },
-  clearGameState: () => {
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY)
-    } catch (e) {
-      console.error("Failed to clear game state", e)
-    }
-  },
-  getBestScore: () => {
-    if (typeof window === "undefined") return 0;
-    try {
-      const score = localStorage.getItem(BEST_SCORE_KEY);
-      return score ? Number.parseInt(score, 10) : 0;
-    } catch (e) {
-      console.error("Failed to load best score from localStorage", e);
-      return 0;
-    }
-  },
-  setBestScore: (score: number) => {
-    try {
-      localStorage.setItem(BEST_SCORE_KEY, score.toString())
-    } catch (e) {
-      console.error("Failed to save best score to localStorage", e)
-    }
-  },
-}
-
-
-// Unique tile id generator
 let globalTileId = 1;
 
 const getUniqueTileId = () => globalTileId++;
 
-// Grid management functions
 const initializeGrid = (): GridState => {
   return Array.from({ length: TILE_SIZE }, () => Array.from({ length: TILE_SIZE }, () => null))
 }
@@ -108,7 +58,7 @@ const addRandomTile = (grid: GridState): GridState => {
 export const useGame = () => {
   const [grid, setGrid] = useState<GridState>(initializeGrid)
   const [score, setScore] = useState<number>(0)
-  const [bestScore, setBestScore] = useState<number>(storageManager.getBestScore())
+  const [bestScore, setBestScore] = useState<number>(0)
   const [over, setOver] = useState<boolean>(false)
   const [won, setWon] = useState<boolean>(false)
   const [keepPlaying, setKeepPlaying] = useState<boolean>(false)
@@ -120,73 +70,28 @@ export const useGame = () => {
 
   const isGameTerminated = over || (won && !keepPlaying)
 
-const setup = useCallback((fromStorage = false) => {
+const setup = useCallback(() => {
   let newGrid = initializeGrid()
-  let newScore = 0
-  let loadedState = null
-
-  if (fromStorage) {
-    loadedState = storageManager.getGameState()
-    // Check if a saved state exists and has a grid property before proceeding
-    if (loadedState && loadedState.grid) {
-      newGrid = (loadedState.grid.cells || loadedState.grid).map((col: unknown) =>
-        (col as Array<unknown>).map((cell: unknown) =>
-          cell && typeof cell === 'object' && cell !== null && 'position' in cell && 'value' in cell && 'id' in cell
-            ? {
-                position: { x: (cell as TileState).position.x, y: (cell as TileState).position.y },
-                value: (cell as TileState).value,
-                id: (cell as TileState).id,
-                previousPosition: null,
-                mergedFrom: null,
-              }
-            : null,
-        ),
-      )
-      newScore = loadedState.score
-      setOver(loadedState.over)
-      setWon(loadedState.won)
-      setKeepPlaying(loadedState.keepPlaying)
-      setMoves(loadedState.moves || 0)
-      setStartTime(loadedState.startTime || Date.now())
-      setEndTime(loadedState.endTime || null)
-      setHighestTile(loadedState.highestTile || 0)
-    }
-  }
-
-  if (!loadedState) {
-    newGrid = addRandomTile(newGrid)
-    newGrid = addRandomTile(newGrid)
-    setMoves(0)
-    setStartTime(Date.now())
-    setEndTime(null)
-    setHighestTile(0)
-  }
+  newGrid = addRandomTile(newGrid)
+  newGrid = addRandomTile(newGrid)
+  setMoves(0)
+  setStartTime(Date.now())
+  setEndTime(null)
+  setHighestTile(0)
   setGrid(newGrid)
-  setScore(newScore)
+  setScore(0)
   setOver(false)
   setWon(false)
   setKeepPlaying(false)
 }, [])
 
   useEffect(() => {
-    setup(true)
+    setup()
   }, [setup])
 
   useEffect(() => {
     if (score > bestScore) {
       setBestScore(score)
-      storageManager.setBestScore(score)
-    }
-    if (over) {
-      storageManager.clearGameState()
-    } else {
-      storageManager.setGameState({
-        grid: { cells: grid },
-        score,
-        over,
-        won,
-        keepPlaying,
-      })
     }
   }, [grid, score, over, won, keepPlaying, bestScore])
 
@@ -324,7 +229,6 @@ const setup = useCallback((fromStorage = false) => {
   )
 
   const restart = useCallback(() => {
-    storageManager.clearGameState()
     setup()
   }, [setup])
 

@@ -87,3 +87,14 @@
     @apply bg-background text-foreground font-sans;
   }
 }
+@font-face {
+  font-family: "MyFont";
+  src: url("/fonts/font.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: "MyFont", sans-serif;
+}

@@ -237,15 +237,17 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     if (!isSignedIn || !user) return;
 
     try {
+      const body = {
+        wallet: newCoins,
+        score: newPoints,
+      };
+      console.log("Syncing currency to server with body:", body);
       await fetch("/api/user/id", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          wallet: newCoins,
-          score: newPoints,
-        }),
+        body: JSON.stringify(body),
       });
     } catch (error) {
       console.error("Failed to sync currency to server:", error);
@@ -315,7 +317,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
       return false;
     }
   };
-  
+
   const endGameSession = (): void => {
     dispatchGameSession({ type: "END_GAME_SESSION" });
     fetchUserData();
@@ -336,7 +338,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   const hasEnoughCoins = (amount: number): boolean => {
     return currency.coins >= amount;
   };
-  
+
   const initialize = () => {
     setIsInitialized(true);
   };
@@ -383,7 +385,7 @@ export function useGameCurrency() {
     coins: currency.coins,
     points: currency.points,
     gameConfig: gameSession.gameConfig,
-    canStartGame: (gameSlug: string) => {
+    canStartGame: (gameSlug: string, defaultCost: number) => {
       const gameConfig = gameConfigService.getGameBySlug(gameSlug);
       const entryCost = gameConfig?.entryfee || 1;
       return actions.hasEnoughCoins(entryCost);

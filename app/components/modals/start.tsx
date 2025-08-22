@@ -5,70 +5,34 @@ import { gsap } from "gsap";
 import { BadgeCent, Play, Target } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
-import { getGameEntryCost } from "../../lib/gameConfig";
-import useTranslation from "../../lib/useTranslation";
+import { getGameEntryCost } from "@/app/lib/gameConfig";
+
 interface GameStartModalProps {
   isOpen: boolean;
   onStart: () => void;
   onCancel: () => void;
+  gameKey: string; // <-- now dynamic
   gameTitle: string;
   gameDescription?: string;
+  gameObjective?: string; // optional objective text
 }
 
 export function GameStartModal({
   isOpen,
   onStart,
   onCancel,
+  gameKey,
   gameTitle,
-  gameDescription = "Test your skills and build the highest tower!",
+  gameDescription,
+  gameObjective,
 }: GameStartModalProps) {
-  const t = useTranslation();
   const { coins, canStartGame } = useGameCurrency();
-  const canStart = canStartGame("tower-block");
-  const coinIconRef = useRef<HTMLDivElement>(null);
+  const entryCost = getGameEntryCost(gameKey); // dynamic
+  const canStart = canStartGame(gameKey, entryCost); // pass entryCost as second argument
   const startButtonRef = useRef<HTMLButtonElement>(null);
-  const entryCost = getGameEntryCost("tower-block");
-
-  // Coin bounce animation
-  useEffect(() => {
-    const coinEl = coinIconRef.current;
-    if (isOpen && coinEl) {
-      gsap.to(coinEl, {
-        y: -10,
-        duration: 0.6,
-        ease: "power2.inOut",
-        yoyo: true,
-        repeat: -1,
-      });
-    }
-
-    return () => {
-      if (coinEl) gsap.killTweensOf(coinEl);
-    };
-  }, [isOpen]);
-
-  // Button pulse when ready
-  useEffect(() => {
-    const btn = startButtonRef.current;
-    if (isOpen && canStart && btn) {
-      gsap.to(btn, {
-        scale: 1.05,
-        duration: 1,
-        ease: "power2.inOut",
-        yoyo: true,
-        repeat: -1,
-      });
-    }
-
-    return () => {
-      if (btn) gsap.killTweensOf(btn);
-    };
-  }, [isOpen, canStartGame]);
 
   const handleStart = () => {
-    if (canStart) {
-      onStart();
-    }
+    if (canStart) onStart();
   };
 
   return (
@@ -113,7 +77,7 @@ export function GameStartModal({
                     Objective
                   </p>
                   <p className="font-semibold text-gray-800 dark:text-gray-200">
-                    Build High
+                    {gameObjective}
                   </p>
                 </div>
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -130,46 +94,6 @@ export function GameStartModal({
                 </div>
               </div>
 
-              {/* Currency Status */}
-              {/* <div
-                className={`
-                p-4 rounded-xl border-2 transition-all duration-300
-                ${canStart
-                    ? "border-green-300 bg-green-50 dark:bg-green-900/20"
-                    : "border-red-300 bg-red-50 dark:bg-red-900/20"
-                  }
-              `}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1">
-                      <Coins />
-                      {t.yourCoins}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-2xl font-bold ${canStart ? "text-green-600" : "text-red-600"
-                      }`}
-                  >
-                    {coins}
-                  </span>
-                </div>
-
-                {!canStart && (
-                  <motion.div
-                    className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                  >
-                    <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
-                      <AlertTriangle size={18} />
-                      <p className="text-sm">
-                        {t.notEnoughCoins}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </div> */}
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <motion.button

@@ -1,4 +1,3 @@
-// app/games/2048/components/types.ts
 export interface Position {
   x: number
   y: number

@@ -1,10 +1,8 @@
 "use client";
-import useTranslation from "../lib/useTranslation";
-
 import { motion } from "framer-motion";
 import {
   Crown,
-  Gamepad2,
+  Swords,
   LayoutGrid,
   Loader2,
   ShieldAlert,
@@ -13,15 +11,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { JSX, useEffect, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
-import { Button } from "../components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
+import { Button } from "../../ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
+} from "../../ui/card";
 import {
   Table,
   TableBody,
@@ -29,7 +27,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../components/ui/table";
+} from "../../ui/table";
+import { HeaderCurrencyDisplay } from "../components/modals/currency";
+import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
 // Interfaces for data structures
 interface SessionData {
@@ -71,7 +71,6 @@ interface LeaderboardEntry {
 }
 
 export default function LeaderboardPage() {
-  const t = useTranslation();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,8 +94,7 @@ export default function LeaderboardPage() {
       } else {
         setError("Failed to fetch or parse leaderboard data.");
       }
-    } catch (err)
-      {
+    } catch (err) {
       setError("An error occurred while fetching data.");
       console.error("Error:", err);
     } finally {
@@ -235,11 +233,11 @@ export default function LeaderboardPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">{t.rank || "Rank"}</TableHead>
-                <TableHead>{t.player || "Player"}</TableHead>
-                <TableHead className="text-right">{t.bestScore || "Best Score"}</TableHead>
-                <TableHead className="text-right">{t.highestLevel || "Highest Level"}</TableHead>
-                <TableHead className="text-right">{t.gamesPlayed || "Games Played"}</TableHead>
+                <TableHead className="w-16">Rank</TableHead>
+                <TableHead>Player</TableHead>
+                <TableHead className="text-right">Best Score</TableHead>
+                <TableHead className="text-right">Highest Level</TableHead>
+                <TableHead className="text-right">Games Played</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -250,7 +248,7 @@ export default function LeaderboardPage() {
       </Card>
     </div>
   );
-  
+
   // --- End Skeleton Components ---
 
   const ErrorState = () => (
@@ -296,47 +294,59 @@ export default function LeaderboardPage() {
             <User className="h-10 w-10" />
           </AvatarFallback>
         </Avatar>
-        <h3 className="text-xl font-bold">{entry.user.name}</h3>
-        <p className="text-sm text-muted-foreground">Rank #{entry.rank}</p>
-        <div className="mt-4 text-center">
-          <p className="text-2xl font-bold text-primary">{entry.bestScore.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">Level {entry.bestLevel}</p>
-        </div>
+        <h3 className="text-xl font-bold text-gray-200">{entry.user.name}</h3>
+        <p className="text-sm text-gray-200">Rank #{entry.rank}</p>
       </motion.div>
     );
   };
 
+  const { isSignedIn } = useUser();
+
   return (
-    <div className="flex min-h-screen w-full bg-gray-100 dark:bg-gray-950">
-      <aside className="hidden w-64 flex-col border-r bg-white p-4 dark:bg-black dark:border-gray-800 md:flex">
+    <div className="flex min-h-screen w-full bg-[#191948] dark:bg-gray-950">
+      <aside className="hidden w-64 flex-col bg-[#191948] p-4 dark:bg-black dark:border-gray-800 md:flex">
         <div className="mb-8 flex items-center gap-2">
-          <Gamepad2 className="h-8 w-8 text-blue-500" />
-          <h1 className="text-xl font-bold">{t.title}</h1>
+          <Swords className="h-8 w-8 text-blue-500" />
+          <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
         </div>
         <nav className="flex flex-col gap-2">
           <Link
             href="/"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-200 transition-colors hover:bg-[#23239b3e] hover:text-gray-200"
           >
             <LayoutGrid className="h-5 w-5" />
-            {t.games}
+            Games
           </Link>
           <Link
             href="/leaderboard"
             className="flex items-center gap-3 rounded-lg bg-blue-100 dark:bg-gray-800 px-3 py-2 text-blue-600 dark:text-gray-50 font-semibold"
           >
             <Trophy className="h-5 w-5" />
-            {t.leaderboard}
+            Leaderboard
           </Link>
         </nav>
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center border-b bg-white px-6 dark:bg-black dark:border-gray-800">
-          <h2 className="text-xl font-semibold">{t.leaderboard}</h2>
+        <header className="flex h-16 shrink-0 items-center justify-between  bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
+          <div className="relative w-full max-w-sm">
+
+          </div>
+          <div className="flex items-center gap-4">
+            <HeaderCurrencyDisplay />
+            {isSignedIn ? (
+              <UserButton afterSignOutUrl="/" />
+            ) : (
+              <SignInButton mode="modal">
+                <Button>Sign In</Button>
+              </SignInButton>
+            )}
+          </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
+          <h2 className="text-xl font-semibold text-gray-200 pb-8">Leaderboard</h2>
+
           {loading ? (
             <SkeletonState />
           ) : error ? (
@@ -351,20 +361,20 @@ export default function LeaderboardPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>{t.allPlayers || "All Players"}</CardTitle>
+                  <CardTitle>All Players</CardTitle>
                   <CardDescription>
-                    {t.fullRanking || "Full ranking of all players based on their performance."}
+                    Full ranking of all players based on their performance.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-16">{t.rank || "Rank"}</TableHead>
-                        <TableHead>{t.player || "Player"}</TableHead>
-                        <TableHead className="text-right">{t.bestScore || "Best Score"}</TableHead>
-                        <TableHead className="text-right">{t.highestLevel || "Highest Level"}</TableHead>
-                        <TableHead className="text-right">{t.gamesPlayed || "Games Played"}</TableHead>
+                        <TableHead className="w-16">Rank</TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead className="text-right">Best Score</TableHead>
+                        {/* <TableHead className="text-right">Highest Level</TableHead> */}
+                        <TableHead className="text-right">Games Played</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -381,18 +391,15 @@ export default function LeaderboardPage() {
                               </Avatar>
                               <div>
                                 <p className="font-medium">{entry.user.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {entry.user.email}
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right font-semibold text-primary">
                             {entry.bestScore.toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-right">
+                          {/* <TableCell className="text-right">
                             {entry.bestLevel}
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell className="text-right">
                             {entry.totalGames}
                           </TableCell>

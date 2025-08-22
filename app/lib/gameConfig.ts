@@ -48,6 +48,9 @@ export interface GameFrontendConfig {
   component: string;
   path: string;
   imageUrl: string;
+  title: string;
+  description: string;
+  objective: string;
   rewardRules: GameRewardRule[];
   continueRules: GameContinueRule;
   achievements: GameAchievement[];
@@ -132,7 +135,9 @@ export class GameConfigService {
           component: "TowerBlockGame",
           path: "/games/tower-block",
           imageUrl: "/images/games/tower.jpeg", // Unique image for Tower Block
-
+          title: "Tower Block",
+          description: "Build the highest tower possible with precision timing!",
+          objective: "Build the tower",
           rewardRules: [
             {
               id: "level_reward",
@@ -237,7 +242,9 @@ export class GameConfigService {
           component: "Game2048",
           path: "/games/2048",
           imageUrl: "/images/games/2048.jpeg", // Unique image for 2048
-
+          title: "2048",
+          description: "Join the tiles and get to 2048!",
+          objective: "Combine tiles to reach 2048",
           rewardRules: [
             {
               id: "score_reward",
@@ -315,6 +322,9 @@ export class GameConfigService {
           component: "TetrisGame",
           path: "/games/tetris",
           imageUrl: "/images/games/tetris.jpeg", // Unique image for Tetris
+          title: "Tetris",
+          description: "Clear lines and score as high as possible!",
+          objective: "Clear lines by arranging falling blocks",
           rewardRules: [
             {
               id: "line_clear",
@@ -531,6 +541,9 @@ export class GameConfigService {
       component: "GenericGame",
       path: `/games/${slug}`,
       imageUrl: `/images/games/${slug}.jpeg`, // Default image path
+      title: slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      description: "Play and enjoy this game!",
+      objective: "Have fun and try to win!",
       rewardRules: [
         {
           id: "level_reward",

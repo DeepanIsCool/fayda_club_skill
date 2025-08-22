@@ -1,5 +1,5 @@
 "use client";
-import { Gamepad2, LayoutGrid, Trophy } from "lucide-react";
+import { Swords, LayoutGrid, Trophy } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -7,11 +7,10 @@ import { toast } from "react-hot-toast";
 import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
 import { useAuth } from "@clerk/nextjs";
 import { GameConfig, gameConfigService } from "./lib/gameConfig";
-import { Card, CardContent, CardFooter, CardTitle } from "./components/ui/card";
-import { Button } from "./components/ui/button";
-import { Skeleton } from "./components/ui/skeleton";
-import { HeaderCurrencyDisplay } from "./components/tower-block/CurrencyDisplay";
-import useTranslation from "./lib/useTranslation";
+import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
+import { HeaderCurrencyDisplay } from "./components/modals/currency";
 import { useCurrency } from "./contexts/CurrencyContext"; // Import the hook
 
 export default function Dashboard() {
@@ -20,7 +19,6 @@ export default function Dashboard() {
   const [games, setGames] = useState<GameConfig[]>([]);
   const [gamesLoading, setGamesLoading] = useState(true);
   const [gamesError, setGamesError] = useState<string | null>(null);
-  const t = useTranslation();
   const { actions } = useCurrency(); // Get actions from the CurrencyContext
 
   useEffect(() => {
@@ -34,13 +32,13 @@ export default function Dashboard() {
         );
         setGames(availableGames);
       } catch (error) {
-        setGamesError(t.failedToLoad);
+        setGamesError("Failed to load games.");
       } finally {
         setGamesLoading(false);
       }
     };
     loadGames();
-  }, [t.failedToLoad]);
+  }, []);
 
   useEffect(() => {
     const logClerkAuth = async () => {
@@ -70,7 +68,7 @@ export default function Dashboard() {
     logClerkAuth();
   }, [isSignedIn, user, getToken, actions]); // Add actions to dependency array
 
-  const featuredGames = useMemo(() => games.slice(0, 5), [games]);
+  const featuredGames = useMemo(() => games.slice(0, 3), [games]);
 
   const GameCardSkeleton = () => (
     <div className="flex flex-col gap-2">
@@ -84,8 +82,8 @@ export default function Dashboard() {
       {/* Sidebar Navigation */}
       <aside className="hidden w-64 flex-col  bg-[#191948] p-4 dark:bg-black dark:border-gray-800 md:flex">
         <div className="mb-8 flex items-center gap-2">
-          <Gamepad2 className="h-8 w-8 text-blue-500" />
-          <h1 className="text-xl font-bold text-gray-200">{t.title}</h1>
+          <Swords className="h-8 w-8 text-blue-500" />
+          <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
         </div>
         <nav className="flex flex-col gap-2">
           <Link
@@ -93,14 +91,14 @@ export default function Dashboard() {
             className="flex items-center gap-3 rounded-lg bg-blue-100 dark:bg-gray-800 px-3 py-2 text-blue-600 dark:text-gray-50 font-semibold"
           >
             <LayoutGrid className="h-5 w-5" />
-            {t.games}
+            Games
           </Link>
           <Link
             href="/leaderboard"
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-200 transition-colors hover:bg-[#23239b3e] hover:text-gray-200"
           >
             <Trophy className="h-5 w-5" />
-            {t.leaderboard}
+            Leaderboard
           </Link>
         </nav>
       </aside>
@@ -117,7 +115,7 @@ export default function Dashboard() {
               <UserButton afterSignOutUrl="/" />
             ) : (
               <SignInButton mode="modal">
-                <Button>{t.signIn}</Button>
+                <Button>Sign In</Button>
               </SignInButton>
             )}
           </div>
@@ -133,11 +131,11 @@ export default function Dashboard() {
           ) : (
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold tracking-tight text-gray-200">{t.allGames}</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-200">All Games</h2>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {gamesLoading
-                  ? [...Array(5)].map((_, i) => <GameCardSkeleton key={i} />)
+                  ? [...Array(3)].map((_, i) => <GameCardSkeleton key={i} />)
                   : games.map((game) => (
                     <Link
                       key={game.id}
@@ -146,7 +144,7 @@ export default function Dashboard() {
                       onClick={(e) => {
                         if (!isSignedIn) {
                           e.preventDefault();
-                          toast.error(t.signInToPlay);
+                          toast.error("Please sign in to play.");
                         }
                       }}
                     >
