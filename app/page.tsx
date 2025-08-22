@@ -7,17 +7,10 @@ import { toast } from "react-hot-toast";
 import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
 import { useAuth } from "@clerk/nextjs";
 import { GameConfig, gameConfigService } from "./lib/gameConfig";
-<<<<<<< Updated upstream
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { HeaderCurrencyDisplay } from "./components/modals/currency";
-=======
-import { Card, CardContent, CardFooter, CardTitle } from "./components/ui/card";
-import { Button } from "./components/ui/button";
-import { Skeleton } from "./components/ui/skeleton";
-import { HeaderCurrencyDisplay } from "./components/tower-block/CurrencyDisplay";
->>>>>>> Stashed changes
 import { useCurrency } from "./contexts/CurrencyContext"; // Import the hook
 
 export default function Dashboard() {
@@ -89,11 +82,7 @@ export default function Dashboard() {
       {/* Sidebar Navigation */}
       <aside className="hidden w-64 flex-col  bg-[#191948] p-4 dark:bg-black dark:border-gray-800 md:flex">
         <div className="mb-8 flex items-center gap-2">
-<<<<<<< Updated upstream
           <Swords className="h-8 w-8 text-blue-500" />
-=======
-          <Gamepad2 className="h-8 w-8 text-blue-500" />
->>>>>>> Stashed changes
           <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
         </div>
         <nav className="flex flex-col gap-2">
