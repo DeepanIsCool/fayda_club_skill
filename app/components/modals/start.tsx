@@ -5,11 +5,8 @@ import { gsap } from "gsap";
 import { BadgeCent, Play, Target } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
-<<<<<<< Updated upstream:app/components/modals/start.tsx
 import { getGameEntryCost } from "@/app/lib/gameConfig";
 
-=======
->>>>>>> Stashed changes:app/components/tower-block/GameStartModal.tsx
 interface GameStartModalProps {
   isOpen: boolean;
   onStart: () => void;
@@ -97,49 +94,6 @@ export function GameStartModal({
                 </div>
               </div>
 
-<<<<<<< Updated upstream:app/components/modals/start.tsx
-=======
-              {/* Currency Status */}
-              {/* <div
-                className={`
-                p-4 rounded-xl border-2 transition-all duration-300
-                ${canStart
-                    ? "border-green-300 bg-green-50 dark:bg-green-900/20"
-                    : "border-red-300 bg-red-50 dark:bg-red-900/20"
-                  }
-              `}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1">
-                      <Coins />
-                      Your Coins
-                    </span>
-                  </div>
-                  <span
-                    className={`text-2xl font-bold ${canStart ? "text-green-600" : "text-red-600"
-                      }`}
-                  >
-                    {coins}
-                  </span>
-                </div>
-
-                {!canStart && (
-                  <motion.div
-                    className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                  >
-                    <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
-                      <AlertTriangle size={18} />
-                      <p className="text-sm">
-                        Not enough coins
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </div> */}
->>>>>>> Stashed changes:app/components/tower-block/GameStartModal.tsx
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <motion.button
