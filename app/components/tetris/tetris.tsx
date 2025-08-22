@@ -1,12 +1,10 @@
 "use client"
 
-
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/ui/button"
 import { Card } from "@/ui/card"
 import { cn } from "@/app/lib/utils"
 import { RotateCw, Package } from "lucide-react"
-import { gameConfigService } from "../../lib/gameConfig";
 
 // Tetrominoes (classic colors)
 const TETROMINOES = {
@@ -20,7 +18,8 @@ const TETROMINOES = {
 }
 
 const BOARD_WIDTH = 10
-const BOARD_HEIGHT = 10
+const isMobile = typeof window !== "undefined" && window.innerWidth < 768
+const BOARD_HEIGHT = isMobile ? 20 : 10
 const INITIAL_DROP_TIME = 1000
 
 type TetrominoType = keyof typeof TETROMINOES
@@ -34,14 +33,39 @@ interface Piece {
   type: TetrominoType
 }
 
+// Fisher-Yates shuffle algorithm
+function shuffle<T>(array: T[]): T[] {
+  let currentIndex = array.length,  randomIndex;
+
+  while (currentIndex != 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+
+  return array;
+}
 
 export default function TetrisGame() {
+  const bagRef = useRef<TetrominoType[]>([]);
+
+  const fillBag = () => {
+    const types = Object.keys(TETROMINOES) as TetrominoType[];
+    bagRef.current = shuffle(types);
+  };
+
+  const getNextTetromino = (): TetrominoType => {
+    if (bagRef.current.length === 0) {
+      fillBag();
+    }
+    return bagRef.current.pop()!;
+  };
+
   // Helper functions inside the component
   const createEmptyBoard = (): Board => Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(null));
-  const getRandomTetromino = (): TetrominoType => {
-    const types = Object.keys(TETROMINOES) as TetrominoType[];
-    return types[Math.floor(Math.random() * types.length)];
-  };
+
   const createPiece = (type: TetrominoType): Piece => ({
     shape: TETROMINOES[type].shape,
     color: TETROMINOES[type].color,
@@ -76,18 +100,12 @@ export default function TetrisGame() {
     return baseScores[linesCleared] * level;
   };
 
-  // Get config for Tetris
-  const config = gameConfigService.getGameBySlug("tetris");
-  const frontendConfig = config?.frontendConfig;
-  const title = frontendConfig?.title || "Tetris";
-  const description = frontendConfig?.description || "";
-  const objective = frontendConfig?.objective || "";
   const [board, setBoard] = useState<Board>(createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<Piece | null>(null);
-  const [nextPiece, setNextPiece] = useState<TetrominoType>(getRandomTetromino());
+  const [nextPiece, setNextPiece] = useState<TetrominoType>(() => getNextTetromino());
   const [heldPiece, setHeldPiece] = useState<TetrominoType | null>(null);
   const [canHold, setCanHold] = useState(true);
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState(24);
   const [level, setLevel] = useState(1);
   const [lines, setLines] = useState(0);
   const [gameOver, setGameOver] = useState(false);
@@ -99,13 +117,10 @@ export default function TetrisGame() {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
-
-
-
   useEffect(() => {
     if (!currentPiece) {
       setCurrentPiece(createPiece(nextPiece))
-      setNextPiece(getRandomTetromino())
+      setNextPiece(getNextTetromino())
     }
   }, [currentPiece, nextPiece])
 
@@ -123,7 +138,6 @@ export default function TetrisGame() {
     return false;
   }, [])
 
-
   const movePiece = useCallback(
     (dx: number, dy: number) => {
       if (!currentPiece || gameOver) return
@@ -140,18 +154,18 @@ export default function TetrisGame() {
           return
         }
         setCurrentPiece(createPiece(nextPiece))
-        setNextPiece(getRandomTetromino())
+        setNextPiece(getNextTetromino())
         setCanHold(true)
       }
     },
-    [currentPiece, board, gameOver, checkCollision, placePiece, clearLines, calculateScore, level, nextPiece],
+    [currentPiece, board, gameOver, checkCollision, level, nextPiece],
   )
 
   const rotate = useCallback(() => {
     if (!currentPiece || gameOver) return
     const rotated = rotatePiece(currentPiece)
     if (!checkCollision(rotated, board)) setCurrentPiece(rotated)
-  }, [currentPiece, gameOver, rotatePiece, checkCollision, board])
+  }, [currentPiece, gameOver, checkCollision, board])
 
   const holdPiece = useCallback(() => {
     if (!currentPiece || !canHold || gameOver) return
@@ -162,7 +176,7 @@ export default function TetrisGame() {
     } else {
       setHeldPiece(currentPiece.type)
       setCurrentPiece(createPiece(nextPiece))
-      setNextPiece(getRandomTetromino())
+      setNextPiece(getNextTetromino())
     }
     setCanHold(false)
   }, [currentPiece, canHold, gameOver, heldPiece, nextPiece])
@@ -220,8 +234,9 @@ export default function TetrisGame() {
 
   const resetGame = () => {
     setBoard(createEmptyBoard())
+    fillBag();
     setCurrentPiece(null)
-    setNextPiece(getRandomTetromino())
+    setNextPiece(getNextTetromino())
     setHeldPiece(null)
     setCanHold(true)
     setScore(0)
@@ -269,128 +284,77 @@ export default function TetrisGame() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 p-2 sm:p-4 overflow-hidden text-white flex flex-col items-center justify-center">
-      <div className="flex flex-col lg:flex-row items-center lg:items-start gap-4 w-full max-w-6xl">
-        {/* Left Side - Score (Vertical) */}
-        <Card className="p-3 bg-slate-800/50 border-slate-700 shadow-sm hidden md:flex flex-col items-center justify-center">
-          <div className="text-center">
-            <div className="text-xs text-slate-400 uppercase tracking-wider font-medium mb-2">Score</div>
-            <div className="font-bold text-xl text-sky-400 rotate-0 lg:-rotate-90 transform origin-center whitespace-nowrap">
-              {score.toLocaleString()}
-            </div>
-          </div>
-        </Card>
-
-        {/* Mobile Top Bar - Score and Hold */}
-        <div className="flex md:hidden w-full justify-between mb-2">
-          <Card className="p-2 bg-slate-800/50 border-slate-700 shadow-sm">
-            <div className="text-center">
-              <div className="text-xs text-slate-400">Score</div>
-              <div className="font-bold text-sm text-sky-400">{score.toLocaleString()}</div>
-            </div>
-          </Card>
-          
-          <Card 
-            className={cn("p-2 bg-slate-800/50 border-slate-700 shadow-sm", canHold ? "cursor-pointer hover:bg-slate-800" : "opacity-50 cursor-not-allowed")}
-            onClick={() => canHold && holdPiece()}
-          >
-            <div className="text-center">
-              <div className="text-xs text-slate-400">Hold</div>
-              <div className="h-6 w-6 bg-slate-900 border border-slate-700 rounded flex items-center justify-center mx-auto">
-                {renderMiniPiece(heldPiece)}
+    <div className="min-h-screen bg-slate-900 p-2 sm:p-4 text-white flex items-center justify-center">
+      <div className="w-full max-w-4xl">
+        <div className="grid grid-cols-1 gap-4">
+          {/* Top - Score, Level, Lines */}
+          <div className="flex justify-between gap-4">
+            <Card className="flex-1 p-3 sm:p-4 bg-slate-800 border-slate-700">
+              <div className="text-center">
+                <div className="text-xs sm:text-sm text-slate-400 mb-1">SCORE</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{score}</div>
               </div>
-            </div>
-          </Card>
-        </div>
+            </Card>
+            <Card className="flex-1 p-3 sm:p-4 bg-slate-800 border-slate-700">
+              <div className="text-center">
+                <div className="text-xs sm:text-sm text-slate-400 mb-1">LEVEL</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{level}</div>
+              </div>
+            </Card>
+            <Card className="flex-1 p-3 sm:p-4 bg-slate-800 border-slate-700">
+              <div className="text-center">
+                <div className="text-xs sm:text-sm text-slate-400 mb-1">LINES</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-cyan-400">{lines}</div>
+              </div>
+            </Card>
+          </div>
 
-        {/* Game Board */}
-        <div className="relative">
-          <Card ref={boardRef} className="p-2 sm:p-4 bg-slate-800/50 border-slate-700 shadow-xl relative overflow-hidden">
-            {gameOver && (
-              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-                <div className="text-center text-white">
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6 text-sky-400">
-                    Game Over
-                  </h2>
-                  <Button
-                    onClick={resetGame}
-                    className="bg-gradient-to-r from-blue-600 to-sky-600 hover:opacity-90 text-white font-bold py-3 px-6 rounded-lg shadow-sm transform hover:scale-105 transition-all duration-200"
-                  >
-                    Play Again
-                  </Button>
+          {/* Center - Game Board */}
+          <div className="flex justify-center">
+            <Card ref={boardRef} className="p-3 sm:p-4 lg:p-6 bg-slate-800 border-slate-700 relative">
+              {gameOver && (
+                <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                  <div className="text-center text-white">
+                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 lg:mb-6 text-sky-400">Game Over</h2>
+                    <Button onClick={resetGame} className="bg-gradient-to-r from-blue-600 to-sky-600 hover:opacity-90 text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-lg">
+                      Play Again
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-10 gap-px bg-slate-950 p-2 sm:p-3 lg:p-4 rounded border-2 border-slate-600">
+                {renderBoard().map((row, y) =>
+                  row.map((cell, x) => (
+                    <div key={`${y}-${x}`} className={cn("w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 border border-slate-700 rounded-sm", cell ? `${cell} shadow-sm border-black/20` : "bg-slate-800")} />
+                  )),
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Bottom - Next and Hold */}
+          <div className="flex justify-between gap-4">
+            <Card className="flex-1 p-3 sm:p-4 bg-slate-800 border-slate-700">
+              <div className="text-center">
+                <div className="text-xs sm:text-sm text-slate-400 mb-2">NEXT</div>
+                <div className="h-12 sm:h-16 lg:h-20 bg-slate-900 border border-slate-600 rounded flex items-center justify-center">
+                  {renderMiniPiece(nextPiece)}
                 </div>
               </div>
-            )}
-            <div className="grid grid-cols-10 gap-px bg-blue-950/20 p-2 sm:p-3 rounded-lg border border-slate-700 max-w-none">
-              {renderBoard().map((row, y) =>
-                row.map((cell, x) => (
-                  <div key={`${y}-${x}`} className={cn("w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 border border-slate-700/50 rounded-sm transition-all duration-150", cell ? `${cell} shadow-md border-black/20` : "bg-slate-900")} />
-                )),
-              )}
-            </div>
-          </Card>
-        </div>
-
-        {/* Right Side - Hold and Next Pieces (Vertical) */}
-        <div className="flex flex-col gap-4">
-          {/* Hold Piece */}
-          <Card 
-            className={cn("p-3 bg-slate-800/50 border-slate-700 shadow-sm hidden md:block", canHold ? "cursor-pointer hover:bg-slate-800" : "opacity-50 cursor-not-allowed")}
-            onClick={() => canHold && holdPiece()}
-          >
-            <div className="text-center">
-              <h3 className="text-sky-400 text-xs font-bold mb-2 flex items-center justify-center gap-1 uppercase tracking-wider">
-                <Package className="w-3 h-3" />
-                Hold
-              </h3>
-              <div className="h-16 bg-slate-900 border border-slate-700 rounded flex items-center justify-center">
-                {renderMiniPiece(heldPiece)}
+            </Card>
+            <Card 
+              className={cn("flex-1 p-3 sm:p-4 bg-red-300 border-slate-700", canHold ? "cursor-pointer hover:bg-red-400" : "opacity-50")}
+              onClick={() => canHold && holdPiece()}
+            >
+              <div className="text-center">
+                <div className="text-xs sm:text-sm text-slate-800 font-bold mb-2">HOLD</div>
+                <div className="h-12 sm:h-16 lg:h-20 bg-slate-900 border border-slate-600 rounded flex items-center justify-center">
+                  {renderMiniPiece(heldPiece)}
+                </div>
               </div>
-            </div>
-          </Card>
-
-          {/* Next Piece */}
-          <Card className="p-3 bg-slate-800/50 border-slate-700 shadow-sm hidden md:block">
-            <div className="text-center">
-              <h3 className="text-cyan-400 text-xs font-bold mb-2 flex items-center justify-center gap-1 uppercase tracking-wider">
-                <RotateCw className="w-3 h-3" />
-                Next
-              </h3>
-              <div className="h-16 bg-slate-900 border border-slate-700 rounded flex items-center justify-center">
-                {renderMiniPiece(nextPiece)}
-              </div>
-            </div>
-          </Card>
-
-          {/* Mobile Bottom Bar - Next Piece */}
-          <Card className="p-2 bg-slate-800/50 border-slate-700 shadow-sm md:hidden mt-2">
-            <div className="text-center">
-              <h3 className="text-cyan-400 text-xs font-bold mb-1 flex items-center justify-center gap-1">
-                <RotateCw className="w-3 h-3" />
-                Next
-              </h3>
-              <div className="h-8 bg-slate-900 border border-slate-700 rounded flex items-center justify-center mx-auto">
-                {renderMiniPiece(nextPiece)}
-              </div>
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Mobile Level and Lines */}
-      <div className="flex md:hidden justify-center mt-4 gap-4">
-        <Card className="p-2 bg-slate-800/50 border-slate-700 shadow-sm">
-          <div className="text-center">
-            <div className="text-xs text-slate-400">Level</div>
-            <div className="font-bold text-sm text-white">{level}</div>
+            </Card>
           </div>
-        </Card>
-        <Card className="p-2 bg-slate-800/50 border-slate-700 shadow-sm">
-          <div className="text-center">
-            <div className="text-xs text-slate-400">Lines</div>
-            <div className="font-bold text-sm text-cyan-400">{lines}</div>
-          </div>
-        </Card>
+        </div>
       </div>
     </div>
   )

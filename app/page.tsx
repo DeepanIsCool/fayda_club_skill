@@ -25,18 +25,21 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadGames = async () => {
-      try {
-        setGamesLoading(true);
-        setGamesError(null);
-        const gameConfigs = await gameConfigService.loadGames();
-        const availableGames = gameConfigs.filter(
-          (game) => game.hasImplementation
-        );
-        setGames(availableGames);
-      } catch (error) {
-        setGamesError("Failed to load games.");
-      } finally {
-        setGamesLoading(false);
+      while (true) {
+        try {
+          setGamesLoading(true);
+          setGamesError(null);
+          const gameConfigs = await gameConfigService.loadGames();
+          const availableGames = gameConfigs.filter(
+            (game) => game.hasImplementation
+          );
+          setGames(availableGames);
+          setGamesLoading(false);
+          return;
+        } catch (error) {
+          setGamesError("Failed to load games.");
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
       }
     };
     loadGames();
@@ -128,7 +131,7 @@ export default function Dashboard() {
 
 
         <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
-          {gamesError ? (
+          {gamesError && !gamesLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
                 <h3 className="text-red-600 dark:text-red-400">❌ {gamesError}</h3>

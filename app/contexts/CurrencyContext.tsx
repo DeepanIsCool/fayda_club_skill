@@ -202,27 +202,29 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   const fetchUserData = useCallback(async () => {
     // Only fetch if the context is initialized and the user is signed in.
     if (isInitialized && isSignedIn && user) {
-      try {
-        dispatchCurrency({ type: "SET_LOADING", payload: true });
-        const response = await fetch(`/api/user/id`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data');
+      while (true) {
+        try {
+          dispatchCurrency({ type: "SET_LOADING", payload: true });
+          const response = await fetch(`/api/user/id`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.user) {
+              dispatchCurrency({
+                type: "LOAD_STATE",
+                payload: {
+                  ...initialCurrencyState,
+                  coins: data.user.wallet || 0,
+                  points: data.user.score || 0,
+                },
+              });
+              dispatchCurrency({ type: "SET_LOADING", payload: false });
+              return;
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load user currency data from API:", error);
         }
-        const data = await response.json();
-        if (data && data.user) {
-          dispatchCurrency({
-            type: "LOAD_STATE",
-            payload: {
-              ...initialCurrencyState,
-              coins: data.user.wallet || 0,
-              points: data.user.score || 0,
-            },
-          });
-        }
-      } catch (error) {
-        console.error("Failed to load user currency data from API:", error);
-      } finally {
-        dispatchCurrency({ type: "SET_LOADING", payload: false });
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
   }, [user, isSignedIn, isInitialized]); // Add isInitialized to dependency array

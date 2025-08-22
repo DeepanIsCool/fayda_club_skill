@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
 import { Minus, Plus, CircleStar, BadgeCent } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { Skeleton } from "../../../ui/skeleton";
 
 interface CoinTransaction {
   id: string;
@@ -29,10 +31,9 @@ export function CurrencyDisplay({
   showTransactions = true,
   size = "md",
 }: CurrencyDisplayProps) {
+  const { currency } = useCurrency();
   const [transactions, setTransactions] = useState<CoinTransaction[]>([]);
   const [displayCoins, setDisplayCoins] = useState(0);
-  const [coins, setCoins] = useState(0);
-  const [points, setPoints] = useState(0);
   const coinRef = useRef<HTMLDivElement>(null);
   const previousCoins = useRef(0);
 
@@ -44,70 +45,56 @@ export function CurrencyDisplay({
   const config = sizeConfig[size];
 
   useEffect(() => {
-    async function fetchUser() {
-      try {
-        const res = await fetch("/api/user/id");
-        const data = await res.json();
+    if (!currency.isLoading) {
+      const difference = currency.coins - previousCoins.current;
 
-        if (data.success && data.user) {
-          setCoins(data.user.wallet);
-          setPoints(data.user.score);
-          setDisplayCoins(data.user.wallet);
-          previousCoins.current = data.user.wallet;
+      if (difference !== 0) {
+        if (showTransactions) {
+          const transaction: CoinTransaction = {
+            id: Math.random().toString(36),
+            amount: Math.abs(difference),
+            type: difference > 0 ? "earn" : "spend",
+            reason: difference > 0 ? "Earned" : "Spent",
+            timestamp: Date.now(),
+          };
+
+          setTransactions((prev) => [...prev, transaction]);
+
+          setTimeout(() => {
+            setTransactions((prev) => prev.filter((t) => t.id !== transaction.id));
+          }, 2000);
         }
-      } catch (err) {
-        console.error("Failed to fetch user data:", err);
-      }
-    }
 
-    fetchUser();
-  }, []);
+        if (coinRef.current) {
+          gsap.to(coinRef.current, {
+            scale: 1.2,
+            rotation: difference > 0 ? 360 : -180,
+            duration: 0.3,
+            ease: "back.out(1.7)",
+            yoyo: true,
+            repeat: 1,
+          });
+        }
 
-  useEffect(() => {
-    const difference = coins - previousCoins.current;
-
-    if (difference !== 0) {
-      if (showTransactions) {
-        const transaction: CoinTransaction = {
-          id: Math.random().toString(36),
-          amount: Math.abs(difference),
-          type: difference > 0 ? "earn" : "spend",
-          reason: difference > 0 ? "Earned" : "Spent",
-          timestamp: Date.now(),
-        };
-
-        setTransactions((prev) => [...prev, transaction]);
-
-        setTimeout(() => {
-          setTransactions((prev) => prev.filter((t) => t.id !== transaction.id));
-        }, 2000);
-      }
-
-      if (coinRef.current) {
-        gsap.to(coinRef.current, {
-          scale: 1.2,
-          rotation: difference > 0 ? 360 : -180,
-          duration: 0.3,
-          ease: "back.out(1.7)",
-          yoyo: true,
-          repeat: 1,
+        const startValue = previousCoins.current;
+        const endValue = currency.coins;
+        gsap.to({ value: startValue }, {
+          value: endValue,
+          duration: 0.5,
+          ease: "power2.out",
+          onUpdate() {
+            setDisplayCoins(Math.round(this.targets()[0].value));
+          },
         });
+
+        previousCoins.current = currency.coins;
       }
-
-      const startValue = previousCoins.current;
-      const endValue = coins;
-      gsap.to({ value: startValue }, {
-        value: endValue,
-        duration: 0.5,
-        ease: "power2.out",
-        onUpdate() {
-          setDisplayCoins(Math.round(this.targets()[0].value));
-        },
-      });
-
-      previousCoins.current = coins;
     }
-  }, [coins, showTransactions]);
+  }, [currency.coins, currency.isLoading, showTransactions]);
+
+  if (currency.isLoading) {
+    return <Skeleton className="h-10 w-24 rounded-full" />;
+  }
 
   return (
     <div className={`relative ${className}`}>
@@ -157,41 +144,33 @@ export function CurrencyDisplay({
 }
 
 export function HeaderCurrencyDisplay() {
-  const [coins, setCoins] = useState(0);
-  const [points, setPoints] = useState(0);
+  const { currency } = useCurrency();
 
-  useEffect(() => {
-    async function fetchUser() {
-      try {
-        const res = await fetch("/api/user/id");
-        const data = await res.json();
-        if (data.success && data.user) {
-          setCoins(data.user.wallet);
-          setPoints(data.user.score);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    fetchUser();
-  }, []);
+  if (currency.isLoading) {
+    return (
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-8 w-20 rounded-full" />
+        <Skeleton className="h-8 w-20 rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-3">
       <div className="hidden sm:flex items-center gap-4">
         <div className="flex items-center gap-1 px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 font-semibold">
-          <BadgeCent size={18} /> <span>{coins}</span>
+          <BadgeCent size={18} /> <span>{currency.coins}</span>
         </div>
         <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 font-semibold">
-          <CircleStar size={18} /> <span>{points}</span>
+          <CircleStar size={18} /> <span>{currency.points}</span>
         </div>
       </div>
       <div className="flex sm:hidden items-center gap-2">
         <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 text-sm font-semibold">
-          <BadgeCent size={14} /> <span>{coins}</span>
+          <BadgeCent size={14} /> <span>{currency.coins}</span>
         </div>
         <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 text-sm font-semibold">
-          <CircleStar size={14} /> <span>{points}</span>
+          <CircleStar size={14} /> <span>{currency.points}</span>
         </div>
       </div>
     </div>
