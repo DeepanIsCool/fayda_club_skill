@@ -1,4 +1,7 @@
+
 "use client"
+
+import type { Reward, GameStats } from "../modals/reward";
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
@@ -58,7 +61,16 @@ export default function TetrisGame() {
   const [showStartModal, setShowStartModal] = useState(true);
   const [showContinueModal, setShowContinueModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
-  const [pendingReward, setPendingReward] = useState<any>(null);
+
+
+  type PendingReward = {
+    rewards: Reward[];
+    totalCoins: number;
+    gameLevel: number;
+    gameStats: GameStats;
+  } | null;
+
+  const [pendingReward, setPendingReward] = useState<PendingReward>(null);
 
   const isMobile = useIsMobile();
   const {
@@ -380,7 +392,14 @@ export default function TetrisGame() {
       ],
       totalCoins: score,
       gameLevel: level,
-      gameStats: { finalLevel: level, totalGameTime: 0, perfectPlacements: 0, totalPrecisionScore: 0, averageAccuracy: 0 },
+      gameStats: {
+        finalLevel: level,
+        totalPrecisionScore: 0,
+        averageAccuracy: 0,
+        perfectPlacements: 0,
+        averageReactionTime: 0,
+        totalGameTime: 0,
+      },
     });
   earnPoints(score, "tetris game over");
   };

@@ -4,13 +4,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { BadgeCent } from "lucide-react";
 import React from "react";
 
-interface Reward {
+export interface Reward {
   amount: number;
   reason: string;
   type: "level" | "perfect" | "streak" | "bonus" | "achievement" | "score";
 }
 
-interface GameStats {
+export interface GameStats {
   finalLevel: number;
   totalPrecisionScore: number;
   averageAccuracy: number;
