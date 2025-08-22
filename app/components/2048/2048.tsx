@@ -110,6 +110,7 @@ export default function Game2048() {
   const handleContinue = () => {
     if (doContinue()) {
       setShowContinueModal(false);
+      restart(); // reset the game state
       keepPlayingFunc();
     }
   };
