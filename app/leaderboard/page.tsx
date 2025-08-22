@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   Trophy,
   User,
+  Menu, // <-- Added Menu icon
 } from "lucide-react";
 import Link from "next/link";
 import { JSX, useEffect, useState } from "react";
@@ -31,7 +32,7 @@ import {
 import { HeaderCurrencyDisplay } from "../components/modals/currency";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
-// Interfaces for data structures
+// Interfaces for data structures (remains the same)
 interface SessionData {
   finalLevel: number;
   totalScore: number;
@@ -55,7 +56,6 @@ interface UserData {
   wallet: number;
   score: number;
   histories: GameSession[];
-  // Fields populated from Clerk API
   name?: string;
   imageUrl?: string;
   email?: string;
@@ -70,10 +70,40 @@ interface LeaderboardEntry {
   rank: number;
 }
 
+// Reusable Sidebar Content component
+function SidebarContent() {
+  return (
+    <>
+      <div className="mb-8 flex items-center gap-2">
+        <Swords className="h-8 w-8 text-blue-500" />
+        <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
+      </div>
+      <nav className="flex flex-col gap-2">
+        <Link
+          href="/"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-200 transition-colors hover:bg-[#23239b3e] hover:text-gray-200"
+        >
+          <LayoutGrid className="h-5 w-5" />
+          Games
+        </Link>
+        <Link
+          href="/leaderboard"
+          className="flex items-center gap-3 rounded-lg bg-blue-100 dark:bg-gray-800 px-3 py-2 text-blue-600 dark:text-gray-50 font-semibold"
+        >
+          <Trophy className="h-5 w-5" />
+          Leaderboard
+        </Link>
+      </nav>
+    </>
+  );
+}
+
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isSignedIn } = useUser();
+  const [mobileOpen, setMobileOpen] = useState(false); // <-- State for mobile drawer
 
   useEffect(() => {
     fetchUsers();
@@ -98,7 +128,6 @@ export default function LeaderboardPage() {
       setError("An error occurred while fetching data.");
       console.error("Error:", err);
     } finally {
-      // Add a small delay to make the skeleton visible for demonstration
       setTimeout(() => setLoading(false), 500);
     }
   };
@@ -182,7 +211,7 @@ export default function LeaderboardPage() {
   const topThree = leaderboard.slice(0, 3);
   const restOfLeaderboard = leaderboard.slice(3);
 
-  // --- Skeleton Components ---
+  // --- Skeleton and State components (remain the same) ---
   const Skeleton = ({ className }: { className?: string }) => (
     <div className={`animate-pulse rounded-md bg-gray-200 dark:bg-gray-800 ${className}`} />
   );
@@ -213,7 +242,6 @@ export default function LeaderboardPage() {
       </TableCell>
       <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
       <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
-      <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
     </TableRow>
   );
 
@@ -236,7 +264,6 @@ export default function LeaderboardPage() {
                 <TableHead className="w-16">Rank</TableHead>
                 <TableHead>Player</TableHead>
                 <TableHead className="text-right">Best Score</TableHead>
-                <TableHead className="text-right">Highest Level</TableHead>
                 <TableHead className="text-right">Games Played</TableHead>
               </TableRow>
             </TableHeader>
@@ -248,8 +275,6 @@ export default function LeaderboardPage() {
       </Card>
     </div>
   );
-
-  // --- End Skeleton Components ---
 
   const ErrorState = () => (
     <div className="flex flex-1 items-center justify-center">
@@ -300,38 +325,42 @@ export default function LeaderboardPage() {
     );
   };
 
-  const { isSignedIn } = useUser();
-
   return (
     <div className="flex min-h-screen w-full bg-[#191948] dark:bg-gray-950">
-      <aside className="hidden w-64 flex-col bg-[#191948] p-4 dark:bg-black dark:border-gray-800 md:flex">
-        <div className="mb-8 flex items-center gap-2">
-          <Swords className="h-8 w-8 text-blue-500" />
-          <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
-        </div>
-        <nav className="flex flex-col gap-2">
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-200 transition-colors hover:bg-[#23239b3e] hover:text-gray-200"
-          >
-            <LayoutGrid className="h-5 w-5" />
-            Games
-          </Link>
-          <Link
-            href="/leaderboard"
-            className="flex items-center gap-3 rounded-lg bg-blue-100 dark:bg-gray-800 px-3 py-2 text-blue-600 dark:text-gray-50 font-semibold"
-          >
-            <Trophy className="h-5 w-5" />
-            Leaderboard
-          </Link>
-        </nav>
+      {/* Sidebar for Desktop */}
+      <aside className="hidden md:flex w-64 flex-col bg-[#191948] p-4 dark:bg-black dark:border-gray-800">
+        <SidebarContent />
       </aside>
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between  bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
-          <div className="relative w-full max-w-sm">
-
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="w-64 bg-[#191948] dark:bg-black p-4">
+            <SidebarContent />
           </div>
+          {/* Backdrop */}
+          <div
+            className="flex-1 bg-black/50"
+            onClick={() => setMobileOpen(false)}
+          />
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col">
+        <header className="flex h-16 items-center bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
+          {/* Left: Mobile Menu Button */}
+          <button
+            className="md:hidden p-2 text-gray-200"
+            onClick={() => setMobileOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+
+          {/* Spacer to push right section to extreme right */}
+          <div className="flex-1" />
+
+          {/* Right: Currency + User */}
           <div className="flex items-center gap-4">
             <HeaderCurrencyDisplay />
             {isSignedIn ? (
@@ -367,46 +396,40 @@ export default function LeaderboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-16">Rank</TableHead>
-                        <TableHead>Player</TableHead>
-                        <TableHead className="text-right">Best Score</TableHead>
-                        {/* <TableHead className="text-right">Highest Level</TableHead> */}
-                        <TableHead className="text-right">Games Played</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {restOfLeaderboard.map((entry) => (
-                        <TableRow key={entry.user.id}>
-                          <TableCell className="font-bold">#{entry.rank}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                <AvatarImage src={entry.user.imageUrl} />
-                                <AvatarFallback>
-                                  <User className="h-5 w-5" />
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{entry.user.name}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right font-semibold text-primary">
-                            {entry.bestScore.toLocaleString()}
-                          </TableCell>
-                          {/* <TableCell className="text-right">
-                            {entry.bestLevel}
-                          </TableCell> */}
-                          <TableCell className="text-right">
-                            {entry.totalGames}
-                          </TableCell>
+                  <div className="relative w-full overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-16">Rank</TableHead>
+                          <TableHead>Player</TableHead>
+                          <TableHead className="text-right">Best Score</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {restOfLeaderboard.map((entry) => (
+                          <TableRow key={entry.user.id}>
+                            <TableCell className="font-bold">#{entry.rank}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                  <AvatarImage src={entry.user.imageUrl} />
+                                  <AvatarFallback>
+                                    <User className="h-5 w-5" />
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium">{entry.user.name}</p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-primary">
+                              {entry.bestScore.toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             </div>

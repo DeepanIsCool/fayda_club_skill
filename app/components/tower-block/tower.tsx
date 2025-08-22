@@ -1,6 +1,8 @@
 "use client";
 import { Power1, TweenLite } from "gsap";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, CircleArrowLeft } from "lucide-react";
+import { Button } from "@/ui/button";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { ContinueModal } from "../../components/modals/continue";
@@ -1268,6 +1270,18 @@ export default function TowerBlockGame() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-gray-100">
+      {/* Back Button */}
+      <div className="fixed top-4 left-4 z-30">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push("/")}
+          aria-label="Back to Dashboard"
+          className="bg-yellow-400 text-amber-900 font-extrabold"
+        >
+          <CircleArrowLeft />
+        </Button>
+      </div>
       {/* Game Container */}
       <div
         ref={gameContainerRef}

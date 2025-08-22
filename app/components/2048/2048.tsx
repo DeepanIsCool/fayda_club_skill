@@ -4,12 +4,18 @@ import { useGame } from "../../lib/use-game";
 import { gameConfigService, getGameEntryCost } from "../../lib/gameConfig";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 import { GameStartModal } from "../modals/start";
+import { CurrencyDisplay } from "../modals/currency";
 import { ContinueModal } from "../modals/continue";
 import { RewardModal } from "../modals/reward";
+
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, CircleArrowLeft } from "lucide-react";
+import { Button } from "@/ui/button";
 
 
 export default function Game2048() {
+  const router = useRouter();
   const {
     grid,
     restart,
@@ -57,9 +63,9 @@ export default function Game2048() {
     setShowStartModal(false);
     restart(); // reset the game state
   };
-  // Handler for cancel (could navigate away, for now just close modal)
+  // Handler for cancel: go back to dashboard
   const handleCancel = () => {
-    setShowStartModal(false);
+    router.push("/");
   };
 
   // Show ContinueModal on game over (not win)
@@ -116,8 +122,23 @@ export default function Game2048() {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 text-white relative">
-      <div className="w-[500px] mx-auto max-sm:w-[320px] max-sm:px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center py-8 px-4 text-white relative max-sm:py-4 max-sm:px-2">
+      {/* Top UI Bar */}
+      <div className="fixed top-4 left-4 z-30">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push("/")}
+          aria-label="Back to Dashboard"
+          className="bg-yellow-400 text-amber-900 font-extrabold"
+        >
+          <CircleArrowLeft />
+        </Button>
+      </div>
+      <div className="fixed top-4 right-4 z-20">
+        <CurrencyDisplay />
+      </div>
+      <div className="w-[500px] mx-auto max-sm:w-full max-sm:px-0 flex flex-col items-center">
         {/* Start Modal */}
         <GameStartModal
           isOpen={showStartModal}
@@ -157,7 +178,7 @@ export default function Game2048() {
           </h1>
         </div>
         {/* --- Main Game Container --- */}
-        <div className="game-container relative w-full max-w-[500px] aspect-square p-4 md:p-6 cursor-default select-none touch-none bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl shadow-2xl border border-blue-800/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom duration-700 delay-300">
+        <div className="game-container relative w-full max-w-[500px] aspect-square p-4 md:p-6 cursor-default select-none touch-none bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl shadow-2xl border border-blue-800/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom duration-700 delay-300 flex items-center justify-center">
           {/* Background Grid Cells */}
           <div className="absolute inset-4 md:inset-6 z-[1]">
             {Array.from({ length: 4 }).map((_, rowIndex) => (

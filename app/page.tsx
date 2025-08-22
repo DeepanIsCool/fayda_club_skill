@@ -1,5 +1,6 @@
 "use client";
-import { Swords, LayoutGrid, Trophy } from "lucide-react";
+
+import { Swords, LayoutGrid, Trophy, Menu } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -19,7 +20,8 @@ export default function Dashboard() {
   const [games, setGames] = useState<GameConfig[]>([]);
   const [gamesLoading, setGamesLoading] = useState(true);
   const [gamesError, setGamesError] = useState<string | null>(null);
-  const { actions } = useCurrency(); // Get actions from the CurrencyContext
+  const { actions } = useCurrency();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const loadGames = async () => {
@@ -53,7 +55,6 @@ export default function Dashboard() {
               },
             });
 
-            // If the auth request is successful, initialize the currency context
             if (response.ok) {
               actions.initialize();
             } else {
@@ -66,7 +67,7 @@ export default function Dashboard() {
       }
     };
     logClerkAuth();
-  }, [isSignedIn, user, getToken, actions]); // Add actions to dependency array
+  }, [isSignedIn, user, getToken, actions]);
 
   const featuredGames = useMemo(() => games.slice(0, 3), [games]);
 
@@ -79,47 +80,52 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen w-full bg-[#191948] dark:bg-gray-950">
-      {/* Sidebar Navigation */}
-      <aside className="hidden w-64 flex-col  bg-[#191948] p-4 dark:bg-black dark:border-gray-800 md:flex">
-        <div className="mb-8 flex items-center gap-2">
-          <Swords className="h-8 w-8 text-blue-500" />
-          <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
-        </div>
-        <nav className="flex flex-col gap-2">
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-lg bg-blue-100 dark:bg-gray-800 px-3 py-2 text-blue-600 dark:text-gray-50 font-semibold"
-          >
-            <LayoutGrid className="h-5 w-5" />
-            Games
-          </Link>
-          <Link
-            href="/leaderboard"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-200 transition-colors hover:bg-[#23239b3e] hover:text-gray-200"
-          >
-            <Trophy className="h-5 w-5" />
-            Leaderboard
-          </Link>
-        </nav>
+      {/* Sidebar for Desktop */}
+      <aside className="hidden md:flex w-64 flex-col bg-[#191948] p-4 dark:bg-black dark:border-gray-800">
+        <SidebarContent />
       </aside>
+
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="w-64 bg-[#191948] dark:bg-black p-4">
+            <SidebarContent />
+          </div>
+          {/* Backdrop */}
+          <div
+            className="flex-1 bg-black/50"
+            onClick={() => setMobileOpen(false)}
+          />
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between  bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
-          <div className="relative w-full max-w-sm">
+<header className="flex h-16 items-center bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
+  {/* Left: Mobile Menu Button */}
+  <button
+    className="md:hidden p-2 text-gray-200"
+    onClick={() => setMobileOpen(true)}
+  >
+    <Menu className="h-6 w-6" />
+  </button>
 
-          </div>
-          <div className="flex items-center gap-4">
-            <HeaderCurrencyDisplay />
-            {isSignedIn ? (
-              <UserButton afterSignOutUrl="/" />
-            ) : (
-              <SignInButton mode="modal">
-                <Button>Sign In</Button>
-              </SignInButton>
-            )}
-          </div>
-        </header>
+  {/* Spacer to push right section to extreme right */}
+  <div className="flex-1" />
+
+  {/* Right: Currency + User */}
+  <div className="flex items-center gap-4">
+    <HeaderCurrencyDisplay />
+    {isSignedIn ? (
+      <UserButton afterSignOutUrl="/" />
+    ) : (
+      <SignInButton mode="modal">
+        <Button>Sign In</Button>
+      </SignInButton>
+    )}
+  </div>
+</header>
+
 
         <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
           {gamesError ? (
@@ -131,45 +137,79 @@ export default function Dashboard() {
           ) : (
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold tracking-tight text-gray-200">All Games</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-200">
+                  All Games
+                </h2>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {gamesLoading
                   ? [...Array(3)].map((_, i) => <GameCardSkeleton key={i} />)
                   : games.map((game) => (
-                    <Link
-                      key={game.id}
-                      href={`/games/${game.slug}`}
-                      className="block group"
-                      onClick={(e) => {
-                        if (!isSignedIn) {
-                          e.preventDefault();
-                          toast.error("Please sign in to play.");
-                        }
-                      }}
-                    >
-                      <Card className="overflow-hidden border-none bg-transparent shadow-none">
-                        <CardContent className="p-0">
-                          <div className="aspect-[3/4] w-full relative overflow-hidden rounded-xl transition-transform">
-                            <Image
-                              src={game.frontendConfig?.imageUrl || "/images/games/default.jpeg"}
-                              alt={game.name}
-                              layout="fill"
-                              objectFit="cover"
-                            />
-                          </div>
-                        </CardContent>
-                        <CardFooter className="p-0 pt-3">
-                          <CardTitle className="text-base font-semibold text-gray-200">{game.name}</CardTitle>
-                        </CardFooter>
-                      </Card>
-                    </Link>
-                  ))}
+                      <Link
+                        key={game.id}
+                        href={`/games/${game.slug}`}
+                        className="block group"
+                        onClick={(e) => {
+                          if (!isSignedIn) {
+                            e.preventDefault();
+                            toast.error("Please sign in to play.");
+                          }
+                        }}
+                      >
+                        <Card className="overflow-hidden border-none bg-transparent shadow-none">
+                          <CardContent className="p-0">
+                            <div className="aspect-[3/4] w-full relative overflow-hidden rounded-xl transition-transform">
+                              <Image
+                                src={
+                                  game.frontendConfig?.imageUrl ||
+                                  "/images/games/default.jpeg"
+                                }
+                                alt={game.name}
+                                layout="fill"
+                                objectFit="cover"
+                              />
+                            </div>
+                          </CardContent>
+                          <CardFooter className="p-0 pt-3">
+                            <CardTitle className="text-base font-semibold text-gray-200">
+                              {game.name}
+                            </CardTitle>
+                          </CardFooter>
+                        </Card>
+                      </Link>
+                    ))}
               </div>
             </section>
           )}
         </main>
       </div>
     </div>
+  );
+}
+
+function SidebarContent() {
+  return (
+    <>
+      <div className="mb-8 flex items-center gap-2">
+        <Swords className="h-8 w-8 text-blue-500" />
+        <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
+      </div>
+      <nav className="flex flex-col gap-2">
+        <Link
+          href="/"
+          className="flex items-center gap-3 rounded-lg bg-blue-100 dark:bg-gray-800 px-3 py-2 text-blue-600 dark:text-gray-50 font-semibold"
+        >
+          <LayoutGrid className="h-5 w-5" />
+          Games
+        </Link>
+        <Link
+          href="/leaderboard"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-200 transition-colors hover:bg-[#23239b3e] hover:text-gray-200"
+        >
+          <Trophy className="h-5 w-5" />
+          Leaderboard
+        </Link>
+      </nav>
+    </>
   );
 }
