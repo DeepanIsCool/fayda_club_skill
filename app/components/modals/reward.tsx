@@ -1,3 +1,4 @@
+// app/components/modals/reward.tsx
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";

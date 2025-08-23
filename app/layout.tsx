@@ -1,8 +1,9 @@
+// app/layout.tsx
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
-import { ClerkProvider } from "@clerk/nextjs";
-import "./globals.css";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
+import "./globals.css";
 export const metadata: Metadata = {
   title: "Fayda Club",
   description: "Play skill-based games and earn rewards",

@@ -1,18 +1,18 @@
+// app/components/tower-block/tower.tsx
 "use client";
-import { Power1, TweenLite } from "gsap";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, CircleArrowLeft } from "lucide-react";
 import { Button } from "@/ui/button";
+import { useAuth } from "@clerk/nextjs";
+import { Power1, TweenLite } from "gsap";
+import { ArrowLeft, CircleArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { ContinueModal } from "../../components/modals/continue";
 import { CurrencyDisplay } from "../../components/modals/currency";
-import { GameStartModal } from "../../components/modals/start";
 import { RewardModal } from "../../components/modals/reward";
+import { GameStartModal } from "../../components/modals/start";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 import { gameConfigService } from "../../lib/gameConfig";
-import { useAuth } from '@clerk/nextjs';
-
 
 interface GameReward {
   amount: number;
@@ -71,8 +71,6 @@ export default function TowerBlockGame() {
     totalCoinsSpent: 0,
     continueAttempts: 0,
   });
-
-
 
   // Game instance ref
 
@@ -167,11 +165,11 @@ export default function TowerBlockGame() {
     const averageReactionTime =
       blocksPlaced > 0
         ? metrics.blockPlacementTimes.reduce(
-          (sum: number, time: number) => sum + time,
-          0
-        ) /
-        blocksPlaced /
-        1000
+            (sum: number, time: number) => sum + time,
+            0
+          ) /
+          blocksPlaced /
+          1000
         : 0;
 
     return {
@@ -268,14 +266,17 @@ export default function TowerBlockGame() {
           },
         };
         const jwt = await getToken();
-        const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/gamesession`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${jwt}`
-          },
-          body: JSON.stringify(sessionData),
-        });
+        const response = await fetch(
+          `https://ai.rajatkhandelwal.com/arcade/gamesession`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwt}`,
+            },
+            body: JSON.stringify(sessionData),
+          }
+        );
 
         const result = await response.json();
 
@@ -338,7 +339,13 @@ export default function TowerBlockGame() {
 
     // Submit game session with final stats
     submitGameSession(finalStats);
-  }, [currentLevel, endGame, calculateGameStats, submitGameSession, earnPoints]);
+  }, [
+    currentLevel,
+    endGame,
+    calculateGameStats,
+    submitGameSession,
+    earnPoints,
+  ]);
 
   const handleContinueGame = useCallback(() => {
     // Use the centralized continue system from CurrencyContext
@@ -636,7 +643,7 @@ export default function TowerBlockGame() {
           this.targetBlock.dimension[this.workingDimension] -
           Math.abs(
             this.position[this.workingPlane] -
-            this.targetBlock.position[this.workingPlane]
+              this.targetBlock.position[this.workingPlane]
           );
 
         // Add minimum overlap threshold to be more forgiving
@@ -1324,7 +1331,9 @@ export default function TowerBlockGame() {
       </div> */}
       <div
         ref={scoreContainerRef}
-        className={`absolute top-20 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-gray-800 z-20 ${gameInitialized ? "block" : "hidden"}`}
+        className={`absolute top-20 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-gray-800 z-20 ${
+          gameInitialized ? "block" : "hidden"
+        }`}
         style={{ visibility: "hidden" }}
       >
         0
@@ -1333,10 +1342,10 @@ export default function TowerBlockGame() {
       {/* Instructions */}
       <div
         ref={instructionsRef}
-        className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 text-center text-gray-600 z-20 ${gameInitialized ? "block" : "hidden"
-          }`}
-      >
-      </div>
+        className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 text-center text-gray-600 z-20 ${
+          gameInitialized ? "block" : "hidden"
+        }`}
+      ></div>
 
       {/* Hidden start button for compatibility */}
       <div ref={startButtonRef} className="hidden" />

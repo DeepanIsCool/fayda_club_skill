@@ -1,3 +1,4 @@
+// app/lib/mobile.ts
 "use client"
 
 import * as React from "react"

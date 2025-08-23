@@ -1,7 +1,8 @@
+// app/lib/use-game.ts
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import type { GridState, Position, TileState } from "./types"
+import { useCallback, useEffect, useState } from "react";
+import type { GridState, Position, TileState } from "./types";
 
 const TILE_SIZE = 4
 let globalTileId = 1;

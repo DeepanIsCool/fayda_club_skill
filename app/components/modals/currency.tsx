@@ -1,11 +1,12 @@
+// app/components/modals/currency.tsx
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
-import { CircleStar, BadgeCent } from "lucide-react";
+import { BadgeCent, CircleStar } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { useCurrency } from "../../contexts/CurrencyContext";
 import { Skeleton } from "../../../ui/skeleton";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface CoinTransaction {
   id: string;

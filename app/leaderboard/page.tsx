@@ -1,14 +1,16 @@
+// app/leaderboard/page.tsx
 "use client";
+import { SignInButton, useAuth, UserButton, useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import {
   Crown,
-  Swords,
   LayoutGrid,
   Loader2,
+  Menu,
   ShieldAlert,
+  Swords,
   Trophy,
   User,
-  Menu, // <-- Added Menu icon
 } from "lucide-react";
 import Link from "next/link";
 import { JSX, useEffect, useState } from "react";
@@ -30,8 +32,6 @@ import {
   TableRow,
 } from "../../ui/table";
 import { HeaderCurrencyDisplay } from "../components/modals/currency";
-import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
-import { useAuth } from "@clerk/nextjs";
 
 // Interfaces for data structures (remains the same)
 interface SessionData {
@@ -119,9 +119,12 @@ export default function LeaderboardPage() {
       try {
         // UPDATED: Direct call to backend with JWT
         const jwt = await getToken();
-        const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/users`, {
-          headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
-        });
+        const response = await fetch(
+          `https://ai.rajatkhandelwal.com/arcade/users`,
+          {
+            headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+          }
+        );
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.users)) {
@@ -195,7 +198,8 @@ export default function LeaderboardPage() {
           bestLevel,
           bestScore,
           totalGames: user.histories?.length || 0,
-          averageAccuracy: validGameCount > 0 ? totalAccuracy / validGameCount : 0,
+          averageAccuracy:
+            validGameCount > 0 ? totalAccuracy / validGameCount : 0,
           rank: 0,
         };
       })
@@ -218,7 +222,9 @@ export default function LeaderboardPage() {
 
   // --- Skeleton and State components (remain the same) ---
   const Skeleton = ({ className }: { className?: string }) => (
-    <div className={`animate-pulse rounded-md bg-gray-200 dark:bg-gray-800 ${className}`} />
+    <div
+      className={`animate-pulse rounded-md bg-gray-200 dark:bg-gray-800 ${className}`}
+    />
   );
 
   const PodiumCardSkeleton = () => (
@@ -235,7 +241,9 @@ export default function LeaderboardPage() {
 
   const TableRowSkeleton = () => (
     <TableRow>
-      <TableCell><Skeleton className="h-5 w-8" /></TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-8" />
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-3">
           <Skeleton className="h-9 w-9 rounded-full" />
@@ -245,8 +253,12 @@ export default function LeaderboardPage() {
           </div>
         </div>
       </TableCell>
-      <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
-      <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
+      <TableCell className="text-right">
+        <Skeleton className="h-5 w-16 ml-auto" />
+      </TableCell>
+      <TableCell className="text-right">
+        <Skeleton className="h-5 w-8 ml-auto" />
+      </TableCell>
     </TableRow>
   );
 
@@ -273,7 +285,9 @@ export default function LeaderboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...Array(5)].map((_, i) => <TableRowSkeleton key={i} />)}
+              {[...Array(5)].map((_, i) => (
+                <TableRowSkeleton key={i} />
+              ))}
             </TableBody>
           </Table>
         </CardContent>
@@ -298,7 +312,13 @@ export default function LeaderboardPage() {
     </div>
   );
 
-  const PodiumCard = ({ entry, rank }: { entry: LeaderboardEntry, rank: number }) => {
+  const PodiumCard = ({
+    entry,
+    rank,
+  }: {
+    entry: LeaderboardEntry;
+    rank: number;
+  }) => {
     const rankColors: { [key: number]: string } = {
       1: "border-yellow-400 bg-yellow-400/10",
       2: "border-gray-400 bg-gray-400/10",
@@ -379,7 +399,9 @@ export default function LeaderboardPage() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
-          <h2 className="text-xl font-semibold text-gray-200 pb-8">Leaderboard</h2>
+          <h2 className="text-xl font-semibold text-gray-200 pb-8">
+            Leaderboard
+          </h2>
 
           {loading ? (
             <SkeletonState />
@@ -407,13 +429,17 @@ export default function LeaderboardPage() {
                         <TableRow>
                           <TableHead className="w-16">Rank</TableHead>
                           <TableHead>Player</TableHead>
-                          <TableHead className="text-right">Best Score</TableHead>
+                          <TableHead className="text-right">
+                            Best Score
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {restOfLeaderboard.map((entry) => (
                           <TableRow key={entry.user.id}>
-                            <TableCell className="font-bold">#{entry.rank}</TableCell>
+                            <TableCell className="font-bold">
+                              #{entry.rank}
+                            </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-9 w-9">
@@ -423,7 +449,9 @@ export default function LeaderboardPage() {
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-medium">{entry.user.name}</p>
+                                  <p className="font-medium">
+                                    {entry.user.name}
+                                  </p>
                                 </div>
                               </div>
                             </TableCell>

@@ -1,17 +1,17 @@
+// app/contexts/CurrencyContext.tsx
 "use client";
 
+import { useAuth, useUser } from "@clerk/nextjs";
 import React, {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useReducer,
-  useCallback,
   useState, // Import useState
 } from "react";
 import { GameConfig, gameConfigService } from "../lib/gameConfig";
-import { useUser } from '@clerk/nextjs';
-import { useAuth } from '@clerk/nextjs';
 
 // Types
 interface CurrencyState {
@@ -59,9 +59,9 @@ type CurrencyAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "LOAD_STATE"; payload: CurrencyState }
   | {
-    type: "START_GAME_SESSION";
-    payload: { gameId: string; gameSlug: string; gameConfig: GameConfig };
-  }
+      type: "START_GAME_SESSION";
+      payload: { gameId: string; gameSlug: string; gameConfig: GameConfig };
+    }
   | { type: "END_GAME_SESSION" }
   | { type: "INCREMENT_CONTINUE_ATTEMPT" }
   | { type: "RESET_CONTINUE_ATTEMPTS" };
@@ -207,9 +207,12 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
         try {
           dispatchCurrency({ type: "SET_LOADING", payload: true });
           const jwt = await getToken();
-          const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/users/${user.id}`, {
-            headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
-          });
+          const response = await fetch(
+            `https://ai.rajatkhandelwal.com/arcade/users/${user.id}`,
+            {
+              headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+            }
+          );
           if (response.ok) {
             const data = await response.json();
             if (data && data.user) {
@@ -236,7 +239,6 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
-
 
   // Actions
   const syncToServer = async (newCoins: number, newPoints: number) => {
@@ -302,7 +304,9 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
         return false;
       }
       if (!gameConfig.hasImplementation) {
-        console.error(`Game ${gameSlug} does not have a frontend implementation`);
+        console.error(
+          `Game ${gameSlug} does not have a frontend implementation`
+        );
         return false;
       }
 

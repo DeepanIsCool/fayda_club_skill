@@ -1,19 +1,19 @@
+// app/components/2048/2048.tsx
 "use client";
+import { useGameCurrency } from "../../contexts/CurrencyContext";
+import { gameConfigService, getGameEntryCost } from "../../lib/gameConfig";
 import type { TileState } from "../../lib/types";
 import { useGame } from "../../lib/use-game";
-import { gameConfigService, getGameEntryCost } from "../../lib/gameConfig";
-import { useGameCurrency } from "../../contexts/CurrencyContext";
-import { GameStartModal } from "../modals/start";
-import { CurrencyDisplay } from "../modals/currency";
 import { ContinueModal } from "../modals/continue";
+import { CurrencyDisplay } from "../modals/currency";
 import { RewardModal } from "../modals/reward";
+import { GameStartModal } from "../modals/start";
 
-import React, { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { CircleArrowLeft } from "lucide-react";
 import { Button } from "@/ui/button";
 import { useAuth } from "@clerk/nextjs";
-
+import { CircleArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useCallback, useState } from "react";
 
 export default function Game2048() {
   const router = useRouter();
@@ -55,7 +55,10 @@ export default function Game2048() {
         const jwt = await getToken();
         await fetch(`https://ai.rajatkhandelwal.com/arcade/gamesession`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${jwt}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwt}`,
+          },
           body: JSON.stringify(sessionData),
         });
       } catch (error) {
@@ -69,7 +72,11 @@ export default function Game2048() {
   const [showStartModal, setShowStartModal] = useState(true);
   const [showContinueModal, setShowContinueModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
-  type Reward = { amount: number; reason: string; type: "level" | "perfect" | "streak" | "bonus" | "achievement" | "score" };
+  type Reward = {
+    amount: number;
+    reason: string;
+    type: "level" | "perfect" | "streak" | "bonus" | "achievement" | "score";
+  };
   interface GameStats {
     finalLevel: number;
     totalPrecisionScore: number;
@@ -100,7 +107,6 @@ export default function Game2048() {
   } = useGameCurrency();
   const entryCost = getGameEntryCost("2048");
   const canStart = canStartGame("2048", entryCost);
-
 
   // Handler for starting the game: deduct entry cost
   const handleStartGame = async () => {
@@ -133,15 +139,20 @@ export default function Game2048() {
       const stats = getSessionData() as GameStats;
       submitGameSession(stats);
       setPendingReward({
-        rewards: [
-          { amount: finalScore, reason: "score", type: "score" },
-        ],
+        rewards: [{ amount: finalScore, reason: "score", type: "score" }],
         totalCoins: finalScore,
         gameLevel: 0,
         gameStats: stats,
       });
     }
-  }, [won, getFinalScore, getSessionData, markEndTime, earnPoints, submitGameSession]);
+  }, [
+    won,
+    getFinalScore,
+    getSessionData,
+    markEndTime,
+    earnPoints,
+    submitGameSession,
+  ]);
 
   // Handlers for ContinueModal
   const handleContinue = () => {
@@ -159,9 +170,7 @@ export default function Game2048() {
     const stats = getSessionData() as GameStats;
     submitGameSession(stats);
     setPendingReward({
-      rewards: [
-        { amount: finalScore, reason: "score", type: "score" },
-      ],
+      rewards: [{ amount: finalScore, reason: "score", type: "score" }],
       totalCoins: finalScore,
       gameLevel: 0,
       gameStats: stats,
@@ -260,7 +269,8 @@ export default function Game2048() {
                 const baseSize = "calc((100% - 0.75rem) / 4)";
                 const gapSize = "0.25rem";
                 const getTileStyles = (value: number) => {
-                  const baseClasses = "text-white font-black shadow-lg border border-white/20";
+                  const baseClasses =
+                    "text-white font-black shadow-lg border border-white/20";
                   const styles = {
                     2: `bg-gradient-to-br from-slate-700 to-slate-800 text-gray-200 ${baseClasses}`,
                     4: `bg-gradient-to-br from-slate-600 to-slate-700 text-gray-100 ${baseClasses}`,
@@ -291,7 +301,9 @@ export default function Game2048() {
                     }}
                   >
                     <div
-                      className={`w-full h-full rounded-xl flex items-center justify-center text-3xl md:text-4xl transform hover:scale-105 transition-all duration-150 ${getTileStyles(tile.value)}`}
+                      className={`w-full h-full rounded-xl flex items-center justify-center text-3xl md:text-4xl transform hover:scale-105 transition-all duration-150 ${getTileStyles(
+                        tile.value
+                      )}`}
                     >
                       {tile.value}
                     </div>

@@ -1,18 +1,18 @@
+// app/page.tsx
 "use client";
 
-import { Swords, LayoutGrid, Trophy, Menu } from "lucide-react";
-import Link from "next/link";
+import { SignInButton, useAuth, UserButton, useUser } from "@clerk/nextjs";
+import { LayoutGrid, Menu, Swords, Trophy } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
-import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
-import { useAuth } from "@clerk/nextjs";
-import { GameConfig, gameConfigService } from "./lib/gameConfig";
-import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
+import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
 import { HeaderCurrencyDisplay } from "./components/modals/currency";
 import { useCurrency } from "./contexts/CurrencyContext"; // Import the hook
+import { GameConfig, gameConfigService } from "./lib/gameConfig";
 
 export default function Dashboard() {
   const { isSignedIn, user } = useUser();
@@ -51,19 +51,25 @@ export default function Dashboard() {
         try {
           const jwt = await getToken();
           if (jwt) {
-            const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/auth`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${jwt}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({ token: jwt }),
-            });
+            const response = await fetch(
+              `https://ai.rajatkhandelwal.com/arcade/auth`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${jwt}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ token: jwt }),
+              }
+            );
 
             if (response.ok) {
               actions.initialize();
             } else {
-              console.error("Backend authentication failed:", response.statusText);
+              console.error(
+                "Backend authentication failed:",
+                response.statusText
+              );
             }
           }
         } catch (err) {
@@ -131,12 +137,13 @@ export default function Dashboard() {
           </div>
         </header>
 
-
         <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
           {gamesError && !gamesLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
-                <h3 className="text-red-600 dark:text-red-400">❌ {gamesError}</h3>
+                <h3 className="text-red-600 dark:text-red-400">
+                  ❌ {gamesError}
+                </h3>
               </div>
             </div>
           ) : (
@@ -150,39 +157,39 @@ export default function Dashboard() {
                 {gamesLoading
                   ? [...Array(3)].map((_, i) => <GameCardSkeleton key={i} />)
                   : games.map((game) => (
-                    <Link
-                      key={game.id}
-                      href={`/games/${game.slug}`}
-                      className="block group"
-                      onClick={(e) => {
-                        if (!isSignedIn) {
-                          e.preventDefault();
-                          toast.error("Please sign in to play.");
-                        }
-                      }}
-                    >
-                      <Card className="overflow-hidden border-none bg-transparent shadow-none">
-                        <CardContent className="p-0">
-                          <div className="aspect-[3/4] w-full relative overflow-hidden rounded-xl transition-transform">
-                            <Image
-                              src={
-                                game.frontendConfig?.imageUrl ||
-                                "/images/games/default.jpeg"
-                              }
-                              alt={game.name}
-                              layout="fill"
-                              objectFit="cover"
-                            />
-                          </div>
-                        </CardContent>
-                        <CardFooter className="p-0 pt-3">
-                          <CardTitle className="text-base font-semibold text-gray-200">
-                            {game.name}
-                          </CardTitle>
-                        </CardFooter>
-                      </Card>
-                    </Link>
-                  ))}
+                      <Link
+                        key={game.id}
+                        href={`/games/${game.slug}`}
+                        className="block group"
+                        onClick={(e) => {
+                          if (!isSignedIn) {
+                            e.preventDefault();
+                            toast.error("Please sign in to play.");
+                          }
+                        }}
+                      >
+                        <Card className="overflow-hidden border-none bg-transparent shadow-none">
+                          <CardContent className="p-0">
+                            <div className="aspect-[3/4] w-full relative overflow-hidden rounded-xl transition-transform">
+                              <Image
+                                src={
+                                  game.frontendConfig?.imageUrl ||
+                                  "/images/games/default.jpeg"
+                                }
+                                alt={game.name}
+                                layout="fill"
+                                objectFit="cover"
+                              />
+                            </div>
+                          </CardContent>
+                          <CardFooter className="p-0 pt-3">
+                            <CardTitle className="text-base font-semibold text-gray-200">
+                              {game.name}
+                            </CardTitle>
+                          </CardFooter>
+                        </Card>
+                      </Link>
+                    ))}
               </div>
             </section>
           )}

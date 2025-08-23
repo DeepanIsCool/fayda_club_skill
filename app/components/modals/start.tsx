@@ -1,11 +1,12 @@
+// app/components/modals/start.tsx
 "use client";
 
+import { getGameEntryCost } from "@/app/lib/gameConfig";
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
 import { BadgeCent, Play, Target } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
-import { getGameEntryCost } from "@/app/lib/gameConfig";
 
 interface GameStartModalProps {
   isOpen: boolean;

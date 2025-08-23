@@ -1,4 +1,5 @@
-import Game2048 from "../../components/2048/2048"
+// app/games/2048/page.tsx
+import Game2048 from "../../components/2048/2048";
 
 export default function TwentyFortyEight() {
   return (

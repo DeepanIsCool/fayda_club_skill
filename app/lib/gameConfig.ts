@@ -1,3 +1,4 @@
+// app/lib/gameConfig.ts
 /**
  * Game Configuration Service
  * Provides a dynamic, scalable system for managing game configurations
