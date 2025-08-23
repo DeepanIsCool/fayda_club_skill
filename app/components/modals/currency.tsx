@@ -38,8 +38,16 @@ export function CurrencyDisplay({
   const previousCoins = useRef(0);
 
   const sizeConfig = {
-    sm: { container: "px-3 py-1.5 text-sm", icon: 20, text: "text-sm font-medium" },
-    md: { container: "px-4 py-2 text-base", icon: 24, text: "text-base font-semibold" },
+    sm: {
+      container: "px-3 py-1.5 text-sm",
+      icon: 20,
+      text: "text-sm font-medium",
+    },
+    md: {
+      container: "px-4 py-2 text-base",
+      icon: 24,
+      text: "text-base font-semibold",
+    },
     lg: { container: "px-6 py-3 text-lg", icon: 28, text: "text-lg font-bold" },
   };
   const config = sizeConfig[size];
@@ -61,7 +69,9 @@ export function CurrencyDisplay({
           setTransactions((prev) => [...prev, transaction]);
 
           setTimeout(() => {
-            setTransactions((prev) => prev.filter((t) => t.id !== transaction.id));
+            setTransactions((prev) =>
+              prev.filter((t) => t.id !== transaction.id)
+            );
           }, 2000);
         }
 
@@ -78,14 +88,17 @@ export function CurrencyDisplay({
 
         const startValue = previousCoins.current;
         const endValue = currency.coins;
-        gsap.to({ value: startValue }, {
-          value: endValue,
-          duration: 0.5,
-          ease: "power2.out",
-          onUpdate() {
-            setDisplayCoins(Math.round(this.targets()[0].value));
-          },
-        });
+        gsap.to(
+          { value: startValue },
+          {
+            value: endValue,
+            duration: 0.5,
+            ease: "power2.out",
+            onUpdate() {
+              setDisplayCoins(Math.round(this.targets()[0].value));
+            },
+          }
+        );
 
         previousCoins.current = currency.coins;
       }
@@ -138,17 +151,17 @@ export function HeaderCurrencyDisplay() {
         <div className="flex items-center gap-1 px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 font-semibold">
           <BadgeCent size={18} /> <span>{currency.coins}</span>
         </div>
-        <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 font-semibold">
+        {/* <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 font-semibold">
           <CircleStar size={18} /> <span>{currency.points}</span>
-        </div>
+        </div> */}
       </div>
       <div className="flex sm:hidden items-center gap-2">
         <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 text-sm font-semibold">
           <BadgeCent size={14} /> <span>{currency.coins}</span>
         </div>
-        <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 text-sm font-semibold">
+        {/* <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 text-sm font-semibold">
           <CircleStar size={14} /> <span>{currency.points}</span>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -11,6 +11,8 @@ import { GameStartModal } from "../../components/modals/start";
 import { RewardModal } from "../../components/modals/reward";
 import { useGameCurrency } from "../../contexts/CurrencyContext";
 import { gameConfigService } from "../../lib/gameConfig";
+import { useAuth } from '@clerk/nextjs';
+
 
 interface GameReward {
   amount: number;
@@ -26,6 +28,7 @@ export default function TowerBlockGame() {
   const gameDescription = frontendConfig?.description || "";
   const gameObjective = frontendConfig?.objective || "";
   const router = useRouter();
+  const { getToken } = useAuth();
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const scoreContainerRef = useRef<HTMLDivElement>(null);
   const instructionsRef = useRef<HTMLDivElement>(null);
@@ -192,7 +195,7 @@ export default function TowerBlockGame() {
 
       try {
         // Get game configuration for ID
-        await gameConfigService.loadGames();
+        await gameConfigService.loadGames(getToken);
         const gameConfig = gameConfigService.getGameBySlug("tower-block");
 
         if (!gameConfig) {
@@ -264,11 +267,12 @@ export default function TowerBlockGame() {
             version: "1.0.0",
           },
         };
-
-        const response = await fetch("/api/session", {
+        const jwt = await getToken();
+        const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/gamesession`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${jwt}`
           },
           body: JSON.stringify(sessionData),
         });
@@ -287,7 +291,7 @@ export default function TowerBlockGame() {
         console.error("❌ Error submitting game session:", error);
       }
     },
-    [sessionFinancials]
+    [sessionFinancials, getToken]
   );
 
   const handleGameOver = useCallback(() => {

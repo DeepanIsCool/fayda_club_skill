@@ -29,7 +29,7 @@ export default function Dashboard() {
         try {
           setGamesLoading(true);
           setGamesError(null);
-          const gameConfigs = await gameConfigService.loadGames();
+          const gameConfigs = await gameConfigService.loadGames(getToken); // Pass getToken here
           const availableGames = gameConfigs.filter(
             (game) => game.hasImplementation
           );
@@ -43,7 +43,7 @@ export default function Dashboard() {
       }
     };
     loadGames();
-  }, []);
+  }, [getToken]);
 
   useEffect(() => {
     const logClerkAuth = async () => {
@@ -51,11 +51,13 @@ export default function Dashboard() {
         try {
           const jwt = await getToken();
           if (jwt) {
-            const response = await fetch("/api/auth", {
+            const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/auth`, {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${jwt}`,
+                "Content-Type": "application/json"
               },
+              body: JSON.stringify({ token: jwt }),
             });
 
             if (response.ok) {
@@ -104,30 +106,30 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-<header className="flex h-16 items-center bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
-  {/* Left: Mobile Menu Button */}
-  <button
-    className="md:hidden p-2 text-gray-200"
-    onClick={() => setMobileOpen(true)}
-  >
-    <Menu className="h-6 w-6" />
-  </button>
+        <header className="flex h-16 items-center bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
+          {/* Left: Mobile Menu Button */}
+          <button
+            className="md:hidden p-2 text-gray-200"
+            onClick={() => setMobileOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
 
-  {/* Spacer to push right section to extreme right */}
-  <div className="flex-1" />
+          {/* Spacer to push right section to extreme right */}
+          <div className="flex-1" />
 
-  {/* Right: Currency + User */}
-  <div className="flex items-center gap-4">
-    <HeaderCurrencyDisplay />
-    {isSignedIn ? (
-      <UserButton afterSignOutUrl="/" />
-    ) : (
-      <SignInButton mode="modal">
-        <Button>Sign In</Button>
-      </SignInButton>
-    )}
-  </div>
-</header>
+          {/* Right: Currency + User */}
+          <div className="flex items-center gap-4">
+            <HeaderCurrencyDisplay />
+            {isSignedIn ? (
+              <UserButton afterSignOutUrl="/" />
+            ) : (
+              <SignInButton mode="modal">
+                <Button>Sign In</Button>
+              </SignInButton>
+            )}
+          </div>
+        </header>
 
 
         <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
@@ -148,39 +150,39 @@ export default function Dashboard() {
                 {gamesLoading
                   ? [...Array(3)].map((_, i) => <GameCardSkeleton key={i} />)
                   : games.map((game) => (
-                      <Link
-                        key={game.id}
-                        href={`/games/${game.slug}`}
-                        className="block group"
-                        onClick={(e) => {
-                          if (!isSignedIn) {
-                            e.preventDefault();
-                            toast.error("Please sign in to play.");
-                          }
-                        }}
-                      >
-                        <Card className="overflow-hidden border-none bg-transparent shadow-none">
-                          <CardContent className="p-0">
-                            <div className="aspect-[3/4] w-full relative overflow-hidden rounded-xl transition-transform">
-                              <Image
-                                src={
-                                  game.frontendConfig?.imageUrl ||
-                                  "/images/games/default.jpeg"
-                                }
-                                alt={game.name}
-                                layout="fill"
-                                objectFit="cover"
-                              />
-                            </div>
-                          </CardContent>
-                          <CardFooter className="p-0 pt-3">
-                            <CardTitle className="text-base font-semibold text-gray-200">
-                              {game.name}
-                            </CardTitle>
-                          </CardFooter>
-                        </Card>
-                      </Link>
-                    ))}
+                    <Link
+                      key={game.id}
+                      href={`/games/${game.slug}`}
+                      className="block group"
+                      onClick={(e) => {
+                        if (!isSignedIn) {
+                          e.preventDefault();
+                          toast.error("Please sign in to play.");
+                        }
+                      }}
+                    >
+                      <Card className="overflow-hidden border-none bg-transparent shadow-none">
+                        <CardContent className="p-0">
+                          <div className="aspect-[3/4] w-full relative overflow-hidden rounded-xl transition-transform">
+                            <Image
+                              src={
+                                game.frontendConfig?.imageUrl ||
+                                "/images/games/default.jpeg"
+                              }
+                              alt={game.name}
+                              layout="fill"
+                              objectFit="cover"
+                            />
+                          </div>
+                        </CardContent>
+                        <CardFooter className="p-0 pt-3">
+                          <CardTitle className="text-base font-semibold text-gray-200">
+                            {game.name}
+                          </CardTitle>
+                        </CardFooter>
+                      </Card>
+                    </Link>
+                  ))}
               </div>
             </section>
           )}

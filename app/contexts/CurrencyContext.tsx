@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import { GameConfig, gameConfigService } from "../lib/gameConfig";
 import { useUser } from '@clerk/nextjs';
+import { useAuth } from '@clerk/nextjs';
 
 // Types
 interface CurrencyState {
@@ -189,6 +190,7 @@ interface CurrencyProviderProps {
 
 export function CurrencyProvider({ children }: CurrencyProviderProps) {
   const { user, isSignedIn } = useUser();
+  const { getToken } = useAuth();
   const [currency, dispatchCurrency] = useReducer(
     currencyReducer,
     initialCurrencyState
@@ -200,12 +202,14 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false); // New state
 
   const fetchUserData = useCallback(async () => {
-    // Only fetch if the context is initialized and the user is signed in.
     if (isInitialized && isSignedIn && user) {
       while (true) {
         try {
           dispatchCurrency({ type: "SET_LOADING", payload: true });
-          const response = await fetch(`/api/user/id`);
+          const jwt = await getToken();
+          const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/users/${user.id}`, {
+            headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+          });
           if (response.ok) {
             const data = await response.json();
             if (data && data.user) {
@@ -227,7 +231,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
-  }, [user, isSignedIn, isInitialized]); // Add isInitialized to dependency array
+  }, [user, isSignedIn, isInitialized]);
 
   useEffect(() => {
     fetchUserData();
@@ -244,10 +248,12 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
         score: newPoints,
       };
       console.log("Syncing currency to server with body:", body);
+      const jwt = await getToken();
       await fetch("/api/user/id", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
         },
         body: JSON.stringify(body),
       });

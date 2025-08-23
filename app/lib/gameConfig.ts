@@ -124,7 +124,6 @@ export class GameConfigService {
   private configs: Map<string, GameConfig> = new Map();
   private apiCache: { data: ApiGameResponse; timestamp: number } | null = null;
   private readonly cacheExpiry = 5 * 60 * 1000; // 5 minutes
-  private readonly apiUrl = "/api/game";
 
   // Frontend game mappings - this is where we define which games have implementations
   private readonly frontendMappings: Map<string, Partial<GameFrontendConfig>> =
@@ -411,7 +410,7 @@ export class GameConfigService {
   /**
    * Fetch games from API with caching
    */
-  public async fetchGamesFromAPI(): Promise<ApiGameResponse["games"]> {
+  public async fetchGamesFromAPI(getToken: () => Promise<string | null>): Promise<ApiGameResponse["games"]> {
     // Check cache first
     if (
       this.apiCache &&
@@ -421,10 +420,13 @@ export class GameConfigService {
     }
 
     try {
-      const response = await fetch(this.apiUrl, {
+      const jwt = await getToken();
+      console.log(jwt)
+      const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/games`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${jwt}`
         },
         // Add timeout
         signal: AbortSignal.timeout(10000), // 10 seconds
@@ -471,9 +473,9 @@ export class GameConfigService {
   /**
    * Load and process all games
    */
-  public async loadGames(): Promise<GameConfig[]> {
+  public async loadGames(getToken: () => Promise<string | null>): Promise<GameConfig[]> {
     try {
-      const apiGames = await this.fetchGamesFromAPI();
+      const apiGames = await this.fetchGamesFromAPI(getToken);
       console.log("🔍 Raw API games:", apiGames);
 
       const configs = apiGames.map((apiGame) => {

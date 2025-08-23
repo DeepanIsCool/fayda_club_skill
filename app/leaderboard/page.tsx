@@ -31,6 +31,7 @@ import {
 } from "../../ui/table";
 import { HeaderCurrencyDisplay } from "../components/modals/currency";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 
 // Interfaces for data structures (remains the same)
 interface SessionData {
@@ -103,6 +104,7 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isSignedIn } = useUser();
+  const { getToken } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false); // <-- State for mobile drawer
 
   useEffect(() => {
@@ -115,7 +117,11 @@ export default function LeaderboardPage() {
 
     while (true) {
       try {
-        const response = await fetch("/api/user");
+        // UPDATED: Direct call to backend with JWT
+        const jwt = await getToken();
+        const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/users`, {
+          headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+        });
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.users)) {

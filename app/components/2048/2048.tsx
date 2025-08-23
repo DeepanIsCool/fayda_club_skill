@@ -8,10 +8,11 @@ import { CurrencyDisplay } from "../modals/currency";
 import { ContinueModal } from "../modals/continue";
 import { RewardModal } from "../modals/reward";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CircleArrowLeft } from "lucide-react";
 import { Button } from "@/ui/button";
+import { useAuth } from "@clerk/nextjs";
 
 
 export default function Game2048() {
@@ -26,11 +27,43 @@ export default function Game2048() {
     getFinalScore,
     getSessionData,
   } = useGame();
+  const { getToken } = useAuth();
   const config = gameConfigService.getGameBySlug("2048");
   const frontendConfig = config?.frontendConfig;
   const title = frontendConfig?.title || "2048";
   const description = frontendConfig?.description || "";
   const objective = frontendConfig?.objective || "";
+
+  const submitGameSession = useCallback(
+    async (finalStats: GameStats) => {
+      if (!config || !finalStats) return;
+      try {
+        const sessionData = {
+          gameId: config.id,
+          userId: "guest",
+          level: finalStats.finalLevel,
+          score: finalStats.totalPrecisionScore,
+          duration: finalStats.totalGameTime || 0,
+          sessionData: {
+            ...finalStats,
+            gameType: "2048",
+            platform: "web",
+            timestamp: new Date().toISOString(),
+            version: "1.0.0",
+          },
+        };
+        const jwt = await getToken();
+        await fetch(`https://ai.rajatkhandelwal.com/arcade/gamesession`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${jwt}` },
+          body: JSON.stringify(sessionData),
+        });
+      } catch (error) {
+        console.error("Error submitting 2048 session:", error);
+      }
+    },
+    [config, getToken]
+  );
 
   // Modal state
   const [showStartModal, setShowStartModal] = useState(true);
@@ -63,15 +96,19 @@ export default function Game2048() {
     continue: doContinue,
     earnReward,
     earnPoints,
+    startGame,
   } = useGameCurrency();
   const entryCost = getGameEntryCost("2048");
   const canStart = canStartGame("2048", entryCost);
 
 
-  // Handler for starting the game
-  const handleStartGame = () => {
-    setShowStartModal(false);
-    restart(); // reset the game state
+  // Handler for starting the game: deduct entry cost
+  const handleStartGame = async () => {
+    const started = await startGame("2048");
+    if (started) {
+      setShowStartModal(false);
+      restart(); // reset the game state
+    }
   };
   // Handler for cancel: go back to dashboard
   const handleCancel = () => {
@@ -93,18 +130,18 @@ export default function Game2048() {
       markEndTime();
       const finalScore = getFinalScore();
       earnPoints(finalScore, "2048 game won");
-
-      // Example reward calculation (customize as needed)
+      const stats = getSessionData() as GameStats;
+      submitGameSession(stats);
       setPendingReward({
         rewards: [
-          { amount: getFinalScore(), reason: "score", type: "score" },
+          { amount: finalScore, reason: "score", type: "score" },
         ],
-        totalCoins: getFinalScore(),
+        totalCoins: finalScore,
         gameLevel: 0,
-        gameStats: getSessionData() as GameStats,
+        gameStats: stats,
       });
     }
-  }, [won, getFinalScore, getSessionData, markEndTime, earnPoints]);
+  }, [won, getFinalScore, getSessionData, markEndTime, earnPoints, submitGameSession]);
 
   // Handlers for ContinueModal
   const handleContinue = () => {
@@ -116,17 +153,18 @@ export default function Game2048() {
   };
   const handleGameOver = () => {
     setShowContinueModal(false);
-    // Show reward modal on exit as well
     setShowRewardModal(true);
     const finalScore = getFinalScore();
     earnPoints(finalScore, "2048 game over");
+    const stats = getSessionData() as GameStats;
+    submitGameSession(stats);
     setPendingReward({
       rewards: [
         { amount: finalScore, reason: "score", type: "score" },
       ],
       totalCoins: finalScore,
       gameLevel: 0,
-      gameStats: getSessionData() as GameStats,
+      gameStats: stats,
     });
   };
 
