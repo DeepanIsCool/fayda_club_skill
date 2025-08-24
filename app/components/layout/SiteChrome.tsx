@@ -1,10 +1,10 @@
 // app/components/layout/SiteChrome.tsx
 "use client";
 
-import React, { useEffect } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useUser, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { HeaderCurrencyDisplay } from "@/app/components/modals/currency";
+import { cn } from "@/app/lib/utils";
+import { Button } from "@/ui/button";
+import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,9 +12,9 @@ import {
   Swords,
   Trophy,
 } from "lucide-react";
-import { HeaderCurrencyDisplay } from "@/app/components/modals/currency";
-import { Button } from "@/ui/button";
-import { cn } from "@/app/lib/utils";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect } from "react";
 
 type NavItem = { label: string; href: string; icon?: React.ReactNode };
 
@@ -195,9 +195,7 @@ function MobileBottomNav({ navItems }: { navItems: NavItem[] }) {
               <span className={cn(active ? "text-white" : "text-blue-200")}>
                 {item.icon}
               </span>
-              {active && (
-                <span className="absolute -top-1.5 right-3 h-2 w-2 rounded-full bg-amber-400 shadow" />
-              )}
+              {/* Removed yellow highlight dot for active item */}
             </Link>
           );
         })}
