@@ -119,7 +119,7 @@ const GAME_IMPLEMENTATIONS: Map<string, Partial<GameFrontendConfig>> = new Map([
     {
       component: "Game2048",
       path: "/games/2048",
-      imageUrl: "/images/games/2048.jpeg",
+      imageUrl: "/images/games/2048.jpg",
     },
   ],
   [
@@ -127,7 +127,7 @@ const GAME_IMPLEMENTATIONS: Map<string, Partial<GameFrontendConfig>> = new Map([
     {
       component: "TetrisGame",
       path: "/games/tetris",
-      imageUrl: "/images/games/tetris.jpeg",
+      imageUrl: "/images/games/tetris.jpg",
     },
   ],
 ]);

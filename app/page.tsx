@@ -17,8 +17,8 @@ import {
 
 /* Public thumbnails (your /public tree) */
 const PUBLIC_THUMBS_BY_SLUG: Record<string, string> = {
-  "2048": "/images/games/2048.jpeg",
-  tetris: "/images/games/tetris.jpeg",
+  "2048": "/images/games/2048.jpg",
+  tetris: "/images/games/tetris.jpg",
   "tower-block": "/images/games/tower.jpeg",
 };
 
