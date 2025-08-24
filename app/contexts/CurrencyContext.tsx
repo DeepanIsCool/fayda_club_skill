@@ -31,6 +31,20 @@ type CurrencyActions = {
   spendCoins: (amount: number) => boolean;
   /** Optional re-fetch if you need to force refresh (calls /auth again). */
   refresh: () => Promise<void>;
+  /** Start a game by deducting entry fee from wallet via API */
+  startGame: (gameKey: string) => Promise<boolean>;
+  /** Earn reward by adding coins and score via API */
+  earnReward: (
+    coinAmount: number,
+    scoreAmount: number,
+    reason: string
+  ) => Promise<void>;
+  /** Update user data via API */
+  updateUserData: (
+    walletChange: number,
+    scoreChange: number,
+    reason: string
+  ) => Promise<any>;
 };
 
 type CurrencyContextType = {
@@ -50,6 +64,9 @@ const CurrencyContext = createContext<CurrencyContextType>({
     addCoins: () => {},
     spendCoins: () => false,
     refresh: async () => {},
+    startGame: async () => false,
+    earnReward: async () => {},
+    updateUserData: async () => {},
   },
 });
 
@@ -165,6 +182,114 @@ export const CurrencyProvider = ({
     return applied;
   }, []);
 
+  const updateUserData = useCallback(
+    async (walletChange: number, scoreChange: number, reason: string) => {
+      try {
+        const jwt = await getToken();
+
+        // Get current user data first to get the user ID
+        const userResponse = await fetch(`${API_BASE}/auth`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: jwt }),
+        });
+
+        if (!userResponse.ok) {
+          throw new Error(`Failed to get user data: ${userResponse.status}`);
+        }
+
+        const userData = await userResponse.json();
+        const userId = userData.user.id;
+        const currentWallet = userData.user.wallet;
+        const currentScore = userData.user.score;
+
+        // Calculate new values
+        const newWallet = Math.max(0, currentWallet + walletChange);
+        const newScore = Math.max(0, currentScore + scoreChange);
+
+        // Update user data via PUT /users/{userId}
+        const updateResponse = await fetch(`${API_BASE}/users/${userId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({
+            wallet: newWallet,
+            score: newScore,
+          }),
+        });
+
+        if (!updateResponse.ok) {
+          throw new Error(
+            `Failed to update user data: ${updateResponse.status}`
+          );
+        }
+
+        const result = await updateResponse.json();
+        console.log(
+          `✅ User data updated - Wallet: ${newWallet}, Score: ${newScore}, Reason: ${reason}`
+        );
+
+        // Update local state to match API
+        setState((prev) => ({
+          ...prev,
+          wallet: newWallet,
+          score: newScore,
+        }));
+
+        return result;
+      } catch (error) {
+        console.error(`❌ Failed to update user data:`, error);
+        throw error;
+      }
+    },
+    [getToken]
+  );
+
+  const startGame = useCallback(
+    async (gameKey: string) => {
+      // Import getGameEntryCost dynamically to avoid circular dependency
+      const { getGameEntryCost } = await import("../lib/gameConfig");
+      const entryCost = getGameEntryCost(gameKey);
+
+      // Check if user has enough coins locally first
+      if (state.wallet < entryCost) {
+        console.error(
+          `❌ Insufficient coins to start ${gameKey}. Need: ${entryCost}, Have: ${state.wallet}`
+        );
+        return false;
+      }
+
+      try {
+        // Update API: deduct from wallet, no score change
+        await updateUserData(-entryCost, 0, `Started ${gameKey} game`);
+        console.log(`✅ Started ${gameKey} - deducted ${entryCost} coins`);
+        return true;
+      } catch (error) {
+        console.error(`❌ Failed to start ${gameKey}:`, error);
+        return false;
+      }
+    },
+    [state.wallet, updateUserData]
+  );
+
+  const earnReward = useCallback(
+    async (coinAmount: number, scoreAmount: number, reason: string) => {
+      try {
+        // Update API: add to both wallet and score
+        await updateUserData(coinAmount, scoreAmount, reason);
+        console.log(
+          `✅ Earned ${coinAmount} coins and ${scoreAmount} score: ${reason}`
+        );
+      } catch (error) {
+        console.error(`❌ Failed to earn reward:`, error);
+        throw error;
+      }
+    },
+    [updateUserData]
+  );
+
   // React to sign-in / sign-out
   useEffect(() => {
     if (isSignedIn) {
@@ -185,9 +310,26 @@ export const CurrencyProvider = ({
         isLoading: state.loading,
         error: state.error,
       },
-      actions: { initialize, addCoins, spendCoins, refresh },
+      actions: {
+        initialize,
+        addCoins,
+        spendCoins,
+        refresh,
+        startGame,
+        earnReward,
+        updateUserData,
+      },
     }),
-    [state, initialize, addCoins, spendCoins, refresh]
+    [
+      state,
+      initialize,
+      addCoins,
+      spendCoins,
+      refresh,
+      startGame,
+      earnReward,
+      updateUserData,
+    ]
   );
 
   return (

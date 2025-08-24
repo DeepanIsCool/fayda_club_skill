@@ -7,9 +7,8 @@ import { cn } from "@/app/lib/utils";
 import { useIsMobile } from "@/ui/use-mobile";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useGameCurrency } from "../../contexts/CurrencyContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { getGameEntryCost } from "../../lib/gameConfig";
-import { ContinueModal } from "../modals/continue";
 import { RewardModal } from "../modals/reward";
 import { GameStartModal } from "../modals/start";
 
@@ -155,8 +154,8 @@ export default function TetrisGame() {
 
   // Start modal state
   const [showStartModal, setShowStartModal] = useState(true);
-  const [showContinueModal, setShowContinueModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   type PendingReward = {
     rewards: Reward[];
@@ -168,7 +167,7 @@ export default function TetrisGame() {
   const [pendingReward, setPendingReward] = useState<PendingReward>(null);
 
   const isMobile = useIsMobile();
-  const { coins, canStartGame, startGame, earnPoints } = useGameCurrency();
+  const { currency, actions } = useCurrency();
   const entryCost = getGameEntryCost("tetris");
   const bagRef = useRef<TetrominoType[]>([]);
 
@@ -299,8 +298,8 @@ export default function TetrisGame() {
         setLines((prev) => prev + linesCleared);
         setScore((prev) => prev + calculateScore(linesCleared, level));
         if (currentPiece.position.y <= 0) {
-          setTimeout(() => setShowContinueModal(true), 300);
           setGameOver(true);
+          handleGameOver();
           return;
         }
         setCurrentPiece(createPiece(nextPiece));
@@ -453,7 +452,6 @@ export default function TetrisGame() {
     setDropTime(INITIAL_DROP_TIME);
     setShowStartModal(true);
     setContinuesUsed(0);
-    setShowContinueModal(false);
     setShowRewardModal(false);
     setPendingReward(null);
   };
@@ -505,31 +503,25 @@ export default function TetrisGame() {
     );
   };
 
-  // Continue/Reward modal handlers
-  const handleContinue = () => {
-    setShowContinueModal(false);
-    setGameOver(false);
-    setContinuesUsed((c) => c + 1);
-    resetGame();
-    setShowStartModal(false); // skip start modal for continue
-  };
-  // (removed duplicate handleGameOver)
+  // Reward modal handler
   const handleRewardClose = () => {
     setShowRewardModal(false);
     setPendingReward(null);
     resetGame();
   };
 
-  // Continue cost progression (example: [2,4,8,16,32])
-  const continueCosts = [2, 4, 8, 16, 32];
-  const continueCost =
-    continueCosts[continuesUsed] || continueCosts[continueCosts.length - 1];
-
   // Handler for starting the game: deduct entry cost
-  const handleStartGame = () => {
-    if (canStartGame("tetris", entryCost)) {
-      startGame("tetris");
-      setShowStartModal(false);
+  const handleStartGame = async () => {
+    if (currency.coins >= entryCost && !currency.isLoading) {
+      try {
+        setLoading(true);
+        await actions.startGame("tetris");
+        setShowStartModal(false);
+      } catch (error) {
+        console.error("Failed to start game:", error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -540,9 +532,9 @@ export default function TetrisGame() {
 
   // On game over, update points and submit session
   const config = gameConfigService.getGameBySlug("tetris");
-  const submitGameSession = useSubmitGameSession(config, getToken); // Pass getToken
-  const handleGameOver = () => {
-    setShowContinueModal(false);
+  const submitGameSession = useSubmitGameSession(config, getToken);
+  const handleGameOver = async () => {
+    setGameOver(true);
     setShowRewardModal(true);
     const stats = {
       finalLevel: level,
@@ -552,14 +544,21 @@ export default function TetrisGame() {
       averageReactionTime: 0,
       totalGameTime: 0,
     };
-    submitGameSession(stats);
-    setPendingReward({
-      rewards: [{ amount: score, reason: "score", type: "score" }],
-      totalCoins: score,
-      gameLevel: level,
-      gameStats: stats,
-    });
-    earnPoints(score, "tetris game over");
+
+    // Submit session and earn reward
+    await submitGameSession(stats);
+
+    try {
+      await actions.earnReward(score, level, "score");
+      setPendingReward({
+        rewards: [{ amount: score, reason: "Game completion", type: "score" }],
+        totalCoins: score,
+        gameLevel: level,
+        gameStats: stats,
+      });
+    } catch (error) {
+      console.error("Failed to earn reward:", error);
+    }
   };
 
   return (
@@ -573,20 +572,6 @@ export default function TetrisGame() {
         gameTitle="Tetris"
         gameDescription="Clear lines and score as high as possible!"
         gameObjective="Clear lines by arranging falling blocks"
-      />
-
-      {/* Continue Modal */}
-      <ContinueModal
-        isOpen={showContinueModal}
-        onContinue={handleContinue}
-        onGameOver={handleGameOver}
-        currentLevel={level}
-        gameKey="tetris"
-        gameTitle="Tetris"
-        continueCost={continueCost}
-        continueLabel="Continue Playing"
-        exitLabel="Exit"
-        showExitAfterMs={1000}
       />
 
       {/* Reward Modal */}
@@ -638,7 +623,7 @@ export default function TetrisGame() {
             </text>
           </svg>
           <span className="text-yellow-400 text-lg font-bold">
-            {coins.toFixed(2)}
+            {currency.coins.toFixed(2)}
           </span>
         </div>
       </div>

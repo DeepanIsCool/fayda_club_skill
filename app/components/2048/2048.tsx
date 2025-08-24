@@ -1,10 +1,9 @@
 // app/components/2048/2048.tsx
 "use client";
-import { useGameCurrency } from "../../contexts/CurrencyContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { gameConfigService, getGameEntryCost } from "../../lib/gameConfig";
 import type { TileState } from "../../lib/types";
 import { useGame } from "../../lib/use-game";
-import { ContinueModal } from "../modals/continue";
 import { CurrencyDisplay } from "../modals/currency";
 import { RewardModal } from "../modals/reward";
 import { GameStartModal } from "../modals/start";
@@ -70,13 +69,15 @@ export default function Game2048() {
 
   // Modal state
   const [showStartModal, setShowStartModal] = useState(true);
-  const [showContinueModal, setShowContinueModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   type Reward = {
     amount: number;
     reason: string;
     type: "level" | "perfect" | "streak" | "bonus" | "achievement" | "score";
   };
+
   interface GameStats {
     finalLevel: number;
     totalPrecisionScore: number;
@@ -86,102 +87,101 @@ export default function Game2048() {
     maxConsecutiveStreak?: number;
     totalGameTime?: number;
   }
+
   type RewardModalState = {
     rewards: Reward[];
     totalCoins: number;
     gameLevel: number;
     gameStats: GameStats;
   } | null;
+
   const [pendingReward, setPendingReward] = useState<RewardModalState>(null);
-  const {
-    coins,
-    canStartGame,
-    canContinue,
-    continueCost,
-    continueAttempt,
-    maxContinues,
-    continue: doContinue,
-    earnReward,
-    earnPoints,
-    startGame,
-  } = useGameCurrency();
-  const entryCost = getGameEntryCost("2048");
-  const canStart = canStartGame("2048", entryCost);
+  const { currency, actions } = useCurrency();
 
   // Handler for starting the game: deduct entry cost
   const handleStartGame = async () => {
-    const started = await startGame("2048");
-    if (started) {
-      setShowStartModal(false);
-      restart(); // reset the game state
+    setLoading(true);
+    try {
+      const success = await actions.startGame("2048");
+      if (success) {
+        setShowStartModal(false);
+        restart(); // reset the game state
+      } else {
+        console.error("Failed to start 2048 game");
+      }
+    } catch (error) {
+      console.error("Error starting 2048 game:", error);
+    } finally {
+      setLoading(false);
     }
   };
+
   // Handler for cancel: go back to dashboard
   const handleCancel = () => {
     router.push("/");
   };
 
-  // Show ContinueModal on game over (not win)
+  // Show RewardModal on game over (win or lose)
   React.useEffect(() => {
-    if (over && !won) {
-      setShowContinueModal(true);
-      markEndTime();
+    if (over || won) {
+      handleGameOver();
     }
-  }, [over, won, markEndTime]);
+  }, [over, won]);
 
-  // Show RewardModal on win
-  React.useEffect(() => {
-    if (won) {
+  const handleGameOver = async () => {
+    markEndTime();
+    const finalScore = getFinalScore();
+    const stats = getSessionData() as GameStats;
+
+    try {
+      // Submit session to API
+      await submitGameSession(stats);
+
+      // Calculate rewards: coins and score
+      const coinsEarned = Math.floor(finalScore / 100); // 1 coin per 100 points
+      const maxTile = Math.max(
+        ...grid
+          .flat()
+          .filter((tile) => tile)
+          .map((tile) => tile!.value)
+      );
+
+      // Earn reward via API
+      await actions.earnReward(
+        coinsEarned,
+        finalScore,
+        `2048 Game - Reached ${maxTile} tile`
+      );
+
+      // Show reward modal
       setShowRewardModal(true);
-      markEndTime();
-      const finalScore = getFinalScore();
-      earnPoints(finalScore, "2048 game won");
-      const stats = getSessionData() as GameStats;
-      submitGameSession(stats);
       setPendingReward({
-        rewards: [{ amount: finalScore, reason: "score", type: "score" }],
-        totalCoins: finalScore,
+        rewards: [
+          { amount: coinsEarned, reason: "Coins Earned", type: "score" },
+          { amount: finalScore, reason: "Score Points", type: "score" },
+        ],
+        totalCoins: coinsEarned,
+        gameLevel: 0,
+        gameStats: stats,
+      });
+    } catch (error) {
+      console.error("Error processing game completion:", error);
+      // Still show reward modal even if API calls fail
+      setShowRewardModal(true);
+      setPendingReward({
+        rewards: [{ amount: finalScore, reason: "Game Score", type: "score" }],
+        totalCoins: 0,
         gameLevel: 0,
         gameStats: stats,
       });
     }
-  }, [
-    won,
-    getFinalScore,
-    getSessionData,
-    markEndTime,
-    earnPoints,
-    submitGameSession,
-  ]);
-
-  // Handlers for ContinueModal
-  const handleContinue = () => {
-    if (doContinue()) {
-      setShowContinueModal(false);
-      restart(); // reset the game state
-      keepPlayingFunc();
-    }
-  };
-  const handleGameOver = () => {
-    setShowContinueModal(false);
-    setShowRewardModal(true);
-    const finalScore = getFinalScore();
-    earnPoints(finalScore, "2048 game over");
-    const stats = getSessionData() as GameStats;
-    submitGameSession(stats);
-    setPendingReward({
-      rewards: [{ amount: finalScore, reason: "score", type: "score" }],
-      totalCoins: finalScore,
-      gameLevel: 0,
-      gameStats: stats,
-    });
   };
 
   // Handler for closing RewardModal
   const handleRewardClose = () => {
     setShowRewardModal(false);
     setPendingReward(null);
-    // Optionally, redirect to dashboard
+    router.push("/"); // Go back to dashboard
   };
 
   return (
@@ -211,19 +211,6 @@ export default function Game2048() {
           gameTitle={title}
           gameDescription={description}
           gameObjective={objective}
-        />
-        {/* Continue Modal */}
-        <ContinueModal
-          isOpen={showContinueModal}
-          onContinue={handleContinue}
-          onGameOver={handleGameOver}
-          currentLevel={0}
-          gameKey="2048"
-          gameTitle={title}
-          continueCost={continueCost}
-          continueLabel="Continue Playing"
-          exitLabel="Exit"
-          showExitAfterMs={1000}
         />
         {/* Reward Modal */}
         <RewardModal

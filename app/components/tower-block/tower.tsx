@@ -7,12 +7,11 @@ import { ArrowLeft, CircleArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { ContinueModal } from "../../components/modals/continue";
 import { CurrencyDisplay } from "../../components/modals/currency";
 import { RewardModal } from "../../components/modals/reward";
 import { GameStartModal } from "../../components/modals/start";
-import { useGameCurrency } from "../../contexts/CurrencyContext";
-import { gameConfigService } from "../../lib/gameConfig";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { gameConfigService, getGameEntryCost } from "../../lib/gameConfig";
 
 interface GameReward {
   amount: number;
@@ -37,19 +36,11 @@ export default function TowerBlockGame() {
   const audioPlacementRef = useRef<HTMLAudioElement>(null);
 
   // Currency and modal states
-  const {
-    coins,
-    points,
-    startGame,
-    endGame,
-    continue: gameContinue,
-    continueCost,
-    continueAttempt,
-    earnPoints,
-  } = useGameCurrency();
+  const { currency, actions } = useCurrency();
+  const entryCost = getGameEntryCost("tower-block");
   const [showStartModal, setShowStartModal] = useState(true);
-  const [showContinueModal, setShowContinueModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [gameRewards, setGameRewards] = useState<GameReward[]>([]);
   interface TowerGameStats {
     finalLevel: number;
@@ -111,45 +102,40 @@ export default function TowerBlockGame() {
 
   const gameInstanceRef = useRef<GameInstance | null>(null);
 
-  const handleStartGame = useCallback(() => {
-    // The startGame function now returns a Promise, so we handle it.
-    startGame("tower-block")
-      .then((success) => {
-        if (success) {
-          setShowStartModal(false);
-          setGameInitialized(true);
-          setCurrentLevel(0);
-          setGameRewards([]);
+  const handleStartGame = useCallback(async () => {
+    if (currency.coins >= entryCost && !currency.isLoading) {
+      try {
+        setLoading(true);
+        await actions.startGame("tower-block");
+        setShowStartModal(false);
+        setGameInitialized(true);
+        setCurrentLevel(0);
+        setGameRewards([]);
 
-          // Initialize session financial tracking from game config
-          const gameConfig = gameConfigService.getGameBySlug("tower-block");
-          const entryFee = gameConfig?.entryfee || 1; // Default entry fee
-          setSessionFinancials({
-            entryFee: entryFee,
-            coinsSpentOnContinues: 0,
-            totalCoinsSpent: entryFee,
-            continueAttempts: 0,
+        // Initialize session financial tracking from game config
+        setSessionFinancials({
+          entryFee: entryCost,
+          coinsSpentOnContinues: 0,
+          totalCoinsSpent: entryCost,
+          continueAttempts: 0,
+        });
+
+        // Play start game sound
+        const audioStart = audioStartRef.current;
+        if (audioStart) {
+          audioStart.currentTime = 0;
+          audioStart.play().catch(() => {
+            // Audio play failed, likely due to user interaction requirements
           });
-
-          // Play start game sound
-          const audioStart = audioStartRef.current;
-          if (audioStart) {
-            audioStart.currentTime = 0;
-            audioStart.play().catch(() => {
-              // Audio play failed, likely due to user interaction requirements
-            });
-          }
-          console.log("✅ Tower Block game started successfully");
-        } else {
-          console.error(
-            "❌ Failed to start Tower Block game (likely insufficient coins or config error)"
-          );
         }
-      })
-      .catch((error) => {
+        console.log("✅ Tower Block game started successfully");
+      } catch (error) {
         console.error("❌ Error starting Tower Block game:", error);
-      });
-  }, [startGame]);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }, [currency.coins, currency.isLoading, entryCost, actions]);
 
   const calculateGameStats = useCallback(() => {
     if (!gameInstanceRef.current?.gameMetrics) return null;
@@ -295,10 +281,7 @@ export default function TowerBlockGame() {
     [sessionFinancials, getToken]
   );
 
-  const handleGameOver = useCallback(() => {
-    setShowContinueModal(false);
-    endGame(); // This resets continue attempts automatically
-
+  const handleGameOver = useCallback(async () => {
     // Set the game end time in metrics
     if (gameInstanceRef.current?.gameMetrics) {
       gameInstanceRef.current.gameMetrics.gameEndTime = Date.now();
@@ -314,17 +297,21 @@ export default function TowerBlockGame() {
       const avgAcc = finalStats?.averageAccuracy || 0;
       const avgRT = Math.max(finalStats?.averageReactionTime || 0.5, 0.5);
       const finalScore = Math.round(avgAcc / Math.sqrt(avgRT));
-      earnPoints(finalScore, "Tower Block Score");
 
-      setGameRewards([
-        {
-          amount: finalScore,
-          reason: `Game Complete - Level ${currentLevel}`,
-          type: "score",
-        },
-      ]);
+      try {
+        await actions.earnReward(finalScore, currentLevel, "score");
+        setGameRewards([
+          {
+            amount: finalScore,
+            reason: `Game Complete - Level ${currentLevel}`,
+            type: "score",
+          },
+        ]);
+      } catch (error) {
+        console.error("Failed to earn reward:", error);
+      }
+
       setShowRewardModal(true);
-      // ...removed audioVictoryRef usage...
     } else {
       // Level 0 - just show completion message
       setGameRewards([
@@ -339,47 +326,11 @@ export default function TowerBlockGame() {
 
     // Submit game session with final stats
     submitGameSession(finalStats);
-  }, [
-    currentLevel,
-    endGame,
-    calculateGameStats,
-    submitGameSession,
-    earnPoints,
-  ]);
-
-  const handleContinueGame = useCallback(() => {
-    // Use the centralized continue system from CurrencyContext
-    if (gameContinue()) {
-      setShowContinueModal(false);
-
-      // Update financial tracking
-      setSessionFinancials((prev) => ({
-        ...prev,
-        coinsSpentOnContinues: prev.coinsSpentOnContinues + continueCost,
-        totalCoinsSpent: prev.totalCoinsSpent + continueCost,
-        continueAttempts: prev.continueAttempts + 1,
-      }));
-
-      // Reset the game state but keep the level
-      if (gameInstanceRef.current) {
-        console.log(
-          `Continuing game at level ${currentLevel}, continue attempt #${continueAttempt}, cost: ${continueCost} coins`
-        );
-        gameInstanceRef.current.continueFromLastPosition();
-      }
-    } else {
-      console.error("Failed to continue game - insufficient coins");
-    }
-  }, [gameContinue, currentLevel, continueCost, continueAttempt]);
+  }, [currentLevel, calculateGameStats, submitGameSession, actions]);
 
   const handleBackToDashboard = useCallback(() => {
     router.push("/");
   }, [router]);
-
-  // Custom function to trigger continue modal instead of ending game
-  const triggerContinueModal = useCallback(() => {
-    setShowContinueModal(true);
-  }, []);
 
   useEffect(() => {
     if (!gameInitialized || !gameContainerRef.current) return;
@@ -1146,12 +1097,10 @@ export default function TowerBlockGame() {
           lastBlock?.STATES.MISSED
         );
 
-        // Only trigger continue modal if the last block is actually MISSED and ACTIVE
-        // This prevents triggering continue for successfully placed blocks
+        // Directly trigger game over if the last block is missed
         if (lastBlock && lastBlock.internalState === lastBlock.STATES.MISSED) {
-          console.log("Triggering continue modal - block was missed");
-          // Instead of ending immediately, trigger continue modal
-          return triggerContinueModal();
+          console.log("Block was missed - triggering game over");
+          return handleGameOver();
         }
 
         console.log(
@@ -1278,7 +1227,7 @@ export default function TowerBlockGame() {
         game.stage.container.removeChild(game.stage.renderer.domElement);
       }
     };
-  }, [gameInitialized, triggerContinueModal]);
+  }, [gameInitialized, handleGameOver]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-gray-100">
@@ -1367,19 +1316,6 @@ export default function TowerBlockGame() {
         gameDescription={gameDescription}
       />
 
-      <ContinueModal
-        isOpen={showContinueModal}
-        onContinue={handleContinueGame}
-        onGameOver={handleGameOver}
-        gameKey="tower-block"
-        currentLevel={currentLevel}
-        continueCost={continueCost}
-        continueLabel="Continue The Game"
-        exitLabel="Exit The Game"
-        showExitAfterMs={3000}
-        gameTitle={gameTitle}
-      />
-
       <RewardModal
         isOpen={showRewardModal}
         onClose={() => {
@@ -1387,7 +1323,7 @@ export default function TowerBlockGame() {
           handleBackToDashboard();
         }}
         rewards={gameRewards}
-        totalCoins={coins}
+        totalCoins={currency.coins}
         gameLevel={currentLevel}
         gameStats={gameStats || undefined}
       />

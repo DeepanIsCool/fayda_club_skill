@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
 import { BadgeCent, Play, Target } from "lucide-react";
 import React, { useEffect, useRef } from "react";
-import { useGameCurrency } from "../../contexts/CurrencyContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface GameStartModalProps {
   isOpen: boolean;
@@ -27,9 +27,9 @@ export function GameStartModal({
   gameDescription,
   gameObjective,
 }: GameStartModalProps) {
-  const { coins, canStartGame } = useGameCurrency();
+  const { currency } = useCurrency();
   const entryCost = getGameEntryCost(gameKey); // dynamic
-  const canStart = canStartGame(gameKey, entryCost); // pass entryCost as second argument
+  const canStart = currency.coins >= entryCost && !currency.isLoading;
   const startButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleStart = () => {
