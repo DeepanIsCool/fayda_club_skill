@@ -169,15 +169,18 @@ export default function Game2048() {
     }
   };
 
-  // Handler for closing RewardModal
-  const handleRewardClose = () => {
+  // Handler for closing RewardModal (Awesome! Go to Dashboard)
+  const handleRewardClose = async () => {
     setShowRewardModal(false);
     setPendingReward(null);
+    // Upload session data before redirect
+    const stats = getSessionData() as GameStats;
+    await submitGameSession(stats);
     router.push("/"); // Go back to dashboard
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center py-8 px-4 text-white relative max-sm:py-4 max-sm:px-2">
+    <div className="min-h-screen flex items-center justify-center text-white relative">
       {/* Top UI Bar */}
       <div className="fixed top-4 left-4 z-30">
         <Button
@@ -193,7 +196,7 @@ export default function Game2048() {
       <div className="fixed top-4 right-4 z-20">
         <CurrencyDisplay />
       </div>
-      <div className="w-[500px] mx-auto max-sm:w-full max-sm:px-0 flex flex-col items-center">
+      <div className="flex flex-col items-center justify-center w-[90vw] max-w-[650px]">
         {/* Start Modal */}
         <GameStartModal
           isOpen={showStartModal}
@@ -220,25 +223,18 @@ export default function Game2048() {
           </h1>
         </div>
         {/* --- Main Game Container --- */}
-        <div className="game-container relative w-full max-w-[500px] aspect-square p-4 md:p-6 cursor-default select-none touch-none bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl shadow-2xl border border-blue-800/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom duration-700 delay-300 flex items-center justify-center">
+        <div className="game-container relative w-full aspect-square p-0 cursor-default select-none touch-none bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl shadow-2xl border border-blue-800/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom duration-700 delay-300 flex items-center justify-center">
           {/* Background Grid Cells */}
-          <div className="absolute inset-4 md:inset-6 z-[1]">
-            {Array.from({ length: 4 }).map((_, rowIndex) => (
+          <div className="absolute inset-0 z-[1] w-full h-full grid grid-cols-4 grid-rows-4 gap-2">
+            {Array.from({ length: 16 }).map((_, idx) => (
               <div
-                key={rowIndex}
-                className="flex gap-2 md:gap-4 mb-2 md:mb-4 last:mb-0"
-              >
-                {Array.from({ length: 4 }).map((_, colIndex) => (
-                  <div
-                    key={colIndex}
-                    className="flex-1 aspect-square rounded-xl bg-slate-800/50 backdrop-blur-sm border border-blue-900/30 shadow-inner"
-                  />
-                ))}
-              </div>
+                key={idx}
+                className="w-full h-full rounded-xl bg-slate-800/50 backdrop-blur-sm border border-blue-900/30 shadow-inner"
+              />
             ))}
           </div>
           {/* Game Tiles */}
-          <div className="absolute inset-4 md:inset-6 z-[2]">
+          <div className="absolute inset-0 z-[2] w-full h-full">
             {grid
               .flat()
               .filter((tile): tile is TileState => !!tile)

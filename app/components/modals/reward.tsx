@@ -131,7 +131,9 @@ export function RewardModal({
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  window.location.href = "/";
+                  if (typeof onClose === "function") {
+                    onClose();
+                  }
                 }}
                 className="
                   w-full py-3 sm:py-4 px-4 rounded-xl

@@ -218,9 +218,8 @@ export default function HomePage() {
   );
 }
 
-/* ---------- Simple banner (optional images at /public/banners/*.jpg) ---------- */
 function BannerCarousel() {
-  const banners = ["/banners/1.jpg", "/banners/2.jpg", "/banners/3.jpg"];
+  const banners = ["/images/games/banner1.jpg", "/images/games/banner2.jpg"];
   const [i, setI] = React.useState(0);
 
   React.useEffect(() => {
@@ -229,14 +228,26 @@ function BannerCarousel() {
   }, []);
 
   return (
-    <div className="relative h-40 sm:h-56 md:h-64 lg:h-72 rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-blue-900/40 to-indigo-900/20">
+    <div
+      className="
+        relative
+        aspect-[16/7]           /* wide, taller than 16/9 for readability */
+        w-full
+        min-h-[11rem]           /* ~176px on tiny phones */
+        sm:min-h-[15rem]
+        lg:min-h-[18rem]
+        max-h-[28rem]           /* keep it tasteful on very large screens */
+        rounded-2xl overflow-hidden
+        border border-white/10
+        bg-gradient-to-br from-blue-900/40 to-indigo-900/20
+      "
+    >
       {banners.map((src, idx) => (
         <div
           key={src}
-          className={[
-            "absolute inset-0 transition-opacity duration-700",
-            idx === i ? "opacity-100" : "opacity-0",
-          ].join(" ")}
+          className={`absolute inset-0 transition-opacity duration-700 ${
+            idx === i ? "opacity-100" : "opacity-0"
+          }`}
         >
           <Image
             src={src}
@@ -248,6 +259,17 @@ function BannerCarousel() {
         </div>
       ))}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0d1030] via-transparent to-transparent" />
+      {/* dots */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+        {banners.map((_, idx) => (
+          <span
+            key={idx}
+            className={`h-1.5 w-1.5 rounded-full ${
+              idx === i ? "bg-white/80" : "bg-white/40"
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
