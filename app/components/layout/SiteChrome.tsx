@@ -11,6 +11,7 @@ import {
   LayoutGrid,
   Swords,
   Trophy,
+  Gamepad2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ export default function SiteChrome({
     {
       label: "Fayda Originals",
       href: "/",
-      icon: <LayoutGrid className="h-6 w-6" />,
+      icon: <Gamepad2 className="h-6 w-6" />,
     },
     {
       label: "Leaderboard",
