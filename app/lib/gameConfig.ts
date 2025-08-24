@@ -1,3 +1,5 @@
+//app/lib/gameConfig.ts
+
 export interface GameRewardRule {
   id: string;
   name: string;
@@ -105,9 +107,10 @@ export interface GameSessionData {
 let configs = new Map<string, GameConfig>();
 let slugToId = new Map<string, string>();
 
+// Map game IDs to frontend implementations
 const GAME_IMPLEMENTATIONS: Map<string, Partial<GameFrontendConfig>> = new Map([
   [
-    "Tower Block",
+    "towerblock", // Use API game ID directly
     {
       component: "TowerBlockGame",
       path: "/games/tower-block",
@@ -115,7 +118,7 @@ const GAME_IMPLEMENTATIONS: Map<string, Partial<GameFrontendConfig>> = new Map([
     },
   ],
   [
-    "2048",
+    "2048", // Use API game ID directly
     {
       component: "Game2048",
       path: "/games/2048",
@@ -123,7 +126,7 @@ const GAME_IMPLEMENTATIONS: Map<string, Partial<GameFrontendConfig>> = new Map([
     },
   ],
   [
-    "Tetris",
+    "tetris", // Use API game ID directly
     {
       component: "TetrisGame",
       path: "/games/tetris",
@@ -163,8 +166,12 @@ export function loadGames(apiGames: ApiGameResponse["games"]): void {
   const newSlugToId = new Map<string, string>();
 
   for (const apiGame of apiGames) {
+    // Use game ID to find frontend implementation
+    const frontendConfig = GAME_IMPLEMENTATIONS.get(apiGame.id);
+    
+    // Generate slug for URL routing (keep for backward compatibility)
     const slug = slugify(apiGame.name);
-    const frontendConfig = GAME_IMPLEMENTATIONS.get(apiGame.name);
+    
     const config: GameConfig = {
       ...apiGame,
       slug,
@@ -172,6 +179,7 @@ export function loadGames(apiGames: ApiGameResponse["games"]): void {
       isAvailable: true,
       hasImplementation: !!frontendConfig,
     };
+    
     newConfigs.set(config.id, config);
     newSlugToId.set(slug, config.id);
   }
@@ -179,6 +187,7 @@ export function loadGames(apiGames: ApiGameResponse["games"]): void {
   configs = newConfigs;
   slugToId = newSlugToId;
   console.log(`✨ Processed and loaded ${configs.size} game configurations.`);
+  console.log(`🔗 ID to slug mappings:`, Array.from(newSlugToId.entries()));
 }
 
 export function getGameById(id: string): GameConfig | undefined {
@@ -242,12 +251,30 @@ export function isGameAvailable(gameSlug: string): boolean {
 }
 
 export function getGameEntryCost(gameSlug: string): number {
-  return getGameBySlug(gameSlug)?.entryfee ?? 1;
+  return getGameBySlug(gameSlug)?.entryfee ?? 2;
 }
 
 export function getGameContinueCosts(gameSlug: string): number[] {
   return (
     getGameBySlug(gameSlug)?.frontendConfig?.continueRules.costProgression ?? [
+      2, 4, 8,
+    ]
+  );
+}
+
+// New ID-based functions (preferred)
+export function getGameEntryCostById(gameId: string): number {
+  return getGameById(gameId)?.entryfee ?? 2;
+}
+
+export function isGameAvailableById(gameId: string): boolean {
+  const game = getGameById(gameId);
+  return !!game?.hasImplementation;
+}
+
+export function getGameContinueCostsById(gameId: string): number[] {
+  return (
+    getGameById(gameId)?.frontendConfig?.continueRules.costProgression ?? [
       2, 4, 8,
     ]
   );

@@ -1,18 +1,19 @@
+// app/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
-import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
+import React, { useEffect, useState } from "react";
 
-import SiteChrome from "./components/layout/SiteChrome";
 import { Card, CardContent } from "@/ui/card";
 import { Skeleton } from "@/ui/skeleton";
+import SiteChrome from "./components/layout/SiteChrome";
 import {
+  ApiGameResponse,
   GameConfig,
   getAllGames,
   loadGames,
-  ApiGameResponse,
 } from "./lib/gameConfig";
 
 /* Public thumbnails (your /public tree) */
@@ -135,11 +136,14 @@ export default function HomePage() {
     fetchAndLoadGames();
   }, [getToken]);
 
+  // Filter out the Tower Block game
+  const visibleGames = games.filter((game) => game.slug !== "tower-block");
+
   return (
     <SiteChrome banner={<BannerCarousel />}>
       <section>
         <h2 className="mb-4 text-xl sm:text-2xl font-bold tracking-tight text-blue-100">
-          Games
+          Fayda Originals
         </h2>
 
         {/* Smaller, clean thumbnails (no labels/footers) */}
@@ -151,7 +155,7 @@ export default function HomePage() {
                   className="aspect-[4/5] w-full rounded-xl bg-white/10"
                 />
               ))
-            : games.map((game) => {
+            : visibleGames.map((game) => {
                 const href = `/games/${game.slug}`;
                 const cover =
                   (game.frontendConfig as any)?.imageUrl ||
@@ -162,8 +166,8 @@ export default function HomePage() {
                   return (
                     <Link key={game.id} href={href} className="block">
                       <Card className="overflow-hidden border-white/10 bg-[#131a53] hover:bg-[#171e5f] transition-colors">
-                        <CardContent className="p-0">
-                          <div className="relative aspect-[4/5] w-full overflow-hidden">
+                        <CardContent className="!p-0 !pt-0 !pb-0">
+                          <div className="relative aspect-[4/5] w-full overflow-hidden !p-0 !pt-0 !pb-0 flex items-stretch">
                             <Image
                               src={cover}
                               alt={game.name}
@@ -191,7 +195,7 @@ export default function HomePage() {
                       className="w-full text-left"
                     >
                       <Card className="overflow-hidden border-white/10 bg-[#131a53] hover:bg-[#171e5f] transition-colors">
-                        <CardContent className="p-0">
+                        <CardContent className="!p-0 !pt-0 !pb-0">
                           <div className="relative aspect-[4/5] w-full overflow-hidden">
                             <Image
                               src={cover}

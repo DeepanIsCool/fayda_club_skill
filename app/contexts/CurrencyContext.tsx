@@ -33,12 +33,6 @@ type CurrencyActions = {
   refresh: () => Promise<void>;
   /** Start a game by deducting entry fee from wallet via API */
   startGame: (gameKey: string) => Promise<boolean>;
-  /** Earn reward by adding coins and score via API */
-  earnReward: (
-    coinAmount: number,
-    scoreAmount: number,
-    reason: string
-  ) => Promise<void>;
   /** Update user data via API */
   updateUserData: (
     walletChange: number,
@@ -65,7 +59,6 @@ const CurrencyContext = createContext<CurrencyContextType>({
     spendCoins: () => false,
     refresh: async () => {},
     startGame: async () => false,
-    earnReward: async () => {},
     updateUserData: async () => {},
   },
 });
@@ -248,46 +241,36 @@ export const CurrencyProvider = ({
   );
 
   const startGame = useCallback(
-    async (gameKey: string) => {
-      // Import getGameEntryCost dynamically to avoid circular dependency
-      const { getGameEntryCost } = await import("../lib/gameConfig");
-      const entryCost = getGameEntryCost(gameKey);
+    async (gameId: string) => {
+      // Import getGameEntryCostById to use game ID directly
+      const { getGameEntryCostById, getGameById } = await import(
+        "../lib/gameConfig"
+      );
+      const entryCost = getGameEntryCostById(gameId);
+      const game = getGameById(gameId);
+      const gameName = game?.name || gameId;
 
       // Check if user has enough coins locally first
       if (state.wallet < entryCost) {
         console.error(
-          `❌ Insufficient coins to start ${gameKey}. Need: ${entryCost}, Have: ${state.wallet}`
+          `❌ Insufficient coins to start ${gameName}. Need: ${entryCost}, Have: ${state.wallet}`
         );
         return false;
       }
 
       try {
         // Update API: deduct from wallet, no score change
-        await updateUserData(-entryCost, 0, `Started ${gameKey} game`);
-        console.log(`✅ Started ${gameKey} - deducted ${entryCost} coins`);
+        await updateUserData(-entryCost, 0, `Started ${gameName} game`);
+        console.log(
+          `✅ Started ${gameName} (ID: ${gameId}) - deducted ${entryCost} coins`
+        );
         return true;
       } catch (error) {
-        console.error(`❌ Failed to start ${gameKey}:`, error);
+        console.error(`❌ Failed to start ${gameName}:`, error);
         return false;
       }
     },
     [state.wallet, updateUserData]
-  );
-
-  const earnReward = useCallback(
-    async (coinAmount: number, scoreAmount: number, reason: string) => {
-      try {
-        // Update API: add to both wallet and score
-        await updateUserData(coinAmount, scoreAmount, reason);
-        console.log(
-          `✅ Earned ${coinAmount} coins and ${scoreAmount} score: ${reason}`
-        );
-      } catch (error) {
-        console.error(`❌ Failed to earn reward:`, error);
-        throw error;
-      }
-    },
-    [updateUserData]
   );
 
   // React to sign-in / sign-out
@@ -316,7 +299,6 @@ export const CurrencyProvider = ({
         spendCoins,
         refresh,
         startGame,
-        earnReward,
         updateUserData,
       },
     }),
@@ -327,7 +309,6 @@ export const CurrencyProvider = ({
       spendCoins,
       refresh,
       startGame,
-      earnReward,
       updateUserData,
     ]
   );

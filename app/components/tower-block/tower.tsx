@@ -12,6 +12,7 @@ import { RewardModal } from "../../components/modals/reward";
 import { GameStartModal } from "../../components/modals/start";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import {
+  getGameById,
   getGameBySlug,
   getGameEntryCost,
   loadGames,
@@ -24,12 +25,14 @@ interface GameReward {
 }
 
 export default function TowerBlockGame() {
-  // Fetch game config for Tower Block
-  const towerConfig = getGameBySlug("tower-block");
+  // Fetch game config for Tower Block using game ID
+  const towerConfig = getGameById("towerblock");
   const frontendConfig = towerConfig?.frontendConfig;
-  const gameTitle = frontendConfig?.title || "";
-  const gameDescription = frontendConfig?.description || "";
-  const gameObjective = frontendConfig?.objective || "";
+  const gameTitle = frontendConfig?.title || "Tower Block";
+  const gameDescription =
+    frontendConfig?.description || "A classic block stacking game";
+  const gameObjective =
+    frontendConfig?.objective || "Stack as many blocks as possible";
   const router = useRouter();
   const { getToken } = useAuth();
   const gameContainerRef = useRef<HTMLDivElement>(null);
@@ -41,7 +44,7 @@ export default function TowerBlockGame() {
 
   // Currency and modal states
   const { currency, actions } = useCurrency();
-  const entryCost = getGameEntryCost("tower-block");
+  const entryCost = towerConfig?.entryfee ?? 2;
   const [showStartModal, setShowStartModal] = useState(true);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -61,7 +64,7 @@ export default function TowerBlockGame() {
 
   // Track financial metrics during the game session
   const [sessionFinancials, setSessionFinancials] = useState({
-    entryFee: 0,
+    entryfee: 0,
     coinsSpentOnContinues: 0,
     totalCoinsSpent: 0,
     continueAttempts: 0,
@@ -110,7 +113,7 @@ export default function TowerBlockGame() {
     if (currency.coins >= entryCost && !currency.isLoading) {
       try {
         setLoading(true);
-        await actions.startGame("tower-block");
+        await actions.startGame("towerblock");
         setShowStartModal(false);
         setGameInitialized(true);
         setCurrentLevel(0);
@@ -118,7 +121,7 @@ export default function TowerBlockGame() {
 
         // Initialize session financial tracking from game config
         setSessionFinancials({
-          entryFee: entryCost,
+          entryfee: entryCost,
           coinsSpentOnContinues: 0,
           totalCoinsSpent: entryCost,
           continueAttempts: 0,
@@ -182,10 +185,8 @@ export default function TowerBlockGame() {
       if (!gameInstanceRef.current || !finalStats) return;
 
       try {
-        // Get game configuration for ID
-        const gameConfig = getGameBySlug("tower-block");
-
-        if (!gameConfig) {
+        // Use the towerConfig we already have
+        if (!towerConfig) {
           console.error("Could not find Tower Block game configuration");
           return;
         }
@@ -196,7 +197,7 @@ export default function TowerBlockGame() {
         const calculatedGameScore = avgAcc / Math.sqrt(avgRT);
 
         const sessionData = {
-          gameId: gameConfig.id,
+          gameId: towerConfig.id,
           userId: "guest",
           level: finalStats.finalLevel,
           score: calculatedGameScore,
@@ -216,7 +217,7 @@ export default function TowerBlockGame() {
             totalGameTime: finalStats.totalGameTime || 0,
 
             // Financial metrics - coins spent only (no earnings)
-            entryFee: sessionFinancials.entryFee,
+            entryfee: sessionFinancials.entryfee,
             coinsSpentOnContinues: sessionFinancials.coinsSpentOnContinues,
             totalCoinsSpent: sessionFinancials.totalCoinsSpent,
             continueAttempts: sessionFinancials.continueAttempts,
@@ -302,7 +303,6 @@ export default function TowerBlockGame() {
       const finalScore = Math.round(avgAcc / Math.sqrt(avgRT));
 
       try {
-        await actions.earnReward(finalScore, currentLevel, "score");
         setGameRewards([
           {
             amount: finalScore,

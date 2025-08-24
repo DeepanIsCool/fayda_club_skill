@@ -3,60 +3,23 @@
 
 import type { GameStats, Reward } from "../modals/reward";
 
-import { cn } from "@/app/lib/utils";
-import { useIsMobile } from "@/ui/use-mobile";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useCurrency } from "../../contexts/CurrencyContext";
-import { getGameBySlug, getGameEntryCost } from "../../lib/gameConfig";
+import { useAuth } from "@clerk/nextjs";
+
+import { cn } from "@/app/lib/utils";
+import { Card } from "@/ui/card";
+import { Button } from "@/ui/button";
+
+import { useCurrency } from "@/app/contexts/CurrencyContext";
+import { getGameById, getGameEntryCostById } from "@/app/lib/gameConfig";
 import { RewardModal } from "../modals/reward";
 import { GameStartModal } from "../modals/start";
 
-// For session submission
-import { useAuth } from "@clerk/nextjs";
-import {} from "../../lib/gameConfig";
-// Submit game session data to API
-const useSubmitGameSession = (
-  config: any,
-  getToken: () => Promise<string | null>
-) => {
-  return useCallback(
-    async (finalStats: GameStats) => {
-      if (!config || !finalStats) return;
-      try {
-        const sessionData = {
-          gameId: config.id,
-          userId: "guest",
-          level: finalStats.finalLevel,
-          score: finalStats.totalPrecisionScore,
-          duration: finalStats.totalGameTime || 0,
-          sessionData: {
-            ...finalStats,
-            gameType: "tetris",
-            platform: "web",
-            timestamp: new Date().toISOString(),
-            version: "1.0.0",
-          },
-        };
+/* ----------------------------------------------------------------------------
+ * Game constants
+ * ------------------------------------------------------------------------- */
 
-        const jwt = await getToken();
-        await fetch(`https://ai.rajatkhandelwal.com/arcade/gamesession`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-          body: JSON.stringify(sessionData),
-        });
-      } catch (error) {
-        console.error("Error submitting tetris session:", error);
-      }
-    },
-    [config, getToken]
-  );
-};
-
-// Tetrominoes (classic colors)
 const TETROMINOES = {
   I: {
     shape: [
@@ -66,6 +29,7 @@ const TETROMINOES = {
       [0, 0, 0, 0],
     ],
     color: "bg-cyan-500",
+    glow: "shadow-[0_0_10px_rgba(34,211,238,0.25)]",
   },
   O: {
     shape: [
@@ -73,6 +37,7 @@ const TETROMINOES = {
       [1, 1],
     ],
     color: "bg-yellow-500",
+    glow: "shadow-[0_0_10px_rgba(234,179,8,0.25)]",
   },
   T: {
     shape: [
@@ -81,6 +46,7 @@ const TETROMINOES = {
       [0, 0, 0],
     ],
     color: "bg-purple-500",
+    glow: "shadow-[0_0_10px_rgba(168,85,247,0.25)]",
   },
   S: {
     shape: [
@@ -89,6 +55,7 @@ const TETROMINOES = {
       [0, 0, 0],
     ],
     color: "bg-green-500",
+    glow: "shadow-[0_0_10px_rgba(34,197,94,0.25)]",
   },
   Z: {
     shape: [
@@ -97,6 +64,7 @@ const TETROMINOES = {
       [0, 0, 0],
     ],
     color: "bg-red-500",
+    glow: "shadow-[0_0_10px_rgba(239,68,68,0.25)]",
   },
   J: {
     shape: [
@@ -105,6 +73,7 @@ const TETROMINOES = {
       [0, 0, 0],
     ],
     color: "bg-blue-500",
+    glow: "shadow-[0_0_10px_rgba(59,130,246,0.25)]",
   },
   L: {
     shape: [
@@ -113,12 +82,13 @@ const TETROMINOES = {
       [0, 0, 0],
     ],
     color: "bg-orange-500",
+    glow: "shadow-[0_0_10px_rgba(249,115,22,0.25)]",
   },
-};
+} as const;
 
 const BOARD_WIDTH = 10;
-const BOARD_HEIGHT = 20; // Classic 10x20 board
-const INITIAL_DROP_TIME = 1000;
+const BOARD_HEIGHT = 20;
+const INITIAL_DROP_MS = 1000;
 
 type TetrominoType = keyof typeof TETROMINOES;
 type Board = (string | null)[][];
@@ -127,373 +97,527 @@ type Position = { x: number; y: number };
 interface Piece {
   shape: number[][];
   color: string;
+  glow: string;
   position: Position;
   type: TetrominoType;
 }
 
-// Fisher-Yates shuffle algorithm
-function shuffle<T>(array: T[]): T[] {
-  let currentIndex = array.length,
-    randomIndex;
+/* ----------------------------------------------------------------------------
+ * Utilities
+ * ------------------------------------------------------------------------- */
 
-  while (currentIndex != 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex],
-    ];
+function shuffle<T>(arr: T[]): T[] {
+  let i = arr.length;
+  while (i) {
+    const j = Math.floor(Math.random() * i--);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-
-  return array;
+  return arr;
 }
+
+const createEmptyBoard = (): Board =>
+  Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(null));
+
+const createPiece = (type: TetrominoType): Piece => ({
+  shape: TETROMINOES[type].shape.map((r) => [...r]),
+  color: TETROMINOES[type].color,
+  glow: TETROMINOES[type].glow,
+  position: {
+    x:
+      Math.floor(BOARD_WIDTH / 2) -
+      Math.floor(TETROMINOES[type].shape[0].length / 2),
+    y: 0,
+  },
+  type,
+});
+
+const rotateShapeCW = (shape: number[][]) =>
+  shape[0].map((_, i) => shape.map((row) => row[i]).reverse());
+
+const rotatePiece = (p: Piece): Piece => ({
+  ...p,
+  shape: rotateShapeCW(p.shape),
+});
+
+const placePieceOnBoard = (p: Piece, board: Board): Board => {
+  const next = board.map((r) => [...r]);
+  for (let y = 0; y < p.shape.length; y++) {
+    for (let x = 0; x < p.shape[y].length; x++) {
+      if (!p.shape[y][x]) continue;
+      const by = p.position.y + y;
+      const bx = p.position.x + x;
+      if (by >= 0) next[by][bx] = p.color; // color string token
+    }
+  }
+  return next;
+};
+
+const clearLines = (board: Board) => {
+  const rows = board.filter((row) => row.some((c) => c === null));
+  const cleared = BOARD_HEIGHT - rows.length;
+  while (rows.length < BOARD_HEIGHT)
+    rows.unshift(Array(BOARD_WIDTH).fill(null));
+  return { newBoard: rows, linesCleared: cleared };
+};
+
+const lineScore = (linesCleared: number, level: number) => {
+  const base = [0, 40, 100, 300, 1200];
+  return base[linesCleared] * level;
+};
+
+/* ----------------------------------------------------------------------------
+ * Session submit helper
+ * ------------------------------------------------------------------------- */
+
+const useSubmitGameSession = (
+  config: any,
+  getToken: () => Promise<string | null>
+) => {
+  return useCallback(
+    async (finalStats: GameStats) => {
+      if (!config) return;
+      try {
+        const jwt = await getToken();
+        await fetch("https://ai.rajatkhandelwal.com/arcade/gamesession", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({
+            gameId: config.id,
+            userId: "guest",
+            level: finalStats.finalLevel,
+            score: finalStats.totalPrecisionScore,
+            duration: finalStats.totalGameTime ?? 0,
+            sessionData: {
+              ...finalStats,
+              gameType: "tetris",
+              platform: "web",
+              timestamp: new Date().toISOString(),
+              version: "1.0.0",
+            },
+          }),
+        });
+      } catch (e) {
+        console.error("submit tetris session failed:", e);
+      }
+    },
+    [config, getToken]
+  );
+};
+
+/* ----------------------------------------------------------------------------
+ * Auto cell sizing to keep frame, just shrink cells
+ * ------------------------------------------------------------------------- */
+
+function useAutoCellSize() {
+  const [cell, setCell] = useState<number>(22); // default cell px
+  useEffect(() => {
+    const compute = () => {
+      // Reserve space for headers + footer and keep the frame height similar.
+      const vh = window.innerHeight;
+      const reservedTop = 100; // header cards row
+      const reservedBottom = 96; // buttons row
+      const available = Math.max(200, vh - reservedTop - reservedBottom - 56);
+
+      // We want 20 rows + 19 gaps (1px each) to fit inside "available"
+      const maxCell = 26;
+      const minCell = 14;
+      const ideal = Math.floor((available - 19) / BOARD_HEIGHT);
+      const next = Math.max(minCell, Math.min(maxCell, ideal));
+      setCell(next);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+  return cell;
+}
+
+/* ----------------------------------------------------------------------------
+ * Component
+ * ------------------------------------------------------------------------- */
 
 export default function TetrisGame() {
   const router = useRouter();
-  const { getToken } = useAuth(); // Get getToken here
+  const { getToken } = useAuth();
 
-  // Start modal state
+  // currency + entry
+  const { currency, actions } = useCurrency();
+  const entryCost = getGameEntryCostById("tetris");
+
+  // modals
   const [showStartModal, setShowStartModal] = useState(true);
   const [showRewardModal, setShowRewardModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  type PendingReward = {
+  const [pendingReward, setPendingReward] = useState<{
     rewards: Reward[];
     totalCoins: number;
     gameLevel: number;
     gameStats: GameStats;
-  } | null;
+  } | null>(null);
 
-  const [pendingReward, setPendingReward] = useState<PendingReward>(null);
-
-  const isMobile = useIsMobile();
-  const { currency, actions } = useCurrency();
-  const entryCost = getGameEntryCost("tetris");
-  const bagRef = useRef<TetrominoType[]>([]);
-
-  const fillBag = () => {
-    const types = Object.keys(TETROMINOES) as TetrominoType[];
-    bagRef.current = shuffle(types);
-  };
-
-  const getNextTetromino = (): TetrominoType => {
-    if (bagRef.current.length === 0) {
-      fillBag();
-    }
-    return bagRef.current.pop()!;
-  };
-
-  // Helper functions inside the component
-  const createEmptyBoard = (): Board =>
-    Array(BOARD_HEIGHT)
-      .fill(null)
-      .map(() => Array(BOARD_WIDTH).fill(null));
-
-  const createPiece = (type: TetrominoType): Piece => ({
-    shape: TETROMINOES[type].shape,
-    color: TETROMINOES[type].color,
-    position: {
-      x:
-        Math.floor(BOARD_WIDTH / 2) -
-        Math.floor(TETROMINOES[type].shape[0].length / 2),
-      y: 0,
-    },
-    type,
-  });
-  const rotatePiece = (piece: Piece): Piece => {
-    const rotated = piece.shape[0].map((_, index) =>
-      piece.shape.map((row) => row[index]).reverse()
-    );
-    return { ...piece, shape: rotated };
-  };
-  const placePiece = (piece: Piece, board: Board): Board => {
-    const newBoard = board.map((row) => [...row]);
-    for (let y = 0; y < piece.shape.length; y++) {
-      for (let x = 0; x < piece.shape[y].length; x++) {
-        if (piece.shape[y][x]) {
-          const boardY = piece.position.y + y;
-          const boardX = piece.position.x + x;
-          if (boardY >= 0) newBoard[boardY][boardX] = piece.color;
-        }
-      }
-    }
-    return newBoard;
-  };
-  const clearLines = (
-    board: Board
-  ): { newBoard: Board; linesCleared: number } => {
-    const newBoard = board.filter((row) => row.some((cell) => cell === null));
-    const linesCleared = BOARD_HEIGHT - newBoard.length;
-    while (newBoard.length < BOARD_HEIGHT)
-      newBoard.unshift(Array(BOARD_WIDTH).fill(null));
-    return { newBoard, linesCleared };
-  };
-  const calculateScore = (linesCleared: number, level: number): number => {
-    const baseScores = [0, 40, 100, 300, 1200];
-    return baseScores[linesCleared] * level;
-  };
-
+  // board state
   const [board, setBoard] = useState<Board>(createEmptyBoard());
-  const [currentPiece, setCurrentPiece] = useState<Piece | null>(null);
-  const [nextPiece, setNextPiece] = useState<TetrominoType>(() =>
-    getNextTetromino()
-  );
-  const [heldPiece, setHeldPiece] = useState<TetrominoType | null>(null);
+  const [current, setCurrent] = useState<Piece | null>(null);
+  const [nextType, setNextType] = useState<TetrominoType>("I");
+  const [heldType, setHeldType] = useState<TetrominoType | null>(null);
   const [canHold, setCanHold] = useState(true);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [lines, setLines] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  // Track continues used
-  const [continuesUsed, setContinuesUsed] = useState(0);
-  const [dropTime, setDropTime] = useState(INITIAL_DROP_TIME);
+  const [over, setOver] = useState(false);
 
-  const dropTimeRef = useRef(dropTime);
-  const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
+  // timing
+  const [dropMs, setDropMs] = useState(INITIAL_DROP_MS);
+  const dropRef = useRef(dropMs);
+  const loopRef = useRef<NodeJS.Timeout | null>(null);
+
+  // interaction
   const boardRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
-  useEffect(() => {
-    if (!currentPiece && !showStartModal) {
-      setCurrentPiece(createPiece(nextPiece));
-      setNextPiece(getNextTetromino());
-    }
-  }, [currentPiece, nextPiece, showStartModal]);
+  // bag
+  const bagRef = useRef<TetrominoType[]>([]);
+  const fillBag = () => {
+    bagRef.current = shuffle(Object.keys(TETROMINOES) as TetrominoType[]);
+  };
+  const popBag = (): TetrominoType => {
+    if (!bagRef.current.length) fillBag();
+    return bagRef.current.pop()!;
+  };
 
-  const checkCollision = useCallback(
-    (piece: Piece, board: Board, dx = 0, dy = 0): boolean => {
-      for (let y = 0; y < piece.shape.length; y++) {
-        for (let x = 0; x < piece.shape[y].length; x++) {
-          if (piece.shape[y][x]) {
-            const newX = piece.position.x + x + dx;
-            const newY = piece.position.y + y + dy;
-            if (newX < 0 || newX >= BOARD_WIDTH || newY >= BOARD_HEIGHT)
-              return true;
-            if (newY >= 0 && board[newY][newX]) return true;
-          }
-        }
-      }
-      return false;
-    },
-    []
+  // cell sizing
+  const cellSize = useAutoCellSize();
+  const boardStyle = useMemo(
+    () =>
+      ({
+        // ensure strict sizing; right border won’t get clipped.
+        "--cell": `${cellSize}px`,
+        "--gap": "1px",
+        gridTemplateColumns: "repeat(10, var(--cell))",
+        gridAutoRows: "var(--cell)",
+        gap: "var(--gap)",
+        width: `calc(${BOARD_WIDTH} * var(--cell) + ${
+          BOARD_WIDTH - 1
+        } * var(--gap))`,
+        height: `calc(${BOARD_HEIGHT} * var(--cell) + ${
+          BOARD_HEIGHT - 1
+        } * var(--gap))`,
+      } as React.CSSProperties),
+    [cellSize]
   );
 
-  const movePiece = useCallback(
-    (dx: number, dy: number) => {
-      if (!currentPiece || gameOver) return;
-      if (!checkCollision(currentPiece, board, dx, dy)) {
-        setCurrentPiece((prev) =>
+  // physics helpers
+  const collides = useCallback((p: Piece, b: Board, dx = 0, dy = 0) => {
+    for (let y = 0; y < p.shape.length; y++) {
+      for (let x = 0; x < p.shape[y].length; x++) {
+        if (!p.shape[y][x]) continue;
+        const nx = p.position.x + x + dx;
+        const ny = p.position.y + y + dy;
+        if (nx < 0 || nx >= BOARD_WIDTH || ny >= BOARD_HEIGHT) return true;
+        if (ny >= 0 && b[ny][nx]) return true;
+      }
+    }
+    return false;
+  }, []);
+
+  const softDrop = useCallback(
+    (steps = 1) => {
+      if (!current || over) return;
+      if (!collides(current, board, 0, steps)) {
+        setCurrent((prev) =>
           prev
             ? {
                 ...prev,
-                position: { x: prev.position.x + dx, y: prev.position.y + dy },
+                position: { x: prev.position.x, y: prev.position.y + steps },
               }
             : null
         );
-      } else if (dy > 0) {
-        const newBoard = placePiece(currentPiece, board);
-        const { newBoard: clearedBoard, linesCleared } = clearLines(newBoard);
-        setBoard(clearedBoard);
-        setLines((prev) => prev + linesCleared);
-        setScore((prev) => prev + calculateScore(linesCleared, level));
-        if (currentPiece.position.y <= 0) {
-          setGameOver(true);
-          handleGameOver();
-          return;
-        }
-        setCurrentPiece(createPiece(nextPiece));
-        setNextPiece(getNextTetromino());
-        setCanHold(true);
+        return;
+      }
+      // lock piece
+      const placed = placePieceOnBoard(current, board);
+      const { newBoard, linesCleared } = clearLines(placed);
+      setBoard(newBoard);
+      if (linesCleared) {
+        setLines((v) => v + linesCleared);
+        setScore((s) => s + lineScore(linesCleared, level));
+      }
+      // top collision => game over
+      if (current.position.y <= 0) {
+        setOver(true);
+        void onGameOver();
+        return;
+      }
+      const t = popBag();
+      setCurrent(createPiece(nextType));
+      setNextType(t);
+      setCanHold(true);
+    },
+    [board, collides, current, level, nextType, over]
+  );
+
+  const moveLR = useCallback(
+    (dx: number) => {
+      if (!current || over) return;
+      if (!collides(current, board, dx, 0)) {
+        setCurrent((prev) =>
+          prev
+            ? {
+                ...prev,
+                position: { x: prev.position.x + dx, y: prev.position.y },
+              }
+            : null
+        );
       }
     },
-    [currentPiece, board, gameOver, checkCollision, level, nextPiece]
+    [board, collides, current, over]
   );
 
   const rotate = useCallback(() => {
-    if (!currentPiece || gameOver) return;
-    const rotated = rotatePiece(currentPiece);
-    if (!checkCollision(rotated, board)) setCurrentPiece(rotated);
-  }, [currentPiece, gameOver, checkCollision, board]);
+    if (!current || over) return;
+    const rotated = rotatePiece(current);
+    if (!collides(rotated, board)) setCurrent(rotated);
+  }, [board, collides, current, over]);
 
-  const holdPiece = useCallback(() => {
-    if (!currentPiece || !canHold || gameOver) return;
-    if (heldPiece) {
-      const newCurrent = createPiece(heldPiece);
-      setHeldPiece(currentPiece.type);
-      setCurrentPiece(newCurrent);
-    } else {
-      setHeldPiece(currentPiece.type);
-      setCurrentPiece(createPiece(nextPiece));
-      setNextPiece(getNextTetromino());
-    }
+  // Hold (store only) — spawn next; cannot chain until piece locks
+  const holdOnly = useCallback(() => {
+    if (!current || !canHold || over) return;
+    setHeldType(current.type);
+    setCurrent(createPiece(nextType));
+    setNextType(popBag());
     setCanHold(false);
-  }, [currentPiece, canHold, gameOver, heldPiece, nextPiece]);
+  }, [canHold, current, nextType, over]);
 
+  // Insert (swap immediate): bring held into play, move current to hold
+  const insertSwap = useCallback(() => {
+    if (!current || !heldType || over) return;
+    const incoming = createPiece(heldType);
+    setHeldType(current.type);
+    setCurrent(incoming);
+    // can still only do this once until lock
+    setCanHold(false);
+  }, [current, heldType, over]);
+
+  // main loop (rotation/taps do not pause gravity)
   useEffect(() => {
-    if (gameOver) return;
-    gameLoopRef.current = setInterval(
-      () => movePiece(0, 1),
-      dropTimeRef.current
-    );
+    if (over || showStartModal) return;
+    loopRef.current = setInterval(() => softDrop(1), dropRef.current);
     return () => {
-      if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+      if (loopRef.current) clearInterval(loopRef.current);
     };
-  }, [movePiece, gameOver]);
+  }, [softDrop, over, showStartModal]);
 
+  // speed changes with level
   useEffect(() => {
-    const newDropTime = Math.max(50, INITIAL_DROP_TIME - (level - 1) * 50);
-    setDropTime(newDropTime);
-    dropTimeRef.current = newDropTime;
+    const ms = Math.max(50, INITIAL_DROP_MS - (level - 1) * 50);
+    setDropMs(ms);
+    dropRef.current = ms;
   }, [level]);
 
+  // level from lines
   useEffect(() => {
     setLevel(Math.floor(lines / 10) + 1);
   }, [lines]);
 
+  // first piece after Start
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (gameOver) return;
+    if (current || showStartModal) return;
+    const first = popBag();
+    const second = popBag();
+    setCurrent(createPiece(first));
+    setNextType(second);
+  }, [current, showStartModal]);
+
+  // keyboard
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (over || showStartModal) return;
+      if (
+        [
+          "ArrowLeft",
+          "ArrowRight",
+          "ArrowDown",
+          "ArrowUp",
+          "c",
+          "C",
+          "x",
+          "X",
+        ].includes(e.key)
+      )
+        e.preventDefault();
       switch (e.key) {
         case "ArrowLeft":
-          e.preventDefault();
-          movePiece(-1, 0);
+          moveLR(-1);
           break;
         case "ArrowRight":
-          e.preventDefault();
-          movePiece(1, 0);
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          rotate();
+          moveLR(1);
           break;
         case "ArrowDown":
-          e.preventDefault();
-          movePiece(0, 1);
+          softDrop(1);
+          break;
+        case "ArrowUp":
+          rotate();
           break;
         case "c":
         case "C":
-          e.preventDefault();
-          holdPiece();
+          holdOnly();
+          break;
+        case "x":
+        case "X":
+          insertSwap();
           break;
       }
     };
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [movePiece, rotate, holdPiece, gameOver]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [holdOnly, insertSwap, moveLR, over, rotate, showStartModal, softDrop]);
 
+  // touch / drag (tap=rotate, horizontal drag=move, vertical drag=accelerate)
   useEffect(() => {
-    if (!boardRef.current || gameOver) return;
-    let tapTimeout: NodeJS.Timeout | null = null;
-    let lastTap = 0;
-    const handleTouchStart = (e: TouchEvent) => {
-      e.preventDefault();
-      const now = Date.now();
-      touchStartX.current = e.touches[0].clientX;
-      touchStartY.current = e.touches[0].clientY;
-      if (tapTimeout) clearTimeout(tapTimeout);
-      tapTimeout = setTimeout(() => {
-        tapTimeout = null;
-      }, 300);
-      lastTap = now;
+    const el = boardRef.current;
+    if (!el || over || showStartModal) return;
+
+    let lastX = 0;
+    let lastY = 0;
+    let lastMoveAt = 0;
+
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      touchStartX.current = lastX = t.clientX;
+      touchStartY.current = lastY = t.clientY;
     };
-    const handleTouchEnd = (e: TouchEvent) => {
+
+    const onMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      const dx = t.clientX - lastX;
+      const dy = t.clientY - lastY;
+
+      const now = Date.now();
+
+      // Horizontal sensitivity: move 1 cell when passing threshold
+      const H = Math.max(8, cellSize * 0.6);
+      if (dx > H) {
+        moveLR(1);
+        lastX = t.clientX;
+      } else if (dx < -H) {
+        moveLR(-1);
+        lastX = t.clientX;
+      }
+
+      // Vertical: accelerate soft drop (do not “stick” piece)
+      const V = Math.max(8, cellSize * 0.5);
+      if (dy > V && now - lastMoveAt > 30) {
+        softDrop(1);
+        lastY = t.clientY;
+        lastMoveAt = now;
+      }
+    };
+
+    const onEnd = (e: TouchEvent) => {
       const dx = e.changedTouches[0].clientX - touchStartX.current;
       const dy = e.changedTouches[0].clientY - touchStartY.current;
-      const duration = Date.now() - lastTap;
-      const tapThreshold = 15;
-      if (
-        Math.abs(dx) < tapThreshold &&
-        Math.abs(dy) < tapThreshold &&
-        duration < 250
-      ) {
-        rotate();
-      }
+      // small movement => rotate
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) rotate();
     };
-    const handleTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
-      const dx = e.touches[0].clientX - touchStartX.current;
-      const dy = e.touches[0].clientY - touchStartY.current;
-      const threshold = 30;
-      if (Math.abs(dx) > threshold) {
-        movePiece(Math.sign(dx), 0);
-        touchStartX.current = e.touches[0].clientX;
-      }
-      if (dy > threshold) {
-        movePiece(0, 1);
-        touchStartY.current = e.touches[0].clientY;
-      } else if (dy < -threshold) {
-        rotate();
-        touchStartY.current = e.touches[0].clientY;
-      }
-    };
-    const element = boardRef.current;
-    element.addEventListener("touchstart", handleTouchStart);
-    element.addEventListener("touchend", handleTouchEnd);
-    element.addEventListener("touchmove", handleTouchMove);
-    return () => {
-      element.removeEventListener("touchstart", handleTouchStart);
-      element.removeEventListener("touchend", handleTouchEnd);
-      element.removeEventListener("touchmove", handleTouchMove);
-    };
-  }, [gameOver, movePiece, rotate]);
 
-  const resetGame = () => {
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+    };
+  }, [cellSize, moveLR, over, rotate, showStartModal, softDrop]);
+
+  // start / end
+  const config = getGameById("tetris");
+  const submitGameSession = useSubmitGameSession(config, getToken);
+
+  const onGameOver = useCallback(async () => {
+    const stats: GameStats = {
+      finalLevel: level,
+      totalPrecisionScore: score,
+      averageAccuracy: 0,
+      perfectPlacements: 0,
+      averageReactionTime: 0,
+      totalGameTime: 0,
+    };
+    await submitGameSession(stats);
+    setPendingReward({
+      rewards: [{ amount: score, reason: "Game completion", type: "score" }],
+      totalCoins: 0,
+      gameLevel: level,
+      gameStats: stats,
+    });
+    setShowRewardModal(true);
+  }, [level, score, submitGameSession]);
+
+  const reset = () => {
     setBoard(createEmptyBoard());
-    fillBag();
-    setCurrentPiece(null);
-    setNextPiece(getNextTetromino());
-    setHeldPiece(null);
+    bagRef.current = [];
+    setCurrent(null);
+    setNextType("I");
+    setHeldType(null);
     setCanHold(true);
     setScore(0);
     setLevel(1);
     setLines(0);
-    setGameOver(false);
-    setDropTime(INITIAL_DROP_TIME);
+    setOver(false);
     setShowStartModal(true);
-    setContinuesUsed(0);
     setShowRewardModal(false);
     setPendingReward(null);
   };
 
+  const handleStart = async () => {
+    if (currency.isLoading || currency.coins < entryCost) return;
+    await actions.startGame("tetris"); // deduct entry fee server-side
+    setShowStartModal(false);
+  };
+
+  const handleCancel = () => router.push("/");
+
+  /* ----------------------------------------------------------------------------
+   * Render helpers
+   * ------------------------------------------------------------------------- */
+
   const renderBoard = () => {
-    const displayBoard = board.map((row) => [...row]);
-    if (currentPiece) {
-      for (let y = 0; y < currentPiece.shape.length; y++) {
-        for (let x = 0; x < currentPiece.shape[y].length; x++) {
-          if (currentPiece.shape[y][x]) {
-            const boardY = currentPiece.position.y + y;
-            const boardX = currentPiece.position.x + x;
-            if (
-              boardY >= 0 &&
-              boardY < BOARD_HEIGHT &&
-              boardX >= 0 &&
-              boardX < BOARD_WIDTH
-            ) {
-              displayBoard[boardY][boardX] = currentPiece.color;
-            }
+    // clone board and paint current piece (no mutation)
+    const display = board.map((r) => [...r]);
+    if (current) {
+      for (let y = 0; y < current.shape.length; y++) {
+        for (let x = 0; x < current.shape[y].length; x++) {
+          if (!current.shape[y][x]) continue;
+          const by = current.position.y + y;
+          const bx = current.position.x + x;
+          if (by >= 0 && by < BOARD_HEIGHT && bx >= 0 && bx < BOARD_WIDTH) {
+            display[by][bx] = `${current.color} ${current.glow}`;
           }
         }
       }
     }
-    return displayBoard;
+    return display;
   };
 
-  const renderMiniPiece = (type: TetrominoType | null) => {
+  const renderMini = (type: TetrominoType | null) => {
     if (!type) return null;
-    const piece = TETROMINOES[type];
-    // Filter out empty rows to center the piece vertically
-    const shape = piece.shape.filter((row) => row.some((cell) => cell === 1));
+    const { shape, color, glow } = TETROMINOES[type];
+    const compact = shape.filter((r) => r.some((c) => c === 1)); // trim blank rows
     return (
       <div className="grid gap-0.5 items-center justify-center">
-        {shape.map((row, y) => (
+        {compact.map((row, y) => (
           <div key={y} className="flex gap-0.5 justify-center">
-            {row.map((cell, x) => (
+            {row.map((c, x) => (
               <div
                 key={x}
                 className={cn(
-                  "w-3 h-3 md:w-4 md:h-4",
-                  cell ? `${piece.color}` : "bg-transparent"
+                  "w-2.5 h-2.5 rounded-[2px]",
+                  c ? `${color} ${glow}` : "bg-transparent"
                 )}
               />
             ))}
@@ -503,70 +627,16 @@ export default function TetrisGame() {
     );
   };
 
-  // Reward modal handler
-  const handleRewardClose = () => {
-    setShowRewardModal(false);
-    setPendingReward(null);
-    resetGame();
-  };
-
-  // Handler for starting the game: deduct entry cost
-  const handleStartGame = async () => {
-    if (currency.coins >= entryCost && !currency.isLoading) {
-      try {
-        setLoading(true);
-        await actions.startGame("tetris");
-        setShowStartModal(false);
-      } catch (error) {
-        console.error("Failed to start game:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  // Handler for cancel: go back to dashboard
-  const handleCancel = () => {
-    router.push("/");
-  };
-
-  // On game over, update points and submit session
-  const config = getGameBySlug("tetris");
-  const submitGameSession = useSubmitGameSession(config, getToken);
-  const handleGameOver = async () => {
-    setGameOver(true);
-    setShowRewardModal(true);
-    const stats = {
-      finalLevel: level,
-      totalPrecisionScore: score,
-      averageAccuracy: 0,
-      perfectPlacements: 0,
-      averageReactionTime: 0,
-      totalGameTime: 0,
-    };
-
-    // Submit session and earn reward
-    await submitGameSession(stats);
-
-    try {
-      await actions.earnReward(score, level, "score");
-      setPendingReward({
-        rewards: [{ amount: score, reason: "Game completion", type: "score" }],
-        totalCoins: score,
-        gameLevel: level,
-        gameStats: stats,
-      });
-    } catch (error) {
-      console.error("Failed to earn reward:", error);
-    }
-  };
+  /* ----------------------------------------------------------------------------
+   * JSX
+   * ------------------------------------------------------------------------- */
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-900 to-blue-950 text-white flex flex-col items-center justify-center p-4 relative">
-      {/* Start Modal */}
+    <div className="min-h-screen bg-slate-900 text-white flex items-stretch justify-center">
+      {/* Start modal */}
       <GameStartModal
         isOpen={showStartModal}
-        onStart={handleStartGame}
+        onStart={handleStart}
         onCancel={handleCancel}
         gameKey="tetris"
         gameTitle="Tetris"
@@ -574,131 +644,130 @@ export default function TetrisGame() {
         gameObjective="Clear lines by arranging falling blocks"
       />
 
-      {/* Reward Modal */}
+      {/* Reward modal */}
       <RewardModal
         isOpen={showRewardModal}
-        onClose={handleRewardClose}
+        onClose={() => {
+          setShowRewardModal(false);
+          reset();
+        }}
         rewards={pendingReward?.rewards || []}
         totalCoins={pendingReward?.totalCoins || 0}
         gameLevel={pendingReward?.gameLevel || 0}
         gameStats={pendingReward?.gameStats}
       />
 
-      {/* Top row with back button, score, and coins */}
-      <div className="w-full max-w-sm mb-4 flex justify-between items-center gap-3">
-        {/* Back Button */}
-        <div
-          className="bg-blue-600 hover:bg-blue-700 rounded-2xl p-3 cursor-pointer transition-colors"
-          onClick={handleCancel}
-        >
-          <svg
-            className="w-6 h-6 text-yellow-400"
-            fill="currentColor"
-            viewBox="0 0 24 24"
+      <div className="w-full max-w-[480px] px-3 pb-3 pt-2 flex flex-col gap-2">
+        {/* Top info row: Score / Level / Lines / Next (compact labels outside) */}
+        <div className="grid grid-cols-4 gap-2">
+          <Card className="bg-slate-800 border-slate-700 p-2">
+            <div className="text-[10px] text-slate-400 -mt-1 mb-1">Score</div>
+            <div className="text-lg font-bold">{score}</div>
+          </Card>
+          <Card className="bg-slate-800 border-slate-700 p-2">
+            <div className="text-[10px] text-slate-400 -mt-1 mb-1">Level</div>
+            <div className="text-lg font-bold">{level}</div>
+          </Card>
+          <Card className="bg-slate-800 border-slate-700 p-2">
+            <div className="text-[10px] text-slate-400 -mt-1 mb-1">Lines</div>
+            <div className="text-lg font-bold text-cyan-400">{lines}</div>
+          </Card>
+          <Card className="bg-slate-800 border-slate-700 p-2">
+            <div className="text-[10px] text-slate-400 -mt-1 mb-1">Next</div>
+            <div className="h-6 flex items-center justify-center">
+              {renderMini(nextType)}
+            </div>
+          </Card>
+        </div>
+
+        {/* Play area frame (fixed look; cells shrink instead) */}
+        <Card className="flex items-center justify-center bg-slate-800/80 border-slate-700 p-2">
+          <div
+            ref={boardRef}
+            className="relative rounded-lg border-2 border-slate-600/70 bg-slate-950 p-2"
+            // exact width/height via CSS vars so no right-side clipping
+            style={{
+              width: `calc(${BOARD_WIDTH} * var(--cell) + ${
+                BOARD_WIDTH - 1
+              } * var(--gap) + 1rem)`,
+              height: `calc(${BOARD_HEIGHT} * var(--cell) + ${
+                BOARD_HEIGHT - 1
+              } * var(--gap) + 1rem)`,
+            }}
+            onClick={() => !showStartModal && rotate()}
           >
-            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-          </svg>
-        </div>
+            {/* Inner grid with strict sizing */}
+            <div className="grid" style={boardStyle}>
+              {renderBoard().map((row, y) =>
+                row.map((token, x) => (
+                  <div
+                    key={`${y}-${x}`}
+                    className={cn(
+                      "rounded-[3px] border",
+                      token
+                        ? `${token} border-black/20`
+                        : "bg-slate-800/60 border-slate-700/70"
+                    )}
+                  />
+                ))
+              )}
+            </div>
 
-        {/* Score Display */}
-        <div className="bg-blue-600 rounded-2xl px-6 py-3 flex-1 text-center">
-          <span className="text-yellow-400 text-2xl font-bold">{score}</span>
-        </div>
-
-        {/* Coins Display */}
-        <div className="bg-blue-600 rounded-2xl px-4 py-3 flex items-center gap-2">
-          <svg
-            className="w-5 h-5 text-yellow-400"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <text
-              x="12"
-              y="16"
-              textAnchor="middle"
-              className="text-xs font-bold fill-blue-600"
-            >
-              $
-            </text>
-          </svg>
-          <span className="text-yellow-400 text-lg font-bold">
-            {currency.coins.toFixed(2)}
-          </span>
-        </div>
-      </div>
-
-      {/* Level and Line display row */}
-      <div className="w-full max-w-sm mb-4 flex gap-3">
-        {/* Level Display */}
-        <div className="bg-blue-600 rounded-2xl p-4 flex-1 text-center border-2 border-blue-500">
-          <span className="text-yellow-400 text-xl font-bold">
-            Level {level}
-          </span>
-        </div>
-
-        {/* Line Display */}
-        <div className="bg-blue-600 rounded-2xl p-4 flex-1 text-center border-2 border-blue-500">
-          <span className="text-yellow-400 text-xl font-bold">
-            Line {lines}
-          </span>
-        </div>
-      </div>
-
-      {/* Main game board */}
-      <div className="w-full max-w-sm mb-4">
-        <div
-          ref={boardRef}
-          className="relative bg-gradient-to-b from-blue-800 to-blue-900 border-4 border-blue-600 rounded-sm"
-          style={{
-            touchAction: "manipulation",
-            aspectRatio: "10/20",
-            minHeight: "400px",
-          }}
-          onClick={rotate}
-        >
-          <div className="grid grid-cols-10 gap-px bg-transparent h-full">
-            {renderBoard().map((row, y) =>
-              row.map((cell, x) => (
-                <div
-                  key={`${y}-${x}`}
-                  className={cn(
-                    "aspect-square",
-                    cell ? cell : "bg-transparent"
-                  )}
-                />
-              ))
+            {/* Game Over overlay */}
+            {over && (
+              <div className="absolute inset-0 rounded-lg bg-slate-950/80 backdrop-blur-sm flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <div className="text-2xl font-bold text-sky-400">
+                    Game Over
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={reset}
+                    className="bg-gradient-to-r from-blue-600 to-sky-600 text-white font-semibold"
+                  >
+                    Play Again
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      </div>
+        </Card>
 
-      {/* Bottom row with Next and Hold sections */}
-      <div className="w-full max-w-sm flex gap-3">
-        {/* Next Piece Display */}
-        <div className="bg-blue-600 rounded-2xl p-4 flex-1 border-2 border-blue-500">
-          <div className="text-center mb-2">
-            <span className="text-yellow-400 text-sm font-bold">Next</span>
-          </div>
-          <div className="bg-blue-800 rounded-lg p-3 h-20 flex items-center justify-center">
-            {renderMiniPiece(nextPiece)}
-          </div>
-        </div>
+        {/* Bottom controls: Insert (left) • Held preview (center) • Hold (right) */}
+        <div className="grid grid-cols-3 gap-2">
+          <Button
+            type="button"
+            onClick={insertSwap}
+            disabled={!heldType || !canHold || over || showStartModal}
+            className={cn(
+              "h-11 rounded-xl font-semibold",
+              heldType && canHold
+                ? "bg-amber-600 hover:bg-amber-500 text-black"
+                : "bg-slate-700 text-slate-300"
+            )}
+            title="Insert held piece (swap)"
+          >
+            Insert
+          </Button>
 
-        {/* Hold Piece Display */}
-        <div
-          className={cn(
-            "bg-blue-600 rounded-2xl p-4 flex-1 border-2 border-blue-500",
-            canHold ? "cursor-pointer hover:bg-blue-700" : "opacity-60"
-          )}
-          onClick={() => canHold && holdPiece()}
-        >
-          <div className="text-center mb-2">
-            <span className="text-yellow-400 text-sm font-bold">Hold</span>
-          </div>
-          <div className="bg-blue-800 rounded-lg p-3 h-20 flex items-center justify-center">
-            {renderMiniPiece(heldPiece)}
-          </div>
+          <Card className="h-11 bg-slate-800 border-slate-700 flex items-center justify-center">
+            {renderMini(heldType)}
+          </Card>
+
+          <Button
+            type="button"
+            onClick={holdOnly}
+            disabled={!current || !canHold || over || showStartModal}
+            className={cn(
+              "h-11 rounded-xl font-semibold",
+              canHold
+                ? "bg-amber-500 hover:bg-amber-400 text-black"
+                : "bg-slate-700 text-slate-300"
+            )}
+            title="Hold current piece"
+          >
+            Hold
+          </Button>
         </div>
       </div>
     </div>

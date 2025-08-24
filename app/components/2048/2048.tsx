@@ -1,7 +1,7 @@
 // app/components/2048/2048.tsx
 "use client";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import { getGameBySlug } from "../../lib/gameConfig";
+import { getGameById } from "../../lib/gameConfig";
 import type { TileState } from "../../lib/types";
 import { useGame } from "../../lib/use-game";
 import { CurrencyDisplay } from "../modals/currency";
@@ -27,7 +27,7 @@ export default function Game2048() {
     getSessionData,
   } = useGame();
   const { getToken } = useAuth();
-  const config = getGameBySlug("2048");
+  const config = getGameById("2048");
   const frontendConfig = config?.frontendConfig;
   const title = frontendConfig?.title || "2048";
   const description = frontendConfig?.description || "";
@@ -38,7 +38,7 @@ export default function Game2048() {
       if (!config || !finalStats) return;
       try {
         const sessionData = {
-          gameId: config.id,
+          gameId: config?.id,
           userId: "guest",
           level: finalStats.finalLevel,
           score: finalStats.totalPrecisionScore,
@@ -98,10 +98,12 @@ export default function Game2048() {
   const [pendingReward, setPendingReward] = useState<RewardModalState>(null);
   const { currency, actions } = useCurrency();
 
-  // Handler for starting the game: deduct entry cost
+  // Handler for starting the game: deduct entry cost from config
   const handleStartGame = async () => {
     setLoading(true);
     try {
+      // Use entryfee from config, fallback to 1 if not present
+      const entryfee = config?.entryfee ?? 2;
       const success = await actions.startGame("2048");
       if (success) {
         setShowStartModal(false);
@@ -146,21 +148,11 @@ export default function Game2048() {
           .map((tile) => tile!.value)
       );
 
-      // Earn reward via API
-      await actions.earnReward(
-        coinsEarned,
-        finalScore,
-        `2048 Game - Reached ${maxTile} tile`
-      );
-
       // Show reward modal
       setShowRewardModal(true);
       setPendingReward({
-        rewards: [
-          { amount: coinsEarned, reason: "Coins Earned", type: "score" },
-          { amount: finalScore, reason: "Score Points", type: "score" },
-        ],
-        totalCoins: coinsEarned,
+        rewards: [{ amount: finalScore, reason: "Game Score", type: "score" }],
+        totalCoins: 0,
         gameLevel: 0,
         gameStats: stats,
       });
