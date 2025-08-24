@@ -412,18 +412,36 @@ export class GameConfigService {
    * Fetch games from API with caching
    */
   public async fetchGamesFromAPI(getToken: () => Promise<string | null>): Promise<ApiGameResponse["games"]> {
+    console.log("🎮 GameConfigService: Starting games fetch...");
+    
     // Check cache first
     if (
       this.apiCache &&
       Date.now() - this.apiCache.timestamp < this.cacheExpiry
     ) {
+      console.log("✅ GameConfigService: Using cached games data");
       return this.apiCache.data.games;
     }
 
     try {
+      console.log("🔐 GameConfigService: Getting JWT token...");
       const jwt = await getToken();
-      console.log(jwt)
-      const response = await fetch(`https://ai.rajatkhandelwal.com/arcade/games`, {
+      
+      if (!jwt) {
+        console.error("❌ GameConfigService: No JWT token available");
+        throw new Error("No JWT token available");
+      }
+      
+      console.log("✅ GameConfigService: JWT token obtained:", jwt.substring(0, 20) + "...");
+      
+      const apiUrl = `https://ai.rajatkhandelwal.com/arcade/games`;
+      console.log("📤 GameConfigService: Making games request to:", apiUrl);
+      console.log("📤 GameConfigService: Request headers:", {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${jwt.substring(0, 20)}...`
+      });
+      
+      const response = await fetch(apiUrl, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -433,13 +451,20 @@ export class GameConfigService {
         signal: AbortSignal.timeout(10000), // 10 seconds
       });
 
+      console.log("📥 GameConfigService: Games response status:", response.status);
+      console.log("📥 GameConfigService: Games response headers:", Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text().catch(() => "");
+        console.error("❌ GameConfigService: Games API failed:", response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
       const data: ApiGameResponse = await response.json();
+      console.log("✅ GameConfigService: Games API successful, response:", data);
 
       if (!data.success) {
+        console.error("❌ GameConfigService: API returned unsuccessful response:", data);
         throw new Error("API returned unsuccessful response");
       }
 
@@ -449,10 +474,10 @@ export class GameConfigService {
         timestamp: Date.now(),
       };
 
-      console.log(`✅ Loaded ${data.games.length} games from API`);
+      console.log(`✅ GameConfigService: Loaded ${data.games.length} games from API`);
       return data.games;
     } catch (error) {
-      console.error("❌ Error fetching games from API:", error);
+      console.error("❌ GameConfigService: Error fetching games from API:", error);
 
       // Return empty array on error, but don't cache the failure
       return [];

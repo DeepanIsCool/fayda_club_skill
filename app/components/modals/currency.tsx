@@ -137,7 +137,8 @@ export function CurrencyDisplay({
 export function HeaderCurrencyDisplay() {
   const { currency } = useCurrency();
 
-  if (currency.isLoading) {
+  // Defensive programming: handle undefined currency object
+  if (!currency || currency.isLoading) {
     return (
       <div className="flex items-center gap-3">
         <Skeleton className="h-8 w-20 rounded-full" />
@@ -146,22 +147,26 @@ export function HeaderCurrencyDisplay() {
     );
   }
 
+  // Defensive programming: ensure coins is a valid number
+  const coins = typeof currency.coins === "number" ? currency.coins : 0;
+  const points = typeof currency.points === "number" ? currency.points : 0;
+
   return (
     <div className="flex items-center gap-3">
       <div className="hidden sm:flex items-center gap-4">
         <div className="flex items-center gap-1 px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 font-semibold">
-          <BadgeCent size={18} /> <span>{currency.coins}</span>
+          <BadgeCent size={18} /> <span>{coins.toLocaleString()}</span>
         </div>
         {/* <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 font-semibold">
-          <CircleStar size={18} /> <span>{currency.points}</span>
+          <CircleStar size={18} /> <span>{points.toLocaleString()}</span>
         </div> */}
       </div>
       <div className="flex sm:hidden items-center gap-2">
         <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-700 dark:text-yellow-300 text-sm font-semibold">
-          <BadgeCent size={14} /> <span>{currency.coins}</span>
+          <BadgeCent size={14} /> <span>{coins.toLocaleString()}</span>
         </div>
         {/* <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-700 dark:text-purple-300 text-sm font-semibold">
-          <CircleStar size={14} /> <span>{currency.points}</span>
+          <CircleStar size={14} /> <span>{points.toLocaleString()}</span>
         </div> */}
       </div>
     </div>

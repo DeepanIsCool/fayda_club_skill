@@ -1,28 +1,22 @@
 // app/leaderboard/page.tsx
 "use client";
-import { SignInButton, useAuth, UserButton, useUser } from "@clerk/nextjs";
+
+import { useEffect, useState, JSX } from "react";
 import { motion } from "framer-motion";
-import {
-  Crown,
-  LayoutGrid,
-  Loader2,
-  Menu,
-  ShieldAlert,
-  Swords,
-  Trophy,
-  User,
-} from "lucide-react";
-import Link from "next/link";
-import { JSX, useEffect, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
-import { Button } from "../../ui/button";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { Crown, ShieldAlert, Trophy, User as UserIcon } from "lucide-react";
+
+import SiteChrome from "../components/layout/SiteChrome";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/ui/avatar";
+import { Button } from "@/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../ui/card";
+} from "@/ui/card";
 import {
   Table,
   TableBody,
@@ -30,10 +24,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../ui/table";
-import { HeaderCurrencyDisplay } from "../components/modals/currency";
+} from "@/ui/table";
 
-// Interfaces for data structures (remains the same)
+/* ----------------------------- Types ------------------------------ */
+
 interface SessionData {
   finalLevel: number;
   totalScore: number;
@@ -46,9 +40,7 @@ interface SessionData {
 interface GameSession {
   id: string;
   session: SessionData | null;
-  game: {
-    name: string;
-  };
+  game: { name: string };
 }
 
 interface UserData {
@@ -71,44 +63,18 @@ interface LeaderboardEntry {
   rank: number;
 }
 
-// Reusable Sidebar Content component
-function SidebarContent() {
-  return (
-    <>
-      <div className="mb-8 flex items-center gap-2">
-        <Swords className="h-8 w-8 text-blue-500" />
-        <h1 className="text-xl font-bold text-gray-200">Fayda Club</h1>
-      </div>
-      <nav className="flex flex-col gap-2">
-        <Link
-          href="/"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-200 transition-colors hover:bg-[#23239b3e] hover:text-gray-200"
-        >
-          <LayoutGrid className="h-5 w-5" />
-          Games
-        </Link>
-        <Link
-          href="/leaderboard"
-          className="flex items-center gap-3 rounded-lg bg-blue-100 dark:bg-gray-800 px-3 py-2 text-blue-600 dark:text-gray-50 font-semibold"
-        >
-          <Trophy className="h-5 w-5" />
-          Leaderboard
-        </Link>
-      </nav>
-    </>
-  );
-}
+/* --------------------------- Page -------------------------------- */
 
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isSignedIn } = useUser();
   const { getToken } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false); // <-- State for mobile drawer
+  const { isSignedIn } = useUser();
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchUsers = async () => {
@@ -117,7 +83,6 @@ export default function LeaderboardPage() {
 
     while (true) {
       try {
-        // UPDATED: Direct call to backend with JWT
         const jwt = await getToken();
         const response = await fetch(
           `https://ai.rajatkhandelwal.com/arcade/users`,
@@ -131,22 +96,27 @@ export default function LeaderboardPage() {
             await calculateLeaderboard(data.users);
             setLoading(false);
             return;
+          } else {
+            setError("Failed to parse users response.");
           }
+        } else {
+          setError("Unable to load users.");
         }
       } catch (err) {
         console.error("Error fetching users:", err);
+        setError("Network error while fetching users.");
       }
+      // retry backoff
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   };
 
   const calculateLeaderboard = async (usersData: UserData[]) => {
+    // Enrich with Clerk profile
     const enrichedUsersDataPromises = usersData.map(async (user) => {
       try {
         const clerkResponse = await fetch(`/api/fetchclerkuser/${user.uuid}`);
-        if (!clerkResponse.ok) {
-          throw new Error("Clerk user not found");
-        }
+        if (!clerkResponse.ok) throw new Error("Clerk user not found");
         const clerkData = await clerkResponse.json();
 
         return {
@@ -178,6 +148,7 @@ export default function LeaderboardPage() {
         if (Array.isArray(user.histories)) {
           user.histories.forEach((history) => {
             if (history && history.session) {
+              // choose best (level, then score)
               if (history.session.finalLevel > bestLevel) {
                 bestLevel = history.session.finalLevel;
                 bestScore = history.session.totalScore;
@@ -187,6 +158,7 @@ export default function LeaderboardPage() {
               ) {
                 bestScore = history.session.totalScore;
               }
+
               totalAccuracy += history.session.averageAccuracy || 0;
               validGameCount++;
             }
@@ -204,15 +176,10 @@ export default function LeaderboardPage() {
         };
       })
       .sort((a, b) => {
-        if (a.bestLevel !== b.bestLevel) {
-          return b.bestLevel - a.bestLevel;
-        }
+        if (a.bestLevel !== b.bestLevel) return b.bestLevel - a.bestLevel;
         return b.bestScore - a.bestScore;
       })
-      .map((entry, index) => ({
-        ...entry,
-        rank: index + 1,
-      }));
+      .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
     setLeaderboard(entries);
   };
@@ -220,7 +187,8 @@ export default function LeaderboardPage() {
   const topThree = leaderboard.slice(0, 3);
   const restOfLeaderboard = leaderboard.slice(3);
 
-  // --- Skeleton and State components (remain the same) ---
+  /* ------------------------- UI Helpers -------------------------- */
+
   const Skeleton = ({ className }: { className?: string }) => (
     <div
       className={`animate-pulse rounded-md bg-gray-200 dark:bg-gray-800 ${className}`}
@@ -341,7 +309,7 @@ export default function LeaderboardPage() {
         <Avatar className="h-20 w-20 mt-6 mb-4">
           <AvatarImage src={entry.user.imageUrl} />
           <AvatarFallback>
-            <User className="h-10 w-10" />
+            <UserIcon className="h-10 w-10" />
           </AvatarFallback>
         </Avatar>
         <h3 className="text-xl font-bold text-gray-200">{entry.user.name}</h3>
@@ -350,125 +318,78 @@ export default function LeaderboardPage() {
     );
   };
 
-  return (
-    <div className="flex min-h-screen w-full bg-[#191948] dark:bg-gray-950">
-      {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex w-64 flex-col bg-[#191948] p-4 dark:bg-black dark:border-gray-800">
-        <SidebarContent />
-      </aside>
+  /* --------------------------- Render ---------------------------- */
 
-      {/* Mobile Drawer */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="w-64 bg-[#191948] dark:bg-black p-4">
-            <SidebarContent />
+  return (
+    <SiteChrome>
+      <h2 className="text-xl font-semibold text-blue-100 mb-6">Leaderboard</h2>
+
+      {loading ? (
+        <SkeletonState />
+      ) : error ? (
+        <ErrorState />
+      ) : (
+        <div className="mx-auto max-w-5xl">
+          {/* Podium */}
+          <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+            {topThree[1] && <PodiumCard entry={topThree[1]} rank={2} />}
+            {topThree[0] && <PodiumCard entry={topThree[0]} rank={1} />}
+            {topThree[2] && <PodiumCard entry={topThree[2]} rank={3} />}
           </div>
-          {/* Backdrop */}
-          <div
-            className="flex-1 bg-black/50"
-            onClick={() => setMobileOpen(false)}
-          />
+
+          {/* Table */}
+          <Card className="border-white/10">
+            <CardHeader>
+              <CardTitle>All Players</CardTitle>
+              <CardDescription>
+                Full ranking of all players based on their best level and score.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative w-full overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead>Player</TableHead>
+                      <TableHead className="text-right">Best Score</TableHead>
+                      <TableHead className="text-right">Games Played</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {restOfLeaderboard.map((entry) => (
+                      <TableRow key={entry.user.id}>
+                        <TableCell className="font-bold">
+                          #{entry.rank}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                              <AvatarImage src={entry.user.imageUrl} />
+                              <AvatarFallback>
+                                <UserIcon className="h-5 w-5" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{entry.user.name}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-primary">
+                          {entry.bestScore.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {entry.totalGames}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
-
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center bg-[#191948] px-6 dark:bg-black dark:border-gray-800">
-          {/* Left: Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 text-gray-200"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-
-          {/* Spacer to push right section to extreme right */}
-          <div className="flex-1" />
-
-          {/* Right: Currency + User */}
-          <div className="flex items-center gap-4">
-            <HeaderCurrencyDisplay />
-            {isSignedIn ? (
-              <UserButton afterSignOutUrl="/" />
-            ) : (
-              <SignInButton mode="modal">
-                <Button>Sign In</Button>
-              </SignInButton>
-            )}
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-6 rounded-tl-4xl bg-[#23239b3e]">
-          <h2 className="text-xl font-semibold text-gray-200 pb-8">
-            Leaderboard
-          </h2>
-
-          {loading ? (
-            <SkeletonState />
-          ) : error ? (
-            <ErrorState />
-          ) : (
-            <div className="mx-auto max-w-5xl">
-              <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-                {topThree[1] && <PodiumCard entry={topThree[1]} rank={2} />}
-                {topThree[0] && <PodiumCard entry={topThree[0]} rank={1} />}
-                {topThree[2] && <PodiumCard entry={topThree[2]} rank={3} />}
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>All Players</CardTitle>
-                  <CardDescription>
-                    Full ranking of all players based on their performance.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative w-full overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-16">Rank</TableHead>
-                          <TableHead>Player</TableHead>
-                          <TableHead className="text-right">
-                            Best Score
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {restOfLeaderboard.map((entry) => (
-                          <TableRow key={entry.user.id}>
-                            <TableCell className="font-bold">
-                              #{entry.rank}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-9 w-9">
-                                  <AvatarImage src={entry.user.imageUrl} />
-                                  <AvatarFallback>
-                                    <User className="h-5 w-5" />
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">
-                                    {entry.user.name}
-                                  </p>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right font-semibold text-primary">
-                              {entry.bestScore.toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </main>
-      </div>
-    </div>
+    </SiteChrome>
   );
 }
