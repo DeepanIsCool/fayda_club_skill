@@ -1,7 +1,7 @@
 // app/components/2048/2048.tsx
 "use client";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import { gameConfigService, getGameEntryCost } from "../../lib/gameConfig";
+import { getGameBySlug } from "../../lib/gameConfig";
 import type { TileState } from "../../lib/types";
 import { useGame } from "../../lib/use-game";
 import { CurrencyDisplay } from "../modals/currency";
@@ -27,7 +27,7 @@ export default function Game2048() {
     getSessionData,
   } = useGame();
   const { getToken } = useAuth();
-  const config = gameConfigService.getGameBySlug("2048");
+  const config = getGameBySlug("2048");
   const frontendConfig = config?.frontendConfig;
   const title = frontendConfig?.title || "2048";
   const description = frontendConfig?.description || "";

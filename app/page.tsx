@@ -1,14 +1,4 @@
-// app/page.tsx
 "use client";
-
-/**
- * Home page
- * - Uses SiteChrome (shared chrome)
- * - Banner slot
- * - Game thumbnails only (smaller; no extra text)
- * - Logged out: save intended URL and open Clerk modal
- * - After sign-in, SiteChrome reads and redirects
- */
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
@@ -18,7 +8,12 @@ import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
 import SiteChrome from "./components/layout/SiteChrome";
 import { Card, CardContent } from "@/ui/card";
 import { Skeleton } from "@/ui/skeleton";
-import { GameConfig, gameConfigService } from "./lib/gameConfig";
+import {
+  GameConfig,
+  getAllGames,
+  loadGames,
+  ApiGameResponse,
+} from "./lib/gameConfig";
 
 /* Public thumbnails (your /public tree) */
 const PUBLIC_THUMBS_BY_SLUG: Record<string, string> = {
@@ -77,12 +72,33 @@ export default function HomePage() {
   const [gamesLoading, setGamesLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    const fetchAndLoadGames = async () => {
       try {
         setGamesLoading(true);
-        // IMPORTANT: pass the function, not the resolved token
-        await gameConfigService.loadGames(getToken);
-        const all = (gameConfigService.getAllGames?.() as SimpleGame[]) || [];
+
+        const token = await getToken();
+        let apiGames: ApiGameResponse["games"] = [];
+        if (token) {
+          const response = await fetch(
+            "https://ai.rajatkhandelwal.com/arcade/games",
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          if (response.ok) {
+            const data: ApiGameResponse = await response.json();
+            if (data.success) {
+              apiGames = data.games;
+            }
+          }
+        }
+
+        loadGames(apiGames);
+
+        const all = (getAllGames?.() as SimpleGame[]) || [];
         const available = all.filter(
           (g) => (g as any).hasImplementation !== false
         );
@@ -97,12 +113,9 @@ export default function HomePage() {
             name: g.name,
             hasImplementation: (g as any).hasImplementation !== false,
             frontendConfig: {
-              // keep any fields the backend provides
               ...fc,
-              // ensure required string fields exist
               component: typeof fc.component === "string" ? fc.component : "",
               path: typeof fc.path === "string" ? fc.path : "",
-              // ensure we always have an image
               imageUrl:
                 fc.imageUrl ||
                 PUBLIC_THUMBS_BY_SLUG[g.slug] ||
@@ -117,7 +130,9 @@ export default function HomePage() {
       } finally {
         setGamesLoading(false);
       }
-    })();
+    };
+
+    fetchAndLoadGames();
   }, [getToken]);
 
   return (

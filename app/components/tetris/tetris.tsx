@@ -8,13 +8,13 @@ import { useIsMobile } from "@/ui/use-mobile";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import { getGameEntryCost } from "../../lib/gameConfig";
+import { getGameBySlug, getGameEntryCost } from "../../lib/gameConfig";
 import { RewardModal } from "../modals/reward";
 import { GameStartModal } from "../modals/start";
 
 // For session submission
 import { useAuth } from "@clerk/nextjs";
-import { gameConfigService } from "../../lib/gameConfig";
+import {} from "../../lib/gameConfig";
 // Submit game session data to API
 const useSubmitGameSession = (
   config: any,
@@ -531,7 +531,7 @@ export default function TetrisGame() {
   };
 
   // On game over, update points and submit session
-  const config = gameConfigService.getGameBySlug("tetris");
+  const config = getGameBySlug("tetris");
   const submitGameSession = useSubmitGameSession(config, getToken);
   const handleGameOver = async () => {
     setGameOver(true);

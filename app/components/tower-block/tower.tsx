@@ -11,7 +11,11 @@ import { CurrencyDisplay } from "../../components/modals/currency";
 import { RewardModal } from "../../components/modals/reward";
 import { GameStartModal } from "../../components/modals/start";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import { gameConfigService, getGameEntryCost } from "../../lib/gameConfig";
+import {
+  getGameBySlug,
+  getGameEntryCost,
+  loadGames,
+} from "../../lib/gameConfig";
 
 interface GameReward {
   amount: number;
@@ -21,7 +25,7 @@ interface GameReward {
 
 export default function TowerBlockGame() {
   // Fetch game config for Tower Block
-  const towerConfig = gameConfigService.getGameBySlug("tower-block");
+  const towerConfig = getGameBySlug("tower-block");
   const frontendConfig = towerConfig?.frontendConfig;
   const gameTitle = frontendConfig?.title || "";
   const gameDescription = frontendConfig?.description || "";
@@ -179,8 +183,7 @@ export default function TowerBlockGame() {
 
       try {
         // Get game configuration for ID
-        await gameConfigService.loadGames(getToken);
-        const gameConfig = gameConfigService.getGameBySlug("tower-block");
+        const gameConfig = getGameBySlug("tower-block");
 
         if (!gameConfig) {
           console.error("Could not find Tower Block game configuration");
