@@ -146,7 +146,7 @@ function slugify(name: string): string {
 function evaluateExpression(
   expression: string,
   context: Record<string, unknown>
-): any {
+): unknown {
   try {
     const safeContext = { ...context, Math };
     const paramNames = Object.keys(safeContext);

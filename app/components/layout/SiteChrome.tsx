@@ -8,7 +8,6 @@ import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import {
   ChevronLeft,
   ChevronRight,
-  LayoutGrid,
   Swords,
   Trophy,
   Gamepad2,
@@ -16,6 +15,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
+import CompleteProfilePrompt from "@/app/components/account/CompleteProfilePrompt";
 
 type NavItem = { label: string; href: string; icon?: React.ReactNode };
 
@@ -43,10 +43,9 @@ export default function SiteChrome({
   const router = useRouter();
   const { isSignedIn } = useUser();
 
-  // Single sidebar open/close kept simple to avoid extra re-renders
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
-  // Handle post-sign-in redirect stored by Home page (if any)
+  // Redirect user after sign-in if we stored a target route
   useEffect(() => {
     if (!isSignedIn) return;
     const pending = window.localStorage.getItem("postSignInRedirect");
@@ -58,7 +57,7 @@ export default function SiteChrome({
 
   return (
     <div className="flex min-h-screen w-full bg-[#0d1030] text-white">
-      {/* Desktop sidebar (logo removed per request) */}
+      {/* Desktop sidebar */}
       <aside
         className={cn(
           "relative z-20 hidden md:flex flex-col transition-all duration-300 bg-[#0f1540] border-r border-white/10",
@@ -107,22 +106,23 @@ export default function SiteChrome({
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-gradient-to-b from-[#11184a] to-[#0e1442] shadow-[0_1px_0_0_rgba(255,255,255,0.06)]">
           <div className="flex h-16 items-center gap-3 px-3 sm:px-4">
-            {/* Left: logo only (arrow button removed) */}
+            {/* Left: logo */}
             <div className="flex items-center gap-2 min-w-0">
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 hover:bg-white/10" // removed bg-white/5
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 hover:bg-white/10"
               >
                 <Swords className="h-5 w-5 text-blue-300" />
                 <span className="font-semibold tracking-wide">Fayda Club</span>
               </Link>
             </div>
-            {/* Center: wallet (hidden until signed in) */}
+
+            {/* Center: wallet */}
             <div className="mx-auto">
               {isSignedIn ? <HeaderCurrencyDisplay /> : null}
             </div>
 
-            {/* Right: auth */}
+            {/* Right: auth buttons / user menu */}
             <div className="ml-auto flex items-center gap-2">
               {isSignedIn ? (
                 <UserButton />
@@ -133,7 +133,6 @@ export default function SiteChrome({
                       type="button"
                       size="sm"
                       className="bg-[#11184a] text-white hover:bg-[#1e40af] font-semibold border-none shadow"
-                      style={{ pointerEvents: "auto" }}
                     >
                       Sign In
                     </Button>
@@ -153,7 +152,7 @@ export default function SiteChrome({
           </div>
         </header>
 
-        {/* Optional banners */}
+        {/* Optional banner */}
         {banner ? (
           <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pt-6">
             {banner}
@@ -167,7 +166,10 @@ export default function SiteChrome({
           </div>
         </main>
 
-        {/* Mobile bottom nav (icon-only) */}
+        {/* Profile completion prompt */}
+        <CompleteProfilePrompt />
+
+        {/* Mobile bottom nav */}
         <MobileBottomNav navItems={navItems} />
       </div>
     </div>
@@ -195,7 +197,6 @@ function MobileBottomNav({ navItems }: { navItems: NavItem[] }) {
               <span className={cn(active ? "text-white" : "text-blue-200")}>
                 {item.icon}
               </span>
-              {/* Removed yellow highlight dot for active item */}
             </Link>
           );
         })}

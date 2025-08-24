@@ -38,7 +38,7 @@ type CurrencyActions = {
     walletChange: number,
     scoreChange: number,
     reason: string
-  ) => Promise<any>;
+  ) => Promise<unknown>;
 };
 
 type CurrencyContextType = {
@@ -134,11 +134,12 @@ export const CurrencyProvider = ({
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       await fetchViaAuth();
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
       setState((prev) => ({
         ...prev,
         loading: false,
-        error: e?.message ?? "Failed to initialize wallet",
+        error: message || "Failed to initialize wallet",
       }));
       // Allow manual refresh later; keep initOnceRef true to avoid loops
     }
@@ -148,11 +149,12 @@ export const CurrencyProvider = ({
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       await fetchViaAuth();
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
       setState((prev) => ({
         ...prev,
         loading: false,
-        error: e?.message ?? "Failed to refresh wallet",
+        error: message || "Failed to refresh wallet",
       }));
     }
   }, [fetchViaAuth]);

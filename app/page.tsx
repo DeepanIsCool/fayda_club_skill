@@ -26,7 +26,16 @@ const PUBLIC_THUMBS_BY_SLUG: Record<string, string> = {
 /* Fallback catalog so we show thumbs pre-auth */
 type SimpleGame = Pick<
   GameConfig,
-  "id" | "slug" | "name" | "frontendConfig" | "hasImplementation"
+  "id" | "slug" | "name" | "hasImplementation"
+> & {
+  frontendConfig?: Partial<GameConfig["frontendConfig"]> | null;
+};
+
+type FrontendPartial = Partial<
+  Pick<
+    NonNullable<GameConfig["frontendConfig"]>,
+    "title" | "imageUrl" | "component" | "path"
+  >
 >;
 
 const FALLBACK_CATALOG: SimpleGame[] = [
@@ -34,34 +43,34 @@ const FALLBACK_CATALOG: SimpleGame[] = [
     id: "tetris",
     slug: "tetris",
     name: "Tetris",
-    hasImplementation: true as any,
+    hasImplementation: true,
     frontendConfig: {
       title: "Tetris",
       imageUrl: PUBLIC_THUMBS_BY_SLUG.tetris,
       component: "",
-    } as any,
+    } as FrontendPartial,
   },
   {
     id: "2048",
     slug: "2048",
     name: "2048",
-    hasImplementation: true as any,
+    hasImplementation: true,
     frontendConfig: {
       title: "2048",
       imageUrl: PUBLIC_THUMBS_BY_SLUG["2048"],
       component: "",
-    } as any,
+    } as FrontendPartial,
   },
   {
     id: "tower-block",
     slug: "tower-block",
     name: "Tower Block",
-    hasImplementation: true as any,
+    hasImplementation: true,
     frontendConfig: {
       title: "Tower Block",
       imageUrl: PUBLIC_THUMBS_BY_SLUG["tower-block"],
       component: "",
-    } as any,
+    } as FrontendPartial,
   },
 ];
 
@@ -87,6 +96,7 @@ export default function HomePage() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
               },
+              cache: "no-store",
             }
           );
           if (response.ok) {
@@ -100,19 +110,17 @@ export default function HomePage() {
         loadGames(apiGames);
 
         const all = (getAllGames?.() as SimpleGame[]) || [];
-        const available = all.filter(
-          (g) => (g as any).hasImplementation !== false
-        );
+        const available = all.filter((g) => g.hasImplementation !== false);
 
         const normalized: SimpleGame[] = (
           available.length ? available : FALLBACK_CATALOG
         ).map((g) => {
-          const fc: any = (g as any).frontendConfig ?? {};
+          const fc = (g.frontendConfig ?? {}) as FrontendPartial;
           return {
             id: g.id,
             slug: g.slug,
             name: g.name,
-            hasImplementation: (g as any).hasImplementation !== false,
+            hasImplementation: g.hasImplementation !== false,
             frontendConfig: {
               ...fc,
               component: typeof fc.component === "string" ? fc.component : "",
@@ -121,7 +129,7 @@ export default function HomePage() {
                 fc.imageUrl ||
                 PUBLIC_THUMBS_BY_SLUG[g.slug] ||
                 PUBLIC_THUMBS_BY_SLUG["2048"],
-            } as any,
+            } as FrontendPartial,
           };
         });
 
@@ -158,7 +166,7 @@ export default function HomePage() {
             : visibleGames.map((game) => {
                 const href = `/games/${game.slug}`;
                 const cover =
-                  (game.frontendConfig as any)?.imageUrl ||
+                  (game.frontendConfig as FrontendPartial)?.imageUrl ||
                   PUBLIC_THUMBS_BY_SLUG[game.slug] ||
                   PUBLIC_THUMBS_BY_SLUG["2048"];
 

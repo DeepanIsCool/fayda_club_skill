@@ -23,11 +23,13 @@ export interface GameStats {
 
 interface RewardModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: () => void | Promise<void>;
   rewards: Reward[];
   totalCoins: number;
   gameLevel?: number;
   gameStats?: GameStats;
+  disableClose?: boolean;
+  rewardError?: string | null;
 }
 
 export function RewardModal({
@@ -37,6 +39,8 @@ export function RewardModal({
   totalCoins,
   gameLevel = 0,
   gameStats,
+  disableClose = false,
+  rewardError,
 }: RewardModalProps) {
   return (
     <AnimatePresence>
@@ -127,27 +131,33 @@ export function RewardModal({
               </div>
 
               {/* Close Button */}
+              {rewardError && (
+                <div className="text-red-500 text-center mb-2 animate-pulse">
+                  {rewardError}
+                </div>
+              )}
               <motion.button
-                onClick={(e) => {
+                onClick={async (e) => {
+                  if (disableClose) return;
                   e.stopPropagation();
                   e.preventDefault();
-                  if (typeof onClose === "function") {
-                    onClose();
-                  }
+                  await onClose();
                 }}
-                className="
+                className={`
                   w-full py-3 sm:py-4 px-4 rounded-xl
                   bg-[#191948]
                   text-white font-semibold shadow-lg hover:shadow-xl
                   transition-all duration-200 text-base sm:text-lg drop-shadow-md
-                "
+                  ${disableClose ? "opacity-60 cursor-not-allowed" : ""}
+                `}
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 1 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={disableClose ? {} : { scale: 1.02 }}
+                whileTap={disableClose ? {} : { scale: 0.98 }}
+                disabled={disableClose}
               >
-                Awesome! Go to Dashboard
+                {disableClose ? "Saving session..." : "Go to Dashboard"}
               </motion.button>
             </div>
           </motion.div>

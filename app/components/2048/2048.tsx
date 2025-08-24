@@ -1,7 +1,8 @@
 // app/components/2048/2048.tsx
 "use client";
+
 import { useCurrency } from "../../contexts/CurrencyContext";
-import { getGameById } from "../../lib/gameConfig";
+import { GameConfig, getGameById, loadGames } from "../../lib/gameConfig";
 import type { TileState } from "../../lib/types";
 import { useGame } from "../../lib/use-game";
 import { CurrencyDisplay } from "../modals/currency";
@@ -12,10 +13,11 @@ import { Button } from "@/ui/button";
 import { useAuth } from "@clerk/nextjs";
 import { CircleArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 export default function Game2048() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const {
     grid,
     restart,
@@ -26,51 +28,143 @@ export default function Game2048() {
     getFinalScore,
     getSessionData,
   } = useGame();
-  const { getToken } = useAuth();
-  const config = getGameById("2048");
-  const frontendConfig = config?.frontendConfig;
-  const title = frontendConfig?.title || "2048";
-  const description = frontendConfig?.description || "";
-  const objective = frontendConfig?.objective || "";
+  const { currency, actions } = useCurrency();
 
-  const submitGameSession = useCallback(
-    async (finalStats: GameStats) => {
-      if (!config || !finalStats) return;
-      try {
-        const sessionData = {
-          gameId: config?.id,
-          userId: "guest",
-          level: finalStats.finalLevel,
-          score: finalStats.totalPrecisionScore,
-          duration: finalStats.totalGameTime || 0,
-          sessionData: {
-            ...finalStats,
-            gameType: "2048",
-            platform: "web",
-            timestamp: new Date().toISOString(),
-            version: "1.0.0",
-          },
-        };
-        const jwt = await getToken();
-        await fetch(`https://ai.rajatkhandelwal.com/arcade/gamesession`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-          body: JSON.stringify(sessionData),
-        });
-      } catch (error) {
-        console.error("Error submitting 2048 session:", error);
+  // Ensure game configs are loaded for getGameById to work
+  useEffect(() => {
+    const ensureConfigsLoaded = async () => {
+      if (!getGameById("2048")) {
+        try {
+          const jwt = await getToken();
+          const response = await fetch(
+            "https://ai.rajatkhandelwal.com/arcade/games",
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${jwt}`,
+              },
+              cache: "no-store",
+            }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.games) {
+              loadGames(data.games);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load game configs for 2048:", err);
+        }
       }
-    },
-    [config, getToken]
-  );
+    };
+    ensureConfigsLoaded();
+  }, [getToken]);
 
-  // Modal state
-  const [showStartModal, setShowStartModal] = useState(true);
-  const [showRewardModal, setShowRewardModal] = useState(false);
-  const [loading, setLoading] = useState(false);
+  // Hardcoded config for 2048 fallback
+  const HARDCODED_2048_CONFIG: GameConfig = {
+    id: "cmeim0f1h0009pa0i1sdezpck",
+    // uuid removed, not part of GameConfig
+    slug: "2048",
+    name: "2048",
+    // image removed, not part of GameConfig
+    hardness: 2,
+    entryfee: 2,
+    description: "Puzzle game",
+    category: "Board",
+    rules: "Merge the numbers",
+    frontendConfig: {
+      title: "2048",
+      description: "Puzzle game",
+      objective: "Merge the numbers",
+      imageUrl: "",
+      path: "2048",
+      component: "Game2048",
+      rewardRules: [
+        {
+          id: "score_reward",
+          name: "Score Milestone",
+          formula: "Math.floor(score / 256)",
+          multiplier: 1,
+        },
+        {
+          id: "tile_2048",
+          name: "2048 Tile Bonus",
+          formula: "has2048Tile ? 50 : 0",
+          conditions: "has2048Tile === true",
+          multiplier: 1,
+        },
+      ],
+      continueRules: { maxContinues: 5, costProgression: [2, 4, 8, 16, 32] },
+      achievements: [
+        {
+          id: "first_512",
+          icon: "🔢",
+          name: "First 512",
+          type: "performance",
+          rarity: "common",
+          reward: 10,
+          condition: "maxTile >= 512",
+          description: "Reach a 512 tile",
+        },
+        {
+          id: "first_2048",
+          icon: "🎉",
+          name: "2048 Achiever",
+          type: "special",
+          rarity: "epic",
+          reward: 50,
+          condition: "maxTile >= 2048",
+          description: "Reach a 2048 tile",
+        },
+        {
+          id: "score_5000",
+          icon: "🏆",
+          name: "Score 5000",
+          type: "performance",
+          rarity: "rare",
+          reward: 25,
+          condition: "score >= 5000",
+          description: "Score 5000 points in a game",
+        },
+      ],
+      displayConfig: {
+        icons: { main: "🔢", category: "🕹️", difficulty: "🧩" },
+        theme: "auto",
+        colors: {
+          accent: "#FFD700",
+          primary: "#F59E42",
+          secondary: "#F6E58D",
+          background: "#FFF8E1",
+        },
+      },
+      metadata: {
+        version: "1.0.0",
+        lastUpdated: "2025-08-19T13:58:44.792Z",
+      },
+    },
+    rating: 0,
+    createdAt: "2025-08-19T13:58:44.792Z",
+    isAvailable: true,
+    hasImplementation: true,
+  };
+
+  let config = getGameById("2048");
+  if (!config) config = HARDCODED_2048_CONFIG;
+  const configLoading = !config;
+  // Prefer config.frontendConfig, else (for fallback) config.config?.displayConfig, else {}
+  const fallbackDisplay =
+    (config as unknown as { config?: { displayConfig?: unknown } })?.config
+      ?.displayConfig ?? {};
+  const frontendConfig =
+    (config?.frontendConfig as Partial<
+      import("../../lib/gameConfig").GameFrontendConfig
+    >) ||
+    (fallbackDisplay as Partial<
+      import("../../lib/gameConfig").GameFrontendConfig
+    >);
+  const title = frontendConfig?.title || config?.name || "2048";
+  const description = frontendConfig?.description || config?.description || "";
+  const objective = frontendConfig?.objective || config?.rules || "";
 
   type Reward = {
     amount: number;
@@ -95,19 +189,72 @@ export default function Game2048() {
     gameStats: GameStats;
   } | null;
 
+  const [showStartModal, setShowStartModal] = useState(true);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sessionPosting, setSessionPosting] = useState(false);
   const [pendingReward, setPendingReward] = useState<RewardModalState>(null);
-  const { currency, actions } = useCurrency();
+  const [rewardError, setRewardError] = useState<string | null>(null);
 
-  // Handler for starting the game: deduct entry cost from config
+  const submitGameSession = useCallback(
+    async (finalStats: GameStats) => {
+      if (!config || !finalStats) {
+        console.log("[submitGameSession] Missing config or finalStats", {
+          config,
+          finalStats,
+        });
+        return;
+      }
+      try {
+        const sessionData = {
+          gameId: config.id,
+          userId: "guest",
+          level: finalStats.finalLevel,
+          score: finalStats.totalPrecisionScore,
+          duration: finalStats.totalGameTime || 0,
+          sessionData: {
+            ...finalStats,
+            gameType: "2048",
+            platform: "web",
+            timestamp: new Date().toISOString(),
+            version: "1.0.0",
+          },
+        };
+        const jwt = await getToken();
+        console.log(
+          "[submitGameSession] Sending POST to /arcade/gamesession",
+          sessionData
+        );
+        const response = await fetch(
+          `https://ai.rajatkhandelwal.com/arcade/gamesession`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwt}`,
+            },
+            body: JSON.stringify(sessionData),
+          }
+        );
+        console.log(
+          "[submitGameSession] POST response status:",
+          response.status
+        );
+      } catch (error) {
+        console.error("Error submitting 2048 session:", error);
+      }
+    },
+    [getToken, config]
+  );
+
+  // Handler for starting the game
   const handleStartGame = async () => {
     setLoading(true);
     try {
-      // Use entryfee from config, fallback to 1 if not present
-      const entryfee = config?.entryfee ?? 2;
       const success = await actions.startGame("2048");
       if (success) {
         setShowStartModal(false);
-        restart(); // reset the game state
+        restart();
       } else {
         console.error("Failed to start 2048 game");
       }
@@ -118,69 +265,33 @@ export default function Game2048() {
     }
   };
 
-  // Handler for cancel: go back to dashboard
   const handleCancel = () => {
     router.push("/");
   };
 
-  // Show RewardModal on game over (win or lose)
-  React.useEffect(() => {
+  // Show RewardModal on game over
+  useEffect(() => {
     if (over || won) {
-      handleGameOver();
+      markEndTime();
+      const finalScore = getFinalScore();
+      const stats = getSessionData() as GameStats;
+      setShowRewardModal(true);
+      setPendingReward({
+        rewards: [{ amount: finalScore, reason: "Game Score", type: "score" }],
+        totalCoins: 0,
+        gameLevel: 0,
+        gameStats: stats,
+      });
     }
   }, [over, won]);
 
-  const handleGameOver = async () => {
-    markEndTime();
-    const finalScore = getFinalScore();
-    const stats = getSessionData() as GameStats;
-
-    try {
-      // Submit session to API
-      await submitGameSession(stats);
-
-      // Calculate rewards: coins and score
-      const coinsEarned = Math.floor(finalScore / 100); // 1 coin per 100 points
-      const maxTile = Math.max(
-        ...grid
-          .flat()
-          .filter((tile) => tile)
-          .map((tile) => tile!.value)
-      );
-
-      // Show reward modal
-      setShowRewardModal(true);
-      setPendingReward({
-        rewards: [{ amount: finalScore, reason: "Game Score", type: "score" }],
-        totalCoins: 0,
-        gameLevel: 0,
-        gameStats: stats,
-      });
-    } catch (error) {
-      console.error("Error processing game completion:", error);
-      // Still show reward modal even if API calls fail
-      setShowRewardModal(true);
-      setPendingReward({
-        rewards: [{ amount: finalScore, reason: "Game Score", type: "score" }],
-        totalCoins: 0,
-        gameLevel: 0,
-        gameStats: stats,
-      });
-    }
-  };
-
-  // Handler for closing RewardModal (Awesome! Go to Dashboard)
-  const handleRewardClose = async () => {
+  const handleRewardClose = () => {
     setShowRewardModal(false);
     setPendingReward(null);
-    // Upload session data before redirect
-    const stats = getSessionData() as GameStats;
-    await submitGameSession(stats);
-    router.push("/"); // Go back to dashboard
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center text-white relative">
+    <div className="min-h-screen flex flex-col items-center justify-center py-8 px-4 text-white relative max-sm:py-4 max-sm:px-2">
       {/* Top UI Bar */}
       <div className="fixed top-4 left-4 z-30">
         <Button
@@ -196,7 +307,7 @@ export default function Game2048() {
       <div className="fixed top-4 right-4 z-20">
         <CurrencyDisplay />
       </div>
-      <div className="flex flex-col items-center justify-center w-[90vw] max-w-[650px]">
+      <div className="w-[500px] mx-auto max-sm:w-full max-sm:px-0 flex flex-col items-center">
         {/* Start Modal */}
         <GameStartModal
           isOpen={showStartModal}
@@ -210,31 +321,66 @@ export default function Game2048() {
         {/* Reward Modal */}
         <RewardModal
           isOpen={showRewardModal}
-          onClose={handleRewardClose}
+          onClose={async () => {
+            setRewardError(null);
+            if (!pendingReward?.gameStats) {
+              setRewardError("Game session data missing. Please try again.");
+              return;
+            }
+            if (configLoading) {
+              setRewardError(
+                "Game configuration is still loading. Please wait."
+              );
+              return;
+            }
+            setSessionPosting(true);
+            try {
+              await submitGameSession(pendingReward.gameStats);
+              setShowRewardModal(false);
+              setPendingReward(null);
+              router.push("/");
+            } catch (error) {
+              setRewardError("Failed to save session. Please try again.");
+              console.error("Error submitting session:", error);
+            } finally {
+              setSessionPosting(false);
+            }
+          }}
           rewards={pendingReward?.rewards || []}
           totalCoins={pendingReward?.totalCoins || 0}
           gameLevel={pendingReward?.gameLevel || 0}
           gameStats={pendingReward?.gameStats}
+          disableClose={sessionPosting || configLoading}
+          rewardError={
+            configLoading ? "Loading game configuration..." : rewardError
+          }
         />
-        {/* Title, Description, and Objective from config */}
+        {/* Title */}
         <div className="text-center mb-8 animate-in fade-in slide-in-from-top duration-700">
           <h1 className="text-6xl md:text-8xl font-black bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent mb-2 tracking-tight">
             {title}
           </h1>
         </div>
-        {/* --- Main Game Container --- */}
-        <div className="game-container relative w-full aspect-square p-0 cursor-default select-none touch-none bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl shadow-2xl border border-blue-800/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom duration-700 delay-300 flex items-center justify-center">
-          {/* Background Grid Cells */}
-          <div className="absolute inset-0 z-[1] w-full h-full grid grid-cols-4 grid-rows-4 gap-2">
-            {Array.from({ length: 16 }).map((_, idx) => (
+        {/* Game Board */}
+        <div className="game-container relative w-full max-w-[500px] aspect-square p-4 md:p-6 cursor-default select-none touch-none bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl shadow-2xl border border-blue-800/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom duration-700 delay-300 flex items-center justify-center">
+          {/* Background Grid */}
+          <div className="absolute inset-4 md:inset-6 z-[1]">
+            {Array.from({ length: 4 }).map((_, rowIndex) => (
               <div
-                key={idx}
-                className="w-full h-full rounded-xl bg-slate-800/50 backdrop-blur-sm border border-blue-900/30 shadow-inner"
-              />
+                key={rowIndex}
+                className="flex gap-2 md:gap-4 mb-2 md:mb-4 last:mb-0"
+              >
+                {Array.from({ length: 4 }).map((_, colIndex) => (
+                  <div
+                    key={colIndex}
+                    className="flex-1 aspect-square rounded-xl bg-slate-800/50 backdrop-blur-sm border border-blue-900/30 shadow-inner"
+                  />
+                ))}
+              </div>
             ))}
           </div>
-          {/* Game Tiles */}
-          <div className="absolute inset-0 z-[2] w-full h-full">
+          {/* Tiles */}
+          <div className="absolute inset-4 md:inset-6 z-[2]">
             {grid
               .flat()
               .filter((tile): tile is TileState => !!tile)

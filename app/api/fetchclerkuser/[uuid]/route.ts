@@ -1,9 +1,10 @@
 // app/api/fetchclerkuser/[uuid]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
+// Use `any` for the route context to match Next's expected handler signature
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function GET(req: NextRequest, { params }: any) {
-  const { uuid } = params;
+  const { uuid } = params ?? {};
 
   if (!uuid) {
     return NextResponse.json({ error: "Missing uuid" }, { status: 400 });

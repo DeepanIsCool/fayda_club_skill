@@ -3,16 +3,20 @@
 
 import type { GameStats, Reward } from "../modals/reward";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/app/lib/utils";
-import { Card } from "@/ui/card";
 import { Button } from "@/ui/button";
+import { Card } from "@/ui/card";
 
 import { useCurrency } from "@/app/contexts/CurrencyContext";
-import { getGameById, getGameEntryCostById } from "@/app/lib/gameConfig";
+import {
+  GameConfig,
+  getGameById,
+  getGameEntryCostById,
+} from "@/app/lib/gameConfig";
 import { RewardModal } from "../modals/reward";
 import { GameStartModal } from "../modals/start";
 
@@ -146,7 +150,7 @@ const placePieceOnBoard = (p: Piece, board: Board): Board => {
       if (!p.shape[y][x]) continue;
       const by = p.position.y + y;
       const bx = p.position.x + x;
-      if (by >= 0) next[by][bx] = p.color; // color string token
+      if (by >= 0) next[by][bx] = p.color; // color token
     }
   }
   return next;
@@ -166,62 +170,18 @@ const lineScore = (linesCleared: number, level: number) => {
 };
 
 /* ----------------------------------------------------------------------------
- * Session submit helper
- * ------------------------------------------------------------------------- */
-
-const useSubmitGameSession = (
-  config: any,
-  getToken: () => Promise<string | null>
-) => {
-  return useCallback(
-    async (finalStats: GameStats) => {
-      if (!config) return;
-      try {
-        const jwt = await getToken();
-        await fetch("https://ai.rajatkhandelwal.com/arcade/gamesession", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-          body: JSON.stringify({
-            gameId: config.id,
-            userId: "guest",
-            level: finalStats.finalLevel,
-            score: finalStats.totalPrecisionScore,
-            duration: finalStats.totalGameTime ?? 0,
-            sessionData: {
-              ...finalStats,
-              gameType: "tetris",
-              platform: "web",
-              timestamp: new Date().toISOString(),
-              version: "1.0.0",
-            },
-          }),
-        });
-      } catch (e) {
-        console.error("submit tetris session failed:", e);
-      }
-    },
-    [config, getToken]
-  );
-};
-
-/* ----------------------------------------------------------------------------
- * Auto cell sizing to keep frame, just shrink cells
+ * Auto cell sizing (keep frame size, shrink cells)
  * ------------------------------------------------------------------------- */
 
 function useAutoCellSize() {
-  const [cell, setCell] = useState<number>(22); // default cell px
+  const [cell, setCell] = useState<number>(22);
   useEffect(() => {
     const compute = () => {
-      // Reserve space for headers + footer and keep the frame height similar.
       const vh = window.innerHeight;
-      const reservedTop = 100; // header cards row
-      const reservedBottom = 96; // buttons row
+      const reservedTop = 100;
+      const reservedBottom = 96;
       const available = Math.max(200, vh - reservedTop - reservedBottom - 56);
 
-      // We want 20 rows + 19 gaps (1px each) to fit inside "available"
       const maxCell = 26;
       const minCell = 14;
       const ideal = Math.floor((available - 19) / BOARD_HEIGHT);
@@ -288,12 +248,14 @@ export default function TetrisGame() {
     return bagRef.current.pop()!;
   };
 
+  // prevent re-entrant locking from gravity + drag
+  const lockingRef = useRef(false);
+
   // cell sizing
   const cellSize = useAutoCellSize();
   const boardStyle = useMemo(
     () =>
       ({
-        // ensure strict sizing; right border won’t get clipped.
         "--cell": `${cellSize}px`,
         "--gap": "1px",
         gridTemplateColumns: "repeat(10, var(--cell))",
@@ -309,7 +271,8 @@ export default function TetrisGame() {
     [cellSize]
   );
 
-  // physics helpers
+  /* ------------------------------- helpers -------------------------------- */
+
   const collides = useCallback((p: Piece, b: Board, dx = 0, dy = 0) => {
     for (let y = 0; y < p.shape.length; y++) {
       for (let x = 0; x < p.shape[y].length; x++) {
@@ -323,9 +286,38 @@ export default function TetrisGame() {
     return false;
   }, []);
 
+  /* ---------------------------- game over first ---------------------------- */
+
+  const onGameOver = useCallback(() => {
+    setOver(true);
+    setPendingReward({
+      rewards: [{ amount: score, reason: "Game completion", type: "score" }],
+      totalCoins: 0,
+      gameLevel: level,
+      gameStats: {
+        finalLevel: level,
+        totalPrecisionScore: score,
+        averageAccuracy: 0,
+        perfectPlacements: 0,
+        averageReactionTime: 0,
+        totalGameTime: 0,
+      },
+    });
+    setShowRewardModal(true);
+    // release any lock guard so the board can reset properly
+    lockingRef.current = false;
+  }, [level, score]);
+
+  /* ------------------------------ movement/drop ---------------------------- */
+
   const softDrop = useCallback(
     (steps = 1) => {
       if (!current || over) return;
+
+      // if another call is already processing a lock/spawn, skip
+      if (lockingRef.current) return;
+
+      // can move down?
       if (!collides(current, board, 0, steps)) {
         setCurrent((prev) =>
           prev
@@ -337,7 +329,10 @@ export default function TetrisGame() {
         );
         return;
       }
-      // lock piece
+
+      // lock piece (guard re-entrancy until next frame)
+      lockingRef.current = true;
+
       const placed = placePieceOnBoard(current, board);
       const { newBoard, linesCleared } = clearLines(placed);
       setBoard(newBoard);
@@ -345,23 +340,31 @@ export default function TetrisGame() {
         setLines((v) => v + linesCleared);
         setScore((s) => s + lineScore(linesCleared, level));
       }
+
       // top collision => game over
       if (current.position.y <= 0) {
-        setOver(true);
-        void onGameOver();
+        onGameOver();
         return;
       }
+
+      // spawn next
       const t = popBag();
       setCurrent(createPiece(nextType));
       setNextType(t);
       setCanHold(true);
+
+      // allow further drops next animation frame
+      requestAnimationFrame(() => {
+        lockingRef.current = false;
+      });
     },
-    [board, collides, current, level, nextType, over]
+    [board, collides, current, level, nextType, onGameOver, over]
   );
 
   const moveLR = useCallback(
     (dx: number) => {
       if (!current || over) return;
+      if (lockingRef.current) return; // avoid moving during a lock
       if (!collides(current, board, dx, 0)) {
         setCurrent((prev) =>
           prev
@@ -378,30 +381,33 @@ export default function TetrisGame() {
 
   const rotate = useCallback(() => {
     if (!current || over) return;
+    if (lockingRef.current) return;
     const rotated = rotatePiece(current);
     if (!collides(rotated, board)) setCurrent(rotated);
   }, [board, collides, current, over]);
 
-  // Hold (store only) — spawn next; cannot chain until piece locks
+  // Hold (store only)
   const holdOnly = useCallback(() => {
     if (!current || !canHold || over) return;
+    if (lockingRef.current) return;
     setHeldType(current.type);
     setCurrent(createPiece(nextType));
     setNextType(popBag());
     setCanHold(false);
   }, [canHold, current, nextType, over]);
 
-  // Insert (swap immediate): bring held into play, move current to hold
+  // Insert (swap immediate)
   const insertSwap = useCallback(() => {
     if (!current || !heldType || over) return;
+    if (lockingRef.current) return;
     const incoming = createPiece(heldType);
     setHeldType(current.type);
     setCurrent(incoming);
-    // can still only do this once until lock
     setCanHold(false);
   }, [current, heldType, over]);
 
-  // main loop (rotation/taps do not pause gravity)
+  /* ------------------------------ main loop -------------------------------- */
+
   useEffect(() => {
     if (over || showStartModal) return;
     loopRef.current = setInterval(() => softDrop(1), dropRef.current);
@@ -410,14 +416,12 @@ export default function TetrisGame() {
     };
   }, [softDrop, over, showStartModal]);
 
-  // speed changes with level
   useEffect(() => {
     const ms = Math.max(50, INITIAL_DROP_MS - (level - 1) * 50);
     setDropMs(ms);
     dropRef.current = ms;
   }, [level]);
 
-  // level from lines
   useEffect(() => {
     setLevel(Math.floor(lines / 10) + 1);
   }, [lines]);
@@ -429,7 +433,10 @@ export default function TetrisGame() {
     const second = popBag();
     setCurrent(createPiece(first));
     setNextType(second);
+    lockingRef.current = false;
   }, [current, showStartModal]);
+
+  /* ------------------------------ controls --------------------------------- */
 
   // keyboard
   useEffect(() => {
@@ -495,10 +502,8 @@ export default function TetrisGame() {
       const t = e.touches[0];
       const dx = t.clientX - lastX;
       const dy = t.clientY - lastY;
-
       const now = Date.now();
 
-      // Horizontal sensitivity: move 1 cell when passing threshold
       const H = Math.max(8, cellSize * 0.6);
       if (dx > H) {
         moveLR(1);
@@ -508,7 +513,6 @@ export default function TetrisGame() {
         lastX = t.clientX;
       }
 
-      // Vertical: accelerate soft drop (do not “stick” piece)
       const V = Math.max(8, cellSize * 0.5);
       if (dy > V && now - lastMoveAt > 30) {
         softDrop(1);
@@ -520,7 +524,6 @@ export default function TetrisGame() {
     const onEnd = (e: TouchEvent) => {
       const dx = e.changedTouches[0].clientX - touchStartX.current;
       const dy = e.changedTouches[0].clientY - touchStartY.current;
-      // small movement => rotate
       if (Math.abs(dx) < 12 && Math.abs(dy) < 12) rotate();
     };
 
@@ -535,28 +538,126 @@ export default function TetrisGame() {
     };
   }, [cellSize, moveLR, over, rotate, showStartModal, softDrop]);
 
-  // start / end
-  const config = getGameById("tetris");
-  const submitGameSession = useSubmitGameSession(config, getToken);
+  /* ------------------------------ start / end ------------------------------- */
 
-  const onGameOver = useCallback(async () => {
-    const stats: GameStats = {
-      finalLevel: level,
-      totalPrecisionScore: score,
-      averageAccuracy: 0,
-      perfectPlacements: 0,
-      averageReactionTime: 0,
-      totalGameTime: 0,
-    };
-    await submitGameSession(stats);
-    setPendingReward({
-      rewards: [{ amount: score, reason: "Game completion", type: "score" }],
-      totalCoins: 0,
-      gameLevel: level,
-      gameStats: stats,
-    });
-    setShowRewardModal(true);
-  }, [level, score, submitGameSession]);
+  // Hardcoded config fallback (kept)
+  const HARDCODED_TETRIS_CONFIG: GameConfig = {
+    id: "cmeim0pkl000apa0ihp7sqvti",
+    slug: "tetris",
+    name: "Tetris",
+    hardness: 8,
+    entryfee: 2,
+    description: "Puzzle game",
+    category: "Board",
+    rules: "Match and erase",
+    frontendConfig: {
+      title: "Tetris",
+      description: "Puzzle game",
+      objective: "Match and erase",
+      imageUrl: "/images/games/tetris.jpg",
+      path: "tetris",
+      component: "TetrisGame",
+      rewardRules: [
+        {
+          id: "line_clear",
+          name: "Line Clear",
+          formula: "linesCleared",
+          multiplier: 2,
+        },
+        {
+          id: "tetris_clear",
+          name: "Tetris (4 lines)",
+          formula: "tetrisCount * 10",
+          conditions: "tetrisCount > 0",
+          multiplier: 1,
+        },
+      ],
+      continueRules: { maxContinues: 3, costProgression: [2, 4, 8, 16, 32] },
+      achievements: [
+        {
+          id: "first_tetris",
+          icon: "🟦",
+          name: "First Tetris",
+          type: "performance",
+          rarity: "common",
+          reward: 10,
+          condition: "tetrisCount >= 1",
+          description: "Clear 4 lines at once",
+        },
+        {
+          id: "lines_40",
+          icon: "🧱",
+          name: "40 Lines",
+          type: "performance",
+          rarity: "rare",
+          reward: 25,
+          condition: "linesCleared >= 40",
+          description: "Clear 40 lines in one game",
+        },
+        {
+          id: "score_10000",
+          icon: "🏆",
+          name: "Score 10,000",
+          type: "performance",
+          rarity: "epic",
+          reward: 50,
+          condition: "score >= 10000",
+          description: "Score 10,000 points in a game",
+        },
+      ],
+      displayConfig: {
+        icons: { main: "🟦", category: "🎮", difficulty: "🧩" },
+        theme: "auto",
+        colors: {
+          accent: "#F59E42",
+          primary: "#3B82F6",
+          secondary: "#6366F1",
+          background: "#EEF2FF",
+        },
+      },
+      metadata: { version: "1.0.0", lastUpdated: "2025-08-19T13:58:58.677Z" },
+    },
+    rating: 0,
+    createdAt: "2025-08-19T13:58:58.677Z",
+    isAvailable: true,
+    hasImplementation: true,
+  };
+
+  let config = getGameById("tetris");
+  if (!config) config = HARDCODED_TETRIS_CONFIG;
+
+  const submitGameSession = useCallback(
+    async (finalStats: GameStats) => {
+      if (!config) return;
+      try {
+        const jwt = await getToken();
+        await fetch("https://ai.rajatkhandelwal.com/arcade/gamesession", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwt}`,
+          },
+          body: JSON.stringify({
+            gameId: config.id,
+            userId: "guest",
+            level: finalStats.finalLevel,
+            score: finalStats.totalPrecisionScore,
+            duration: finalStats.totalGameTime ?? 0,
+            sessionData: {
+              ...finalStats,
+              gameType: "tetris",
+              platform: "web",
+              timestamp: new Date().toISOString(),
+              version: "1.0.0",
+            },
+          }),
+        });
+      } catch (e) {
+        console.error("submit tetris session failed:", e);
+      }
+    },
+    [getToken, config]
+  );
 
   const reset = () => {
     setBoard(createEmptyBoard());
@@ -572,22 +673,20 @@ export default function TetrisGame() {
     setShowStartModal(true);
     setShowRewardModal(false);
     setPendingReward(null);
+    lockingRef.current = false;
   };
 
   const handleStart = async () => {
     if (currency.isLoading || currency.coins < entryCost) return;
-    await actions.startGame("tetris"); // deduct entry fee server-side
+    await actions.startGame("tetris");
     setShowStartModal(false);
   };
 
   const handleCancel = () => router.push("/");
 
-  /* ----------------------------------------------------------------------------
-   * Render helpers
-   * ------------------------------------------------------------------------- */
+  /* --------------------------------- render -------------------------------- */
 
   const renderBoard = () => {
-    // clone board and paint current piece (no mutation)
     const display = board.map((r) => [...r]);
     if (current) {
       for (let y = 0; y < current.shape.length; y++) {
@@ -607,7 +706,7 @@ export default function TetrisGame() {
   const renderMini = (type: TetrominoType | null) => {
     if (!type) return null;
     const { shape, color, glow } = TETROMINOES[type];
-    const compact = shape.filter((r) => r.some((c) => c === 1)); // trim blank rows
+    const compact = shape.filter((r) => r.some((c) => c === 1));
     return (
       <div className="grid gap-0.5 items-center justify-center">
         {compact.map((row, y) => (
@@ -627,10 +726,6 @@ export default function TetrisGame() {
     );
   };
 
-  /* ----------------------------------------------------------------------------
-   * JSX
-   * ------------------------------------------------------------------------- */
-
   return (
     <div className="min-h-screen bg-slate-900 text-white flex items-stretch justify-center">
       {/* Start modal */}
@@ -647,9 +742,13 @@ export default function TetrisGame() {
       {/* Reward modal */}
       <RewardModal
         isOpen={showRewardModal}
-        onClose={() => {
+        onClose={async () => {
+          if (pendingReward?.gameStats) {
+            await submitGameSession(pendingReward.gameStats);
+          }
           setShowRewardModal(false);
           reset();
+          router.push("/");
         }}
         rewards={pendingReward?.rewards || []}
         totalCoins={pendingReward?.totalCoins || 0}
@@ -658,7 +757,7 @@ export default function TetrisGame() {
       />
 
       <div className="w-full max-w-[480px] px-3 pb-3 pt-2 flex flex-col gap-2">
-        {/* Top info row: Score / Level / Lines / Next (compact labels outside) */}
+        {/* Top info row */}
         <div className="grid grid-cols-4 gap-2">
           <Card className="bg-slate-800 border-slate-700 p-2">
             <div className="text-[10px] text-slate-400 -mt-1 mb-1">Score</div>
@@ -680,12 +779,11 @@ export default function TetrisGame() {
           </Card>
         </div>
 
-        {/* Play area frame (fixed look; cells shrink instead) */}
+        {/* Play area */}
         <Card className="flex items-center justify-center bg-slate-800/80 border-slate-700 p-2">
           <div
             ref={boardRef}
             className="relative rounded-lg border-2 border-slate-600/70 bg-slate-950 p-2"
-            // exact width/height via CSS vars so no right-side clipping
             style={{
               width: `calc(${BOARD_WIDTH} * var(--cell) + ${
                 BOARD_WIDTH - 1
@@ -696,7 +794,6 @@ export default function TetrisGame() {
             }}
             onClick={() => !showStartModal && rotate()}
           >
-            {/* Inner grid with strict sizing */}
             <div className="grid" style={boardStyle}>
               {renderBoard().map((row, y) =>
                 row.map((token, x) => (
@@ -713,7 +810,6 @@ export default function TetrisGame() {
               )}
             </div>
 
-            {/* Game Over overlay */}
             {over && (
               <div className="absolute inset-0 rounded-lg bg-slate-950/80 backdrop-blur-sm flex items-center justify-center">
                 <div className="text-center space-y-4">
@@ -733,7 +829,7 @@ export default function TetrisGame() {
           </div>
         </Card>
 
-        {/* Bottom controls: Insert (left) • Held preview (center) • Hold (right) */}
+        {/* Bottom controls */}
         <div className="grid grid-cols-3 gap-2">
           <Button
             type="button"
