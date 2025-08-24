@@ -110,13 +110,12 @@ export default function SiteChrome({
             <div className="flex items-center gap-2 min-w-0">
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 hover:bg-white/10"
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 hover:bg-white/10" // removed bg-white/5
               >
                 <Swords className="h-5 w-5 text-blue-300" />
                 <span className="font-semibold tracking-wide">Fayda Club</span>
               </Link>
             </div>
-
             {/* Center: wallet (hidden until signed in) */}
             <div className="mx-auto">
               {isSignedIn ? <HeaderCurrencyDisplay /> : null}
@@ -132,7 +131,8 @@ export default function SiteChrome({
                     <Button
                       type="button"
                       size="sm"
-                      className="bg-white/95 text-[#0e1442] hover:bg-white transition-colors font-semibold"
+                      className="bg-[#11184a] text-white hover:bg-[#1e40af] font-semibold border-none shadow"
+                      style={{ pointerEvents: "auto" }}
                     >
                       Sign In
                     </Button>
@@ -141,8 +141,7 @@ export default function SiteChrome({
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="border-white/40 text-white hover:bg-white/10 font-semibold"
+                      className="bg-white/95 text-[#0e1442] hover:bg-white transition-colors font-semibold"
                     >
                       Sign Up
                     </Button>
