@@ -106,16 +106,8 @@ export default function SiteChrome({
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-gradient-to-b from-[#11184a] to-[#0e1442] shadow-[0_1px_0_0_rgba(255,255,255,0.06)]">
           <div className="flex h-16 items-center gap-3 px-3 sm:px-4">
-            {/* Left: toggle + (single) logo */}
+            {/* Left: logo only (arrow button removed) */}
             <div className="flex items-center gap-2 min-w-0">
-              <button
-                type="button"
-                className="hidden md:inline-flex rounded-full p-2 hover:bg-white/10"
-                aria-label="Toggle sidebar"
-                onClick={() => setSidebarOpen((s) => !s)}
-              >
-                {sidebarOpen ? <ChevronLeft /> : <ChevronRight />}
-              </button>
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 hover:bg-white/10"
