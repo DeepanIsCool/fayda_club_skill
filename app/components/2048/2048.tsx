@@ -180,6 +180,9 @@ export default function Game2048() {
     averageReactionTime: number;
     maxConsecutiveStreak?: number;
     totalGameTime?: number;
+    // Optional fields captured by use-game session data
+    moves?: number;
+    timeMinutes?: number;
   }
 
   type RewardModalState = {
@@ -219,8 +222,8 @@ export default function Game2048() {
               ...finalStats,
               // include the finalScore and moves/timeMinutes for clarity
               finalScore,
-              moves: (finalStats as any).moves,
-              timeMinutes: (finalStats as any).timeMinutes,
+              moves: finalStats.moves,
+              timeMinutes: finalStats.timeMinutes,
               highestTile: finalStats.finalLevel,
               gameType: "2048",
               platform: "web",

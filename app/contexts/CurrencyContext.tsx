@@ -15,6 +15,23 @@ import React, {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "https://ai.rajatkhandelwal.com/arcade";
 
+// Types for Arcade API responses
+interface ArcadeUser {
+  id: string;
+  wallet: number;
+  score: number;
+  // Allow extra fields without being explicit
+  [key: string]: unknown;
+}
+
+interface AuthResponse {
+  success?: boolean;
+  user?: ArcadeUser;
+  token?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
 type CurrencyState = {
   wallet: number;
   score: number;
@@ -121,9 +138,9 @@ export const CurrencyProvider = ({
       throw new Error(`Auth failed: ${res.status} ${bodyText}`);
     }
 
-    let data: any = {};
+    let data: AuthResponse = {};
     try {
-      data = bodyText ? JSON.parse(bodyText) : {};
+      data = bodyText ? (JSON.parse(bodyText) as AuthResponse) : {};
     } catch (e) {
       console.warn("⚠️ CurrencyContext: Failed to parse auth response JSON", e);
       data = {};
@@ -202,10 +219,13 @@ export const CurrencyProvider = ({
           throw new Error(`Failed to get user data: ${userResponse.status}`);
         }
 
-        const userData = await userResponse.json();
-        const userId = userData.user.id;
-        const currentWallet = userData.user.wallet;
-        const currentScore = userData.user.score;
+        const userData: AuthResponse = await userResponse.json();
+        const userId = userData.user?.id;
+        if (!userId) {
+          throw new Error("User ID missing in auth response");
+        }
+        const currentWallet = Number(userData.user?.wallet ?? 0);
+        const currentScore = Number(userData.user?.score ?? 0);
 
         // Calculate new values
         const newWallet = Math.max(0, currentWallet + walletChange);
