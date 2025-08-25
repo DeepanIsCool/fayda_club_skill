@@ -208,16 +208,29 @@ export default function Game2048() {
       try {
         const sessionData = {
           gameId: config.id,
-          userId: "guest",
-          level: finalStats.finalLevel,
-          score: finalStats.totalPrecisionScore,
-          duration: finalStats.totalGameTime || 0,
-          sessionData: {
-            ...finalStats,
-            gameType: "2048",
-            platform: "web",
-            timestamp: new Date().toISOString(),
-            version: "1.0.0",
+          // userId: "guest",
+          // level: finalStats.finalLevel,
+          // score: finalStats.totalPrecisionScore,
+          // duration: finalStats.totalGameTime || 0,
+          // sessionData: {
+          //   ...finalStats,
+          //   gameType: "2048",
+          //   platform: "web",
+          //   timestamp: new Date().toISOString(),
+          //   version: "1.0.0",
+          // },
+          session: {
+            userId: "guest",
+            level: finalStats.finalLevel,
+            score: finalStats.totalPrecisionScore,
+            duration: finalStats.totalGameTime || 0,
+            sessionData: {
+              ...finalStats,
+              gameType: "2048",
+              platform: "web",
+              timestamp: new Date().toISOString(),
+              version: "1.0.0",
+            },
           },
         };
         const jwt = await getToken();
