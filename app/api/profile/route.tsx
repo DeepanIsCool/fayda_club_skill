@@ -45,8 +45,9 @@ export async function POST(req: Request) {
     }
 
     // Fetch current to merge safely
-    const clerk = await clerkClient();
-    const user = await clerk.users.getUser(userId);
+    // FIX: Removed 'await' from clerkClient(). It's a synchronous function.
+    const clerk = clerkClient();
+    const user = await (await clerk).users.getUser(userId);
     const pm = ((user.publicMetadata ?? {}) as PublicMetadata) || {};
 
     const updatedPublicMetadata = {
@@ -57,7 +58,9 @@ export async function POST(req: Request) {
         ...address,
       },
     };
-    await clerk.users.updateUser(userId, {
+    await (
+      await clerk
+    ).users.updateUser(userId, {
       publicMetadata: updatedPublicMetadata,
     });
 

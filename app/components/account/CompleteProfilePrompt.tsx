@@ -14,6 +14,7 @@ import { useUser } from "@clerk/nextjs";
 import { X } from "lucide-react";
 import * as React from "react";
 
+// Define the shape of the data you expect to handle
 type Address = {
   line1?: string;
   line2?: string;
@@ -30,10 +31,8 @@ type PublicMeta = {
 };
 
 /**
- * Profile completion prompt:
- * - Prefills name/email (read-only) from Clerk
- * - Asks for phone + address (saved to publicMetadata via /api/profile)
- * - Auto-opens for signed-in users until both fields exist
+ * A dialog component that prompts signed-in users to complete
+ * their profile by adding a phone number and address.
  */
 export default function CompleteProfilePrompt() {
   const { user, isSignedIn, isLoaded } = useUser();
@@ -42,7 +41,7 @@ export default function CompleteProfilePrompt() {
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
 
-  // Prefill from Clerk publicMetadata
+  // Prefill form fields from Clerk's publicMetadata
   const pm = ((user?.publicMetadata ?? {}) as PublicMeta) || {};
   const initialPhone =
     typeof pm.phone === "string" ? pm.phone : pm.phone?.number || "";
@@ -58,28 +57,21 @@ export default function CompleteProfilePrompt() {
     country: initialAddress.country ?? "",
   });
 
-  // Determine if profile still incomplete
-  const needsProfile = React.useMemo(() => {
-    const hasPhone = (phone || initialPhone || "").trim().length > 0;
-    const a = address || initialAddress || {};
-    const hasAddress = !!(a.line1 && a.city && a.country);
-    return !(hasPhone && hasAddress);
-  }, [phone, address, initialPhone, initialAddress]);
-
-  // Open when signed-in & incomplete
+  // Automatically open the dialog if the profile is incomplete for a signed-in user
   React.useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    if (needsProfile) setOpen(true);
-  }, [isLoaded, isSignedIn, needsProfile]);
+    if (isLoaded && isSignedIn) {
+      const hasPhone = (phone || initialPhone || "").trim().length > 0;
+      const a = address || initialAddress || {};
+      const hasAddress = !!(a.line1 && a.city && a.country);
+      if (!(hasPhone && hasAddress)) {
+        setOpen(true);
+      }
+    }
+  }, [isLoaded, isSignedIn, phone, address, initialPhone, initialAddress]);
 
   const fullName =
     user?.fullName || `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
-  const email =
-    user?.primaryEmailAddress?.emailAddress ||
-    user?.emailAddresses?.[0]?.emailAddress ||
-    "";
-
-  const handleClose = () => setOpen(false);
+  const email = user?.primaryEmailAddress?.emailAddress || "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,38 +80,24 @@ export default function CompleteProfilePrompt() {
     setSuccess(null);
 
     try {
-      const trimmedPhone = (phone || "").trim();
-      const addr = {
-        line1: (address.line1 || "").trim(),
-        line2: (address.line2 || "").trim(),
-        city: (address.city || "").trim(),
-        state: (address.state || "").trim(),
-        postalCode: (address.postalCode || "").trim(),
-        country: (address.country || "").trim(),
-      };
-
-      if (!trimmedPhone || !addr.line1 || !addr.city || !addr.country) {
-        setError("Please fill phone, address line 1, city and country.");
-        setSubmitting(false);
-        return;
-      }
-
       const res = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: trimmedPhone, address: addr }),
+        body: JSON.stringify({ phone: phone.trim(), address }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || `Failed (${res.status})`);
+        throw new Error(
+          data?.error || `Request failed with status ${res.status}`
+        );
       }
 
-      // Refresh the user object so publicMetadata is up-to-date
+      // Refresh the user object to get the latest publicMetadata
       await user?.reload?.();
 
-      setSuccess("Profile updated. You’re all set for rewards!");
-      setTimeout(() => setOpen(false), 900);
+      setSuccess("Profile updated successfully!");
+      setTimeout(() => setOpen(false), 1000); // Close dialog after success
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message || "Failed to save. Please try again.");
@@ -135,7 +113,7 @@ export default function CompleteProfilePrompt() {
       <DialogContent className="sm:max-w-[480px] rounded-2xl border-white/10 bg-gradient-to-b from-slate-900 to-slate-950 text-white">
         <button
           aria-label="Close"
-          onClick={handleClose}
+          onClick={() => setOpen(false)}
           className="absolute right-3 top-3 rounded-md p-1 text-white/60 hover:text-white"
         >
           <X className="h-4 w-4" />
@@ -143,135 +121,75 @@ export default function CompleteProfilePrompt() {
 
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            Complete your profile to unlock gifts
+            Complete Your Profile
           </DialogTitle>
           <DialogDescription className="text-slate-300">
-            Add a phone number and address to become eligible for gift drops and
-            bonuses.
+            Add your details to become eligible for gift drops and rewards.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Progress overview */}
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <ProgressPill
-            label="Phone"
-            ok={(initialPhone || phone).trim().length > 0}
-          />
-          <ProgressPill
-            label="Address"
-            ok={
-              !!(
-                (address.line1 || initialAddress.line1) &&
-                (address.city || initialAddress.city) &&
-                (address.country || initialAddress.country)
-              )
-            }
-          />
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <Field label="Name" value={fullName} readOnly placeholder="—" />
-          <Field label="Email" value={email} readOnly placeholder="—" />
-
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          {/* Form Fields */}
+          <Field label="Name" value={fullName} readOnly />
+          <Field label="Email" value={email} readOnly />
           <Field
             label="Phone number"
             value={phone}
-            onChange={(v) => setPhone(v)}
+            onChange={setPhone}
             placeholder="+1 555 123 4567"
             autoFocus
           />
-
-          <div className="grid grid-cols-1 gap-3">
+          <Field
+            label="Address line 1"
+            value={address.line1 ?? ""}
+            onChange={(v) => setAddress((a) => ({ ...a, line1: v }))}
+            placeholder="House / Street"
+          />
+          <div className="grid grid-cols-2 gap-3">
             <Field
-              label="Address line 1"
-              value={address.line1 ?? ""}
-              onChange={(v) => setAddress((a) => ({ ...a, line1: v }))}
-              placeholder="House / Street"
+              label="City"
+              value={address.city ?? ""}
+              onChange={(v) => setAddress((a) => ({ ...a, city: v }))}
+              placeholder="City"
             />
             <Field
-              label="Address line 2"
-              value={address.line2 ?? ""}
-              onChange={(v) => setAddress((a) => ({ ...a, line2: v }))}
-              placeholder="Apt, suite, etc. (optional)"
+              label="Country"
+              value={address.country ?? ""}
+              onChange={(v) => setAddress((a) => ({ ...a, country: v }))}
+              placeholder="Country"
             />
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field
-                label="City"
-                value={address.city ?? ""}
-                onChange={(v) => setAddress((a) => ({ ...a, city: v }))}
-                placeholder="City"
-              />
-              <Field
-                label="State / Province"
-                value={address.state ?? ""}
-                onChange={(v) => setAddress((a) => ({ ...a, state: v }))}
-                placeholder="State"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field
-                label="Postal code"
-                value={address.postalCode ?? ""}
-                onChange={(v) => setAddress((a) => ({ ...a, postalCode: v }))}
-                placeholder="ZIP / Postal"
-              />
-              <Field
-                label="Country"
-                value={address.country ?? ""}
-                onChange={(v) => setAddress((a) => ({ ...a, country: v }))}
-                placeholder="Country"
-              />
-            </div>
           </div>
 
-          {error ? (
-            <p className="text-sm text-rose-300 bg-rose-900/30 border border-rose-800/40 rounded-md px-3 py-2">
-              {error}
-            </p>
-          ) : null}
-          {success ? (
-            <p className="text-sm text-emerald-300 bg-emerald-900/30 border border-emerald-800/40 rounded-md px-3 py-2">
-              {success}
-            </p>
-          ) : null}
+          {/* Status Messages */}
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          {success && <p className="text-sm text-green-400">{success}</p>}
 
+          {/* Action Buttons */}
           <div className="mt-2 grid grid-cols-2 gap-3">
             <Button
               type="button"
-              onClick={handleClose}
+              onClick={() => setOpen(false)}
               variant="secondary"
               className="bg-white/10 hover:bg-white/20 text-white"
               disabled={submitting}
             >
-              Not now
+              Not Now
             </Button>
             <Button
               type="submit"
-              className={cn(
-                "bg-yellow-400 text-amber-900 hover:bg-yellow-300 font-semibold",
-                submitting && "opacity-90"
-              )}
+              className="bg-yellow-400 text-amber-900 hover:bg-yellow-300 font-semibold"
               disabled={submitting}
             >
-              {submitting ? "Saving…" : "Save & continue"}
+              {submitting ? "Saving…" : "Save & Continue"}
             </Button>
           </div>
-
-          <p className="mt-2 text-xs text-slate-400">
-            These details are saved as custom fields in your account (public
-            metadata) and are only used for rewards eligibility.
-          </p>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
 
-/* ------------------------------ Small helpers ------------------------------ */
-
+// Helper component for form fields
 function Field(props: {
   label: string;
   value: string;
@@ -295,28 +213,10 @@ function Field(props: {
           "w-full rounded-md border px-3 py-2 text-sm text-white",
           "bg-white/[0.06] border-white/10 outline-none",
           "placeholder:text-white/40",
-          readOnly
-            ? "opacity-70 cursor-not-allowed"
-            : "focus:ring-2 focus:ring-yellow-400/30"
+          readOnly && "opacity-70 cursor-not-allowed",
+          "focus:ring-2 focus:ring-yellow-400/30"
         )}
       />
     </label>
-  );
-}
-
-function ProgressPill({ label, ok }: { label: string; ok: boolean }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-      <span className="text-sm">{label}</span>
-      <Badge
-        className={
-          ok
-            ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"
-            : "bg-rose-500/20 text-rose-300 border-rose-400/30"
-        }
-      >
-        {ok ? "Done" : "Missing"}
-      </Badge>
-    </div>
   );
 }
