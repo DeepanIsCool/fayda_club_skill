@@ -110,15 +110,24 @@ export const CurrencyProvider = ({
       cache: "no-store",
     });
 
+    // Read response body once. calling res.json()/res.text() multiple times
+    // would consume the stream and return empty on subsequent reads.
+    const bodyText = await res.text().catch(() => "");
     console.log("📥 CurrencyContext: Auth response status:", res.status);
+    console.log("📥 CurrencyContext: Auth response body:", bodyText);
 
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("❌ CurrencyContext: Auth failed:", res.status, text);
-      throw new Error(`Auth failed: ${res.status} ${text}`);
+      console.error("❌ CurrencyContext: Auth failed:", res.status, bodyText);
+      throw new Error(`Auth failed: ${res.status} ${bodyText}`);
     }
 
-    const data = await res.json();
+    let data: any = {};
+    try {
+      data = bodyText ? JSON.parse(bodyText) : {};
+    } catch (e) {
+      console.warn("⚠️ CurrencyContext: Failed to parse auth response JSON", e);
+      data = {};
+    }
     console.log("✅ CurrencyContext: Auth successful, user data:", data);
 
     const w = Number(data?.user?.wallet ?? 0);

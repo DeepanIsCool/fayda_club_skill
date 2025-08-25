@@ -11,6 +11,7 @@ import {
   Swords,
   Trophy,
   Gamepad2,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -32,6 +33,11 @@ export default function SiteChrome({
       label: "Leaderboard",
       href: "/leaderboard",
       icon: <Trophy className="h-6 w-6" />,
+    },
+    {
+      label: "History",
+      href: "/history",
+      icon: <History className="h-6 w-6" />,
     },
   ],
 }: {

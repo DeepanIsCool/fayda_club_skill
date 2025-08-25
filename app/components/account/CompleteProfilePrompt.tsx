@@ -59,15 +59,32 @@ export default function CompleteProfilePrompt() {
 
   // Automatically open the dialog if the profile is incomplete for a signed-in user
   React.useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      const hasPhone = (phone || initialPhone || "").trim().length > 0;
-      const a = address || initialAddress || {};
-      const hasAddress = !!(a.line1 && a.city && a.country);
-      if (!(hasPhone && hasAddress)) {
+    if (isLoaded && isSignedIn && user) {
+      // Check publicMetadata directly from Clerk user object
+      const publicMeta = (user.publicMetadata as PublicMeta) || {};
+
+      // Check if phone exists in publicMetadata
+      const hasPhone = !!(
+        publicMeta.phone &&
+        (typeof publicMeta.phone === "string"
+          ? publicMeta.phone.trim()
+          : publicMeta.phone.number?.trim())
+      );
+
+      // Check if required address fields exist in publicMetadata
+      const address = publicMeta.address || {};
+      const hasAddress = !!(
+        address.line1?.trim() &&
+        address.city?.trim() &&
+        address.country?.trim()
+      );
+
+      // Only show dialog if profile is incomplete
+      if (!hasPhone || !hasAddress) {
         setOpen(true);
       }
     }
-  }, [isLoaded, isSignedIn, phone, address, initialPhone, initialAddress]);
+  }, [isLoaded, isSignedIn, user]);
 
   const fullName =
     user?.fullName || `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();

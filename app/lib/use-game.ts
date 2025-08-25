@@ -369,7 +369,17 @@ const setup = useCallback(() => {
       perfectPlacements: 0, // Placeholder, update with real value if available
       averageReactionTime: 0, // Placeholder, update with real value if available
       maxConsecutiveStreak: undefined,
+      // totalGameTime in milliseconds
       totalGameTime: startTime && endTime ? endTime - startTime : undefined,
+      // moves made during the session
+      moves: typeof moves === "number" ? moves : undefined,
+      // computed final score using current metrics
+      finalScore: getFinalScore(),
+      // time in minutes used by the final score formula (clamped to same minimum as getFinalScore)
+      timeMinutes:
+        startTime && endTime
+          ? Math.max((endTime - startTime) / 60000, 0.01)
+          : undefined,
     };
   }
 

@@ -206,26 +206,22 @@ export default function Game2048() {
         return;
       }
       try {
+        const finalScore = getFinalScore();
         const sessionData = {
           gameId: config.id,
-          // userId: "guest",
-          // level: finalStats.finalLevel,
-          // score: finalStats.totalPrecisionScore,
-          // duration: finalStats.totalGameTime || 0,
-          // sessionData: {
-          //   ...finalStats,
-          //   gameType: "2048",
-          //   platform: "web",
-          //   timestamp: new Date().toISOString(),
-          //   version: "1.0.0",
-          // },
           session: {
             userId: "guest",
             level: finalStats.finalLevel,
-            score: finalStats.totalPrecisionScore,
+            // include computed finalScore (matches formula in use-game)
+            score: finalScore,
             duration: finalStats.totalGameTime || 0,
             sessionData: {
               ...finalStats,
+              // include the finalScore and moves/timeMinutes for clarity
+              finalScore,
+              moves: (finalStats as any).moves,
+              timeMinutes: (finalStats as any).timeMinutes,
+              highestTile: finalStats.finalLevel,
               gameType: "2048",
               platform: "web",
               timestamp: new Date().toISOString(),

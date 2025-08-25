@@ -19,6 +19,11 @@ export interface GameStats {
   averageReactionTime: number;
   maxConsecutiveStreak?: number;
   totalGameTime?: number;
+  // Optional metrics added for session reporting
+  moves?: number;
+  finalScore?: number;
+  timeMinutes?: number;
+  highestTile?: number;
 }
 
 interface RewardModalProps {
