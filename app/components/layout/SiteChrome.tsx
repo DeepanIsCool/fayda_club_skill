@@ -184,11 +184,25 @@ export default function SiteChrome({
 
 function MobileBottomNav({ navItems }: { navItems: NavItem[] }) {
   const pathname = usePathname();
+  const activeIndex = navItems.findIndex(item => item.href === pathname);
 
   return (
-    <nav className="md:hidden fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0f1540]/95 supports-[backdrop-filter]:backdrop-blur">
-      <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 p-2">
-        {navItems.map((item) => {
+    <nav className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-[#0a0e2e]/95 backdrop-blur-md border-t border-[#1a1f3a]">
+      <div className="relative flex items-center justify-around px-4 py-3 safe-area-pb">
+        {/* Sliding background indicator */}
+        <div 
+          className={cn(
+            "absolute top-2 bottom-2 bg-gradient-to-r from-blue-500/15 to-purple-500/15 rounded-xl border border-blue-400/10 transition-all duration-300 ease-out",
+            activeIndex >= 0 ? "opacity-100" : "opacity-0"
+          )}
+          style={{
+            width: `${100 / navItems.length}%`,
+            left: `${(activeIndex * 100) / navItems.length}%`,
+            transform: 'translateX(-50%) translateX(50%)',
+          }}
+        />
+        
+        {navItems.map((item, index) => {
           const active = pathname === item.href;
           return (
             <Link
@@ -196,13 +210,18 @@ function MobileBottomNav({ navItems }: { navItems: NavItem[] }) {
               href={item.href}
               aria-label={item.label}
               className={cn(
-                "relative flex h-12 items-center justify-center rounded-2xl",
-                active ? "bg-white/10 shadow-inner" : "hover:bg-white/5"
+                "relative flex items-center justify-center min-w-0 flex-1 py-3 px-2 rounded-xl transition-all duration-300 ease-out z-10",
+                active ? "scale-110" : "hover:scale-105"
               )}
             >
-              <span className={cn(active ? "text-white" : "text-blue-200")}>
+              <div className={cn(
+                "flex items-center justify-center w-6 h-6 transition-all duration-300",
+                active 
+                  ? "text-blue-300" 
+                  : "text-blue-400/60 hover:text-blue-300/80"
+              )}>
                 {item.icon}
-              </span>
+              </div>
             </Link>
           );
         })}
